@@ -2,11 +2,14 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY apps/frontend/package*.json ./
-RUN npm install
-
-COPY apps/frontend/ ./
+COPY apps/frontend/node_modules ./node_modules/
+COPY apps/frontend/src ./src/
+COPY apps/frontend/public ./public/
+COPY apps/frontend/index.html ./
+COPY apps/frontend/package.json ./
+COPY apps/frontend/vite.config.ts ./
+COPY apps/frontend/tsconfig*.json ./
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["node", "node_modules/.bin/vite", "--host", "0.0.0.0"]

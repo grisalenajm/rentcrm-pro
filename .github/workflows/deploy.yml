@@ -18,6 +18,11 @@ jobs:
           npx prisma generate
           npm run build
 
+      - name: Install Frontend
+        run: |
+          cd ~/rentcrm-pro/apps/frontend
+          npm install
+
       - name: Deploy containers
         run: |
           cd ~/rentcrm-pro
