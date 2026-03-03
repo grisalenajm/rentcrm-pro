@@ -5,6 +5,9 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Properties from './pages/Properties';
+import Clients from './pages/Clients';
+import Bookings from './pages/Bookings';
+import Financials from './pages/Financials';
 import ComingSoon from './pages/ComingSoon';
 
 const qc = new QueryClient();
@@ -24,9 +27,9 @@ export default function App() {
             <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="properties" element={<Properties />} />
-              <Route path="clients"    element={<ComingSoon title="Clientes" />} />
-              <Route path="bookings"   element={<ComingSoon title="Reservas" />} />
-              <Route path="financials" element={<ComingSoon title="Financiero" />} />
+              <Route path="clients"    element={<Clients />} />
+              <Route path="bookings"   element={<Bookings />} />
+              <Route path="financials" element={<Financials />} />
               <Route path="police"     element={<ComingSoon title="Partes SES" />} />
             </Route>
           </Routes>
