@@ -13,7 +13,7 @@ COPY apps/api/dist ./apps/api/dist/
 
 WORKDIR /app/apps/api
 
-RUN ../node_modules/.bin/prisma generate
+RUN node_modules/.bin/prisma generate --no-engine
 
 EXPOSE 3001
 
