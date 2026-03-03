@@ -8,6 +8,11 @@ jobs:
   deploy:
     runs-on: self-hosted
     steps:
+      - name: Setup SSH agent
+        run: |
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_ed25519_write
+
       - name: Pull latest code
         run: git -C ~/rentcrm-pro pull origin main
 
