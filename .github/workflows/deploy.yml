@@ -21,7 +21,7 @@ jobs:
       - name: Install Frontend
         run: |
           cd ~/rentcrm-pro/apps/frontend
-          npm install
+          npm install --prefix .
 
       - name: Deploy containers
         run: |
