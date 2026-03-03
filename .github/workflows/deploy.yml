@@ -13,15 +13,6 @@ jobs:
           SSH_KEY: ${{ secrets.LXC_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_KEY" | base64 -d > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.LXC_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Deploy via SSH
-        run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.LXC_USER }}@${{ secrets.LXC_HOST }} "
-            cd ~/rentcrm-pro &&
-            git pull origin main &&
-            docker compose up -d --build &&
-            echo 'Deploy completado'
-          "
+          echo "$SSH_KEY" | base64 -d > ~/.ssh/deploy_key 2>&1 || echo "base64 error: $?"
+          ls -la ~/.ssh/deploy_key 2>&1 || echo "file not created"
+          wc -c ~/.ssh/deploy_key 2>&1 || echo "empty file"
