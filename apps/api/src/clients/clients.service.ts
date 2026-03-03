@@ -14,10 +14,10 @@ export class ClientsService {
         deletedAt: null,
         ...(search ? {
           OR: [
-            { firstName: { contains: search, mode: 'insensitive' } },
-            { lastName:  { contains: search, mode: 'insensitive' } },
+            { firstName:   { contains: search, mode: 'insensitive' } },
+            { lastName:    { contains: search, mode: 'insensitive' } },
             { dniPassport: { contains: search, mode: 'insensitive' } },
-            { email: { contains: search, mode: 'insensitive' } },
+            { email:       { contains: search, mode: 'insensitive' } },
           ]
         } : {})
       },
@@ -42,16 +42,26 @@ export class ClientsService {
   }
 
   async create(dto: CreateClientDto, organizationId: string, userId: string) {
+    const { birthDate, ...rest } = dto;
     return this.prisma.client.create({
-      data: { ...dto, organizationId, createdBy: userId },
+      data: {
+        ...rest,
+        organizationId,
+        createdBy: userId,
+        ...(birthDate ? { birthDate: new Date(birthDate) } : {}),
+      },
     });
   }
 
   async update(id: string, dto: UpdateClientDto, organizationId: string) {
     await this.findOne(id, organizationId);
+    const { birthDate, ...rest } = dto;
     return this.prisma.client.update({
       where: { id },
-      data: dto,
+      data: {
+        ...rest,
+        ...(birthDate ? { birthDate: new Date(birthDate) } : {}),
+      },
     });
   }
 
