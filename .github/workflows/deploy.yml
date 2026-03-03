@@ -6,22 +6,13 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Setup SSH key
-        env:
-          SSH_KEY: ${{ secrets.LXC_SSH_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_KEY" | base64 -d > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.LXC_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+      - name: Pull latest code
+        run: git -C ~/rentcrm-pro pull origin main
 
-      - name: Deploy via SSH
+      - name: Deploy
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.LXC_USER }}@${{ secrets.LXC_HOST }} "
-            cd ~/rentcrm-pro &&
-            git pull origin main &&
-            docker compose up -d --build &&
-            echo 'Deploy completado'
-          "
+          cd ~/rentcrm-pro
+          docker compose up -d --build
+          echo "Deploy completado: $(date)"
