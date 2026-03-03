@@ -23,6 +23,8 @@ model Organization {
   auditLogs           AuditLog[]
   financialCategories FinancialCategory[]
 
+  contractTemplates ContractTemplate[]
+  contracts         Contract[]
   @@map("organizations")
 }
 
@@ -134,6 +136,7 @@ model Booking {
 
   @@index([propertyId, checkInDate, checkOutDate])
   @@index([clientId])
+  contracts     Contract[]
   @@map("bookings")
 }
 
@@ -309,4 +312,52 @@ model AvailabilityBlock {
   @@unique([propertyId, externalUid])
   @@index([propertyId, startDate, endDate])
   @@map("availability_blocks")
+}
+
+model ContractTemplate {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String   @db.VarChar(255)
+  type           String   @db.VarChar(50)
+  content        String   @db.Text
+  ownerName      String   @map("owner_name") @db.VarChar(255)
+  ownerNif       String   @map("owner_nif") @db.VarChar(20)
+  ownerAddress   String?  @map("owner_address") @db.Text
+  depositAmount  Decimal? @map("deposit_amount") @db.Decimal(10, 2)
+  clauses        String?  @db.Text
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contracts    Contract[]
+
+  @@index([organizationId])
+  @@map("contract_templates")
+}
+
+model Contract {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  bookingId      String    @map("booking_id") @db.Uuid
+  templateId     String    @map("template_id") @db.Uuid
+  status         String    @default("draft") @db.VarChar(20)
+  token          String    @unique @db.VarChar(64)
+  pdfPath        String?   @map("pdf_path") @db.VarChar(500)
+  signatureImage String?   @map("signature_image") @db.Text
+  signerIp       String?   @map("signer_ip") @db.VarChar(45)
+  signerName     String?   @map("signer_name") @db.VarChar(255)
+  depositAmount  Decimal?  @map("deposit_amount") @db.Decimal(10, 2)
+  sentAt         DateTime? @map("sent_at")
+  signedAt       DateTime? @map("signed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  template     ContractTemplate @relation(fields: [templateId], references: [id])
+
+  @@index([bookingId])
+  @@index([token])
+  @@map("contracts")
 }
