@@ -8,6 +8,9 @@ import Properties from './pages/Properties';
 import Clients from './pages/Clients';
 import Bookings from './pages/Bookings';
 import Financials from './pages/Financials';
+import Contracts from './pages/Contracts';
+import ContractTemplates from './pages/ContractTemplates';
+import SignContract from './pages/SignContract';
 import ComingSoon from './pages/ComingSoon';
 
 const qc = new QueryClient();
@@ -24,13 +27,16 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/sign/:token" element={<SignContract />} />
             <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
               <Route index element={<Dashboard />} />
-              <Route path="properties" element={<Properties />} />
-              <Route path="clients"    element={<Clients />} />
-              <Route path="bookings"   element={<Bookings />} />
-              <Route path="financials" element={<Financials />} />
-              <Route path="police"     element={<ComingSoon title="Partes SES" />} />
+              <Route path="properties"         element={<Properties />} />
+              <Route path="clients"            element={<Clients />} />
+              <Route path="bookings"           element={<Bookings />} />
+              <Route path="financials"         element={<Financials />} />
+              <Route path="contracts"          element={<Contracts />} />
+              <Route path="contracts/templates" element={<ContractTemplates />} />
+              <Route path="police"             element={<ComingSoon title="Partes SES" />} />
             </Route>
           </Routes>
         </BrowserRouter>
