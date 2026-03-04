@@ -78,13 +78,13 @@ export default function Contracts() {
 
   const openContract = (id: string) => {
     const token = localStorage.getItem('token');
-    window.open(`http://${window.location.hostname}:3001/api/contracts/${id}/view?token=${token}`, '_blank');
+    window.open(`http://${window.location.hostname}:3001/api/contracts/view/${id}?token=${token}`, '_blank');
   };
 
   // Abrimos la vista del contrato con el token JWT en el header via fetch + blob
   const viewContract = async (id: string) => {
     const token = localStorage.getItem('token');
-    const res = await fetch(`http://${window.location.hostname}:3001/api/contracts/${id}/view`, {
+    const res = await fetch(`http://${window.location.hostname}:3001/api/contracts/view/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const html = await res.text();

@@ -25,11 +25,27 @@ const contractStatusLabel: Record<string, string> = {
   draft: 'Borrador', sent: 'Enviado', signed: 'Firmado', cancelled: 'Cancelado',
 };
 
+function Stars({ score, onChange }: { score: number; onChange?: (s: number) => void }) {
+  return (
+    <div className="flex gap-1">
+      {[1,2,3,4,5].map(s => (
+        <button key={s} type="button" onClick={() => onChange?.(s)}
+          className={`text-xl transition-transform ${onChange ? 'cursor-pointer hover:scale-125' : 'cursor-default'} ${s <= score ? 'text-amber-400' : 'text-slate-600'}`}>
+          ★
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function BookingDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [copied, setCopied] = useState(false);
+  const [linkModal, setLinkModal] = useState<string | null>(null);
+  const [showRating, setShowRating] = useState(false);
+  const [ratingScore, setRatingScore] = useState(5);
+  const [ratingNotes, setRatingNotes] = useState('');
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ['booking', id],
@@ -48,17 +64,64 @@ export default function BookingDetail() {
     enabled: !!id,
   });
 
+  const { data: evaluation } = useQuery({
+    queryKey: ['evaluation-booking', id],
+    queryFn: () => api.get(`/evaluations/booking/${id}`).then(r => r.data).catch(() => null),
+    enabled: !!id,
+  });
+
   const cancelMutation = useMutation({
     mutationFn: () => api.delete(`/bookings/${id}`),
     onSuccess: () => navigate('/bookings'),
   });
 
-  const copyLink = (token: string) => {
-    const link = `${window.location.protocol}//${window.location.hostname}:3000/sign/${token}`;
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const createEvalMutation = useMutation({
+    mutationFn: (data: any) => api.post('/evaluations', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['evaluation-booking', id] });
+      setShowRating(false);
+    },
+  });
+
+  const updateEvalMutation = useMutation({
+    mutationFn: ({ evalId, data }: any) => api.put(`/evaluations/${evalId}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['evaluation-booking', id] });
+      setShowRating(false);
+    },
+  });
+
+  const openRating = () => {
+    if (evaluation) {
+      setRatingScore(evaluation.score);
+      setRatingNotes(evaluation.notes || '');
+    } else {
+      setRatingScore(5);
+      setRatingNotes('');
+    }
+    setShowRating(true);
   };
+
+  const handleRating = () => {
+    if (evaluation) {
+      updateEvalMutation.mutate({ evalId: evaluation.id, data: { score: ratingScore, notes: ratingNotes || undefined } });
+    } else {
+      createEvalMutation.mutate({ bookingId: id, clientId: booking.clientId, score: ratingScore, notes: ratingNotes || undefined });
+    }
+  };
+
+  const viewContract = async (contractId: string) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`http://${window.location.hostname}:3001/api/contracts/view/${contractId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const html = await res.text();
+    const blob = new Blob([html], { type: 'text/html' });
+    window.open(URL.createObjectURL(blob), '_blank');
+  };
+
+  const getSignUrl = (token: string) =>
+    `${window.location.protocol}//${window.location.hostname}:3000/sign/${token}`;
 
   if (isLoading) return <div className="p-6 text-slate-400">Cargando...</div>;
   if (!booking) return <div className="p-6 text-slate-400">Reserva no encontrada</div>;
@@ -69,10 +132,8 @@ export default function BookingDetail() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/bookings')}
-          className="text-slate-400 hover:text-white transition-colors">← Volver</button>
+        <button onClick={() => navigate('/bookings')} className="text-slate-400 hover:text-white transition-colors">← Volver</button>
         <span className="text-slate-600">/</span>
         <h1 className="text-xl font-bold">Detalle de reserva</h1>
         <span className={`ml-auto text-xs font-semibold px-2 py-1 rounded-full ${statusColor[booking.status] || 'bg-slate-500/10 text-slate-400'}`}>
@@ -81,31 +142,18 @@ export default function BookingDetail() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-
         {/* Fechas y precio */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
           <h2 className="font-semibold mb-4 text-slate-300 text-sm uppercase tracking-wider">Reserva</h2>
           <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-slate-400 text-sm">Check-in</span>
-              <span className="font-medium">{new Date(booking.checkInDate).toLocaleDateString('es-ES')}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400 text-sm">Check-out</span>
-              <span className="font-medium">{new Date(booking.checkOutDate).toLocaleDateString('es-ES')}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400 text-sm">Noches</span>
-              <span className="font-medium">{nights}</span>
-            </div>
+            <div className="flex justify-between"><span className="text-slate-400 text-sm">Check-in</span><span className="font-medium">{new Date(booking.checkInDate).toLocaleDateString('es-ES')}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400 text-sm">Check-out</span><span className="font-medium">{new Date(booking.checkOutDate).toLocaleDateString('es-ES')}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400 text-sm">Noches</span><span className="font-medium">{nights}</span></div>
             <div className="flex justify-between border-t border-slate-800 pt-3">
               <span className="text-slate-400 text-sm">Total</span>
               <span className="font-bold text-emerald-400 text-lg">€{booking.totalAmount}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400 text-sm">Origen</span>
-              <span className="font-medium">{sourceLabel[booking.source] || booking.source}</span>
-            </div>
+            <div className="flex justify-between"><span className="text-slate-400 text-sm">Origen</span><span className="font-medium">{sourceLabel[booking.source] || booking.source}</span></div>
           </div>
           {booking.status !== 'cancelled' && (
             <button onClick={() => { if(confirm('¿Cancelar esta reserva?')) cancelMutation.mutate(); }}
@@ -120,24 +168,10 @@ export default function BookingDetail() {
           <h2 className="font-semibold mb-4 text-slate-300 text-sm uppercase tracking-wider">Propiedad</h2>
           {booking.property && (
             <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-slate-400 text-sm">Nombre</span>
-                <Link to="/properties" className="font-medium text-emerald-400 hover:underline">
-                  {booking.property.name}
-                </Link>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400 text-sm">Dirección</span>
-                <span className="font-medium text-right text-sm">{booking.property.address}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400 text-sm">Ciudad</span>
-                <span className="font-medium">{booking.property.city}, {booking.property.province}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400 text-sm">Habitaciones</span>
-                <span className="font-medium">{booking.property.rooms}</span>
-              </div>
+              <div className="flex justify-between"><span className="text-slate-400 text-sm">Nombre</span><Link to="/properties" className="font-medium text-emerald-400 hover:underline">{booking.property.name}</Link></div>
+              <div className="flex justify-between"><span className="text-slate-400 text-sm">Dirección</span><span className="font-medium text-right text-sm">{booking.property.address}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400 text-sm">Ciudad</span><span className="font-medium">{booking.property.city}, {booking.property.province}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400 text-sm">Habitaciones</span><span className="font-medium">{booking.property.rooms}</span></div>
             </div>
           )}
         </div>
@@ -147,63 +181,55 @@ export default function BookingDetail() {
           <h2 className="font-semibold mb-4 text-slate-300 text-sm uppercase tracking-wider">Cliente titular</h2>
           {booking.client && (
             <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-slate-400 text-sm">Nombre</span>
-                <Link to="/clients" className="font-medium text-emerald-400 hover:underline">
+              <div className="flex justify-between"><span className="text-slate-400 text-sm">Nombre</span>
+                <Link to={`/clients/${booking.clientId}`} className="font-medium text-emerald-400 hover:underline">
                   {booking.client.firstName} {booking.client.lastName}
                 </Link>
               </div>
-              {booking.client.dniPassport && (
-                <div className="flex justify-between">
-                  <span className="text-slate-400 text-sm">DNI/Pasaporte</span>
-                  <span className="font-mono text-sm">{booking.client.dniPassport}</span>
-                </div>
-              )}
-              {booking.client.nationality && (
-                <div className="flex justify-between">
-                  <span className="text-slate-400 text-sm">Nacionalidad</span>
-                  <span className="font-medium">{booking.client.nationality}</span>
-                </div>
-              )}
-              {booking.client.birthDate && (
-                <div className="flex justify-between">
-                  <span className="text-slate-400 text-sm">Nacimiento</span>
-                  <span className="font-medium">{new Date(booking.client.birthDate).toLocaleDateString('es-ES')}</span>
-                </div>
-              )}
-              {booking.client.email && (
-                <div className="flex justify-between">
-                  <span className="text-slate-400 text-sm">Email</span>
-                  <a href={`mailto:${booking.client.email}`} className="text-emerald-400 hover:underline text-sm">{booking.client.email}</a>
-                </div>
-              )}
-              {booking.client.phone && (
-                <div className="flex justify-between">
-                  <span className="text-slate-400 text-sm">Teléfono</span>
-                  <a href={`tel:${booking.client.phone}`} className="text-emerald-400 hover:underline">{booking.client.phone}</a>
-                </div>
-              )}
+              {booking.client.dniPassport && <div className="flex justify-between"><span className="text-slate-400 text-sm">DNI/Pasaporte</span><span className="font-mono text-sm">{booking.client.dniPassport}</span></div>}
+              {booking.client.nationality && <div className="flex justify-between"><span className="text-slate-400 text-sm">Nacionalidad</span><span className="font-medium">{booking.client.nationality}</span></div>}
+              {booking.client.birthDate && <div className="flex justify-between"><span className="text-slate-400 text-sm">Nacimiento</span><span className="font-medium">{new Date(booking.client.birthDate).toLocaleDateString('es-ES')}</span></div>}
+              {booking.client.email && <div className="flex justify-between"><span className="text-slate-400 text-sm">Email</span><a href={`mailto:${booking.client.email}`} className="text-emerald-400 hover:underline text-sm">{booking.client.email}</a></div>}
+              {booking.client.phone && <div className="flex justify-between"><span className="text-slate-400 text-sm">Teléfono</span><a href={`tel:${booking.client.phone}`} className="text-emerald-400 hover:underline">{booking.client.phone}</a></div>}
             </div>
           )}
         </div>
 
-        {/* Huéspedes adicionales */}
+        {/* Valoración */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <h2 className="font-semibold mb-4 text-slate-300 text-sm uppercase tracking-wider">Huéspedes adicionales</h2>
-          {booking.guests && booking.guests.length > 0 ? (
-            <div className="space-y-2">
-              {booking.guests.map((g: any) => (
-                <div key={g.id} className="flex justify-between items-center py-2 border-b border-slate-800 last:border-0">
-                  <span className="font-medium text-sm">{g.client.firstName} {g.client.lastName}</span>
-                  <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">{g.role}</span>
-                </div>
-              ))}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-slate-300 text-sm uppercase tracking-wider">Valoración de la estancia</h2>
+            <button onClick={openRating}
+              className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
+              {evaluation ? 'Editar' : '★ Valorar'}
+            </button>
+          </div>
+          {evaluation ? (
+            <div className="space-y-3">
+              <Stars score={evaluation.score} />
+              <div className="text-xs text-slate-400">{['','Muy malo','Malo','Normal','Bueno','Excelente'][evaluation.score]}</div>
+              {evaluation.notes && <p className="text-sm text-slate-300 italic">"{evaluation.notes}"</p>}
             </div>
           ) : (
-            <p className="text-slate-500 text-sm">Sin huéspedes adicionales registrados</p>
+            <p className="text-slate-500 text-sm">Sin valoración todavía</p>
           )}
         </div>
       </div>
+
+      {/* Huéspedes */}
+      {booking.guests && booking.guests.length > 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-4">
+          <h2 className="font-semibold mb-4 text-slate-300 text-sm uppercase tracking-wider">Huéspedes adicionales</h2>
+          <div className="space-y-2">
+            {booking.guests.map((g: any) => (
+              <div key={g.id} className="flex justify-between items-center py-2 border-b border-slate-800 last:border-0">
+                <span className="font-medium text-sm">{g.client.firstName} {g.client.lastName}</span>
+                <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">{g.role}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Contrato */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-4">
@@ -213,16 +239,13 @@ export default function BookingDetail() {
         </div>
         {contracts.length === 0 ? (
           <div className="flex items-center justify-between">
-            <p className="text-slate-500 text-sm">No hay contrato asociado a esta reserva</p>
-            <Link to="/contracts"
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-semibold transition-colors">
-              + Crear contrato
-            </Link>
+            <p className="text-slate-500 text-sm">No hay contrato asociado</p>
+            <Link to="/contracts" className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-semibold transition-colors">+ Crear contrato</Link>
           </div>
         ) : (
           <div className="space-y-3">
             {contracts.map((c: any) => (
-              <div key={c.id} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+              <div key={c.id} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg flex-wrap gap-2">
                 <div>
                   <div className="font-medium text-sm">{c.template.name}</div>
                   <div className="text-xs text-slate-400 mt-0.5">
@@ -230,14 +253,18 @@ export default function BookingDetail() {
                     {c.signedAt && ` · Firmado: ${new Date(c.signedAt).toLocaleDateString('es-ES')}`}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className={`text-xs font-semibold px-2 py-1 rounded-full ${contractStatusColor[c.status]}`}>
                     {contractStatusLabel[c.status]}
                   </span>
+                  <button onClick={() => viewContract(c.id)}
+                    className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                    📄 Ver contrato
+                  </button>
                   {(c.status === 'draft' || c.status === 'sent') && (
-                    <button onClick={() => copyLink(c.token)}
+                    <button onClick={() => setLinkModal(getSignUrl(c.token))}
                       className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
-                      {copied ? '✅ Copiado' : '📋 Copiar link'}
+                      🔗 Link firma
                     </button>
                   )}
                 </div>
@@ -271,6 +298,60 @@ export default function BookingDetail() {
           </div>
         )}
       </div>
+
+      {/* Modal link firma */}
+      {linkModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg">
+            <h2 className="text-lg font-bold mb-2">Link de firma</h2>
+            <p className="text-slate-400 text-sm mb-4">Envía este link al cliente para que firme el contrato.</p>
+            <div className="bg-slate-800 rounded-lg p-3 mb-4 break-all text-sm text-emerald-400 font-mono select-all">{linkModal}</div>
+            <div className="flex gap-3">
+              <a href={linkModal} target="_blank" rel="noopener noreferrer"
+                className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-semibold text-center transition-colors">
+                🔗 Abrir en nueva pestaña
+              </a>
+              <button onClick={() => setLinkModal(null)}
+                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal valoración */}
+      {showRating && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-bold mb-2">{evaluation ? 'Editar valoración' : 'Valorar estancia'}</h2>
+            <p className="text-slate-400 text-sm mb-5">
+              {booking.client.firstName} {booking.client.lastName} · {booking.property.name}
+            </p>
+            <div className="mb-5">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Puntuación *</label>
+              <Stars score={ratingScore} onChange={setRatingScore} />
+              <div className="text-xs text-slate-500 mt-2">{['','Muy malo','Malo','Normal','Bueno','Excelente'][ratingScore]}</div>
+            </div>
+            <div className="mb-5">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Comentario</label>
+              <input value={ratingNotes} onChange={e => setRatingNotes(e.target.value)}
+                placeholder="Ej: Cliente muy cuidadoso, dejó la casa perfecta"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowRating(false)}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                Cancelar
+              </button>
+              <button onClick={handleRating} disabled={createEvalMutation.isPending || updateEvalMutation.isPending}
+                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                {createEvalMutation.isPending || updateEvalMutation.isPending ? 'Guardando...' : 'Guardar valoración'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

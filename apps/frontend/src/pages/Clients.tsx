@@ -9,13 +9,22 @@ interface Client {
   lastName: string;
   dniPassport?: string;
   nationality?: string;
-  birthDate?: string;
   email?: string;
   phone?: string;
   notes?: string;
+  avgScore?: number;
 }
 
 const emptyForm = { firstName:'', lastName:'', dniPassport:'', nationality:'', birthDate:'', email:'', phone:'', notes:'' };
+
+function Stars({ score }: { score: number }) {
+  return (
+    <span className="text-amber-400 text-xs">
+      {'★'.repeat(Math.round(score))}{'☆'.repeat(5 - Math.round(score))}
+      <span className="text-slate-400 ml-1">({score.toFixed(1)})</span>
+    </span>
+  );
+}
 
 export default function Clients() {
   const qc = useQueryClient();
@@ -28,6 +37,23 @@ export default function Clients() {
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['clients', search],
     queryFn: () => api.get('/clients', { params: { search: search || undefined } }).then(r => r.data),
+  });
+
+  // Cargamos summaries para mostrar la media en la lista
+  const { data: summaries = {} } = useQuery({
+    queryKey: ['clients-summaries', clients.map((c: Client) => c.id).join(',')],
+    queryFn: async () => {
+      if (clients.length === 0) return {};
+      const results = await Promise.all(
+        clients.map((c: Client) =>
+          api.get(`/evaluations/client/${c.id}/summary`)
+            .then(r => ({ id: c.id, avgScore: r.data.avgScore, totalBookings: r.data.totalBookings }))
+            .catch(() => ({ id: c.id, avgScore: null, totalBookings: 0 }))
+        )
+      );
+      return Object.fromEntries(results.map(r => [r.id, r]));
+    },
+    enabled: clients.length > 0,
   });
 
   const createMutation = useMutation({
@@ -50,8 +76,7 @@ export default function Clients() {
     e.stopPropagation();
     setEditing(c);
     setForm({ firstName: c.firstName, lastName: c.lastName, dniPassport: c.dniPassport||'',
-      nationality: c.nationality||'', birthDate: c.birthDate ? c.birthDate.split('T')[0] : '',
-      email: c.email||'', phone: c.phone||'', notes: c.notes||'' });
+      nationality: c.nationality||'', birthDate: '', email: c.email||'', phone: c.phone||'', notes: c.notes||'' });
     setShowForm(true);
   };
 
@@ -97,34 +122,40 @@ export default function Clients() {
                 <th className="text-left px-4 py-3 text-slate-400 font-semibold">DNI/Pasaporte</th>
                 <th className="text-left px-4 py-3 text-slate-400 font-semibold">Email</th>
                 <th className="text-left px-4 py-3 text-slate-400 font-semibold">Teléfono</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">Nacionalidad</th>
+                <th className="text-left px-4 py-3 text-slate-400 font-semibold">Reservas</th>
+                <th className="text-left px-4 py-3 text-slate-400 font-semibold">Valoración</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
-              {clients.map((c: Client) => (
-                <tr key={c.id}
-                  onClick={() => navigate(`/clients/${c.id}`)}
-                  className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
-                  <td className="px-4 py-3 font-medium">{c.firstName} {c.lastName}</td>
-                  <td className="px-4 py-3 text-slate-400 font-mono text-xs">{c.dniPassport || '—'}</td>
-                  <td className="px-4 py-3 text-slate-400">{c.email || '—'}</td>
-                  <td className="px-4 py-3 text-slate-400">{c.phone || '—'}</td>
-                  <td className="px-4 py-3 text-slate-400">{c.nationality || '—'}</td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex gap-2 justify-end">
-                      <button onClick={e => openEdit(e, c)}
-                        className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
-                        Editar
-                      </button>
-                      <button onClick={e => { e.stopPropagation(); if(confirm('¿Eliminar cliente?')) deleteMutation.mutate(c.id); }}
-                        className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
-                        Eliminar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {clients.map((c: Client) => {
+                const s = summaries[c.id];
+                return (
+                  <tr key={c.id} onClick={() => navigate(`/clients/${c.id}`)}
+                    className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
+                    <td className="px-4 py-3 font-medium">{c.firstName} {c.lastName}</td>
+                    <td className="px-4 py-3 text-slate-400 font-mono text-xs">{c.dniPassport || '—'}</td>
+                    <td className="px-4 py-3 text-slate-400">{c.email || '—'}</td>
+                    <td className="px-4 py-3 text-slate-400">{c.phone || '—'}</td>
+                    <td className="px-4 py-3 text-slate-400">{s ? s.totalBookings : '—'}</td>
+                    <td className="px-4 py-3">
+                      {s?.avgScore ? <Stars score={s.avgScore} /> : <span className="text-slate-600 text-xs">Sin valorar</span>}
+                    </td>
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      <div className="flex gap-2 justify-end">
+                        <button onClick={e => openEdit(e, c)}
+                          className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
+                          Editar
+                        </button>
+                        <button onClick={e => { e.stopPropagation(); if(confirm('¿Eliminar cliente?')) deleteMutation.mutate(c.id); }}
+                          className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                          Eliminar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -136,36 +167,15 @@ export default function Clients() {
             <h2 className="text-lg font-bold mb-5">{editing ? 'Editar cliente' : 'Nuevo cliente'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Nombre *</label>
-                  <input value={form.firstName} onChange={f('firstName')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Apellidos *</label>
-                  <input value={form.lastName} onChange={f('lastName')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" required />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">DNI/Pasaporte</label>
-                  <input value={form.dniPassport} onChange={f('dniPassport')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Nacionalidad</label>
-                  <input value={form.nationality} onChange={f('nationality')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Fecha nacimiento</label>
-                  <input type="date" value={form.birthDate} onChange={f('birthDate')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Teléfono</label>
-                  <input value={form.phone} onChange={f('phone')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                </div>
+                {[['firstName','Nombre',true],['lastName','Apellidos',true],['dniPassport','DNI/Pasaporte',false],
+                  ['nationality','Nacionalidad',false],['birthDate','Fecha nacimiento',false],['phone','Teléfono',false]].map(([k,label,req]) => (
+                  <div key={k as string}>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{label as string}{req ? ' *':''}</label>
+                    <input type={k === 'birthDate' ? 'date' : 'text'} value={form[k as keyof typeof form]} onChange={f(k as keyof typeof form)}
+                      required={req as boolean}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                ))}
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Email</label>
                   <input type="email" value={form.email} onChange={f('email')}
@@ -179,9 +189,7 @@ export default function Clients() {
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
-                  Cancelar
-                </button>
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">Cancelar</button>
                 <button type="submit"
                   className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
                   {editing ? 'Guardar cambios' : 'Crear cliente'}

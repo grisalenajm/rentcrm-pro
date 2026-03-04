@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, Ip } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, Ip, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ContractsService } from './contracts.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { CreateContractDto } from './dto/create-contract.dto';
@@ -11,8 +12,7 @@ import { Roles } from '../auth/roles.decorator';
 export class ContractsController {
   constructor(private contractsService: ContractsService) {}
 
-  // ── TEMPLATES (autenticado) ────────────────────────────
-
+  // ── TEMPLATES ─────────────────────────────────────────
   @Get('templates')
   @UseGuards(JwtAuthGuard, RolesGuard)
   findAllTemplates(@Request() req) {
@@ -40,8 +40,27 @@ export class ContractsController {
     return this.contractsService.deleteTemplate(id, req.user.organizationId);
   }
 
-  // ── CONTRACTS (autenticado) ────────────────────────────
+  // ── FIRMA PÚBLICA (sin auth, antes de /:id) ───────────
+  @Get('sign/:token')
+  getByToken(@Param('token') token: string) {
+    return this.contractsService.findByToken(token);
+  }
 
+  @Post('sign/:token')
+  sign(@Param('token') token: string, @Body() dto: SignContractDto, @Ip() ip: string) {
+    return this.contractsService.sign(token, dto, ip);
+  }
+
+  // ── VISTA HTML (antes de /:id) ────────────────────────
+  @Get('view/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async viewContract(@Param('id') id: string, @Request() req, @Res() res: Response) {
+    const html = await this.contractsService.renderContractHtml(id, req.user.organizationId);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  }
+
+  // ── CONTRACTS ─────────────────────────────────────────
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   findAll(@Request() req, @Query('bookingId') bookingId?: string) {
@@ -74,17 +93,5 @@ export class ContractsController {
   @Roles('admin', 'gestor')
   cancel(@Param('id') id: string, @Request() req) {
     return this.contractsService.cancel(id, req.user.organizationId);
-  }
-
-  // ── FIRMA PÚBLICA (sin autenticación) ─────────────────
-
-  @Get('sign/:token')
-  getByToken(@Param('token') token: string) {
-    return this.contractsService.findByToken(token);
-  }
-
-  @Post('sign/:token')
-  sign(@Param('token') token: string, @Body() dto: SignContractDto, @Ip() ip: string) {
-    return this.contractsService.sign(token, dto, ip);
   }
 }
