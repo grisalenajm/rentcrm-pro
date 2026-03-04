@@ -34,7 +34,8 @@ export default function Contracts() {
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ bookingId: '', templateId: '', depositAmount: '' });
-  const [signatureView, setSignatureView] = useState<Contract | null>(null);
+  const [signatureView, setSignatureView] = useState<any | null>(null);
+  const [linkModal, setLinkModal] = useState<string | null>(null);
 
   const { data: contracts = [], isLoading } = useQuery({
     queryKey: ['contracts'],
@@ -53,7 +54,11 @@ export default function Contracts() {
 
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post('/contracts', data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['contracts'] }); setShowCreate(false); setForm({ bookingId:'', templateId:'', depositAmount:'' }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contracts'] });
+      setShowCreate(false);
+      setForm({ bookingId:'', templateId:'', depositAmount:'' });
+    },
   });
 
   const sendMutation = useMutation({
@@ -66,7 +71,10 @@ export default function Contracts() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['contracts'] }),
   });
 
-  const baseUrl = window.location.origin;
+  const getSignUrl = (token: string) =>
+    `${window.location.protocol}//${window.location.hostname}:3000/sign/${token}`;
+
+  const openLinkModal = (token: string) => setLinkModal(getSignUrl(token));
 
   return (
     <div className="p-6">
@@ -125,10 +133,9 @@ export default function Contracts() {
                         </button>
                       )}
                       {(c.status === 'draft' || c.status === 'sent') && (
-                        <button
-                          onClick={() => { navigator.clipboard.writeText(`${baseUrl}/sign/${c.token}`); alert('Link copiado al portapapeles'); }}
+                        <button onClick={() => openLinkModal(c.token)}
                           className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
-                          📋 Link
+                          🔗 Link firma
                         </button>
                       )}
                       {c.status === 'signed' && (
@@ -149,6 +156,29 @@ export default function Contracts() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal link de firma */}
+      {linkModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg">
+            <h2 className="text-lg font-bold mb-2">Link de firma</h2>
+            <p className="text-slate-400 text-sm mb-4">Copia este link y envíaselo al cliente para que firme el contrato.</p>
+            <div className="bg-slate-800 rounded-lg p-3 mb-4 break-all text-sm text-emerald-400 font-mono select-all">
+              {linkModal}
+            </div>
+            <div className="flex gap-3">
+              <a href={linkModal} target="_blank" rel="noopener noreferrer"
+                className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-semibold text-center transition-colors">
+                🔗 Abrir en nueva pestaña
+              </a>
+              <button onClick={() => setLinkModal(null)}
+                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
+                Cerrar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -207,10 +237,10 @@ export default function Contracts() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm">
             <h2 className="text-lg font-bold mb-4">Firma del contrato</h2>
             <div className="bg-white rounded-xl p-4 mb-4">
-              <img src={(signatureView as any).signatureImage} alt="Firma" className="w-full" />
+              <img src={signatureView.signatureImage} alt="Firma" className="w-full" />
             </div>
-            <p className="text-sm text-slate-400 mb-1">Firmado por: <span className="text-white">{(signatureView as any).signerName}</span></p>
-            <p className="text-sm text-slate-400 mb-4">Fecha: <span className="text-white">{new Date(signatureView.signedAt!).toLocaleString('es-ES')}</span></p>
+            <p className="text-sm text-slate-400 mb-1">Firmado por: <span className="text-white">{signatureView.signerName}</span></p>
+            <p className="text-sm text-slate-400 mb-4">Fecha: <span className="text-white">{new Date(signatureView.signedAt).toLocaleString('es-ES')}</span></p>
             <button onClick={() => setSignatureView(null)}
               className="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
               Cerrar

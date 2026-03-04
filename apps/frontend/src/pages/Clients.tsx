@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 
 interface Client {
@@ -18,6 +19,7 @@ const emptyForm = { firstName:'', lastName:'', dniPassport:'', nationality:'', b
 
 export default function Clients() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
@@ -44,13 +46,12 @@ export default function Clients() {
   });
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setShowForm(true); };
-  const openEdit = (c: Client) => {
+  const openEdit = (e: React.MouseEvent, c: Client) => {
+    e.stopPropagation();
     setEditing(c);
-    setForm({
-      firstName: c.firstName, lastName: c.lastName, dniPassport: c.dniPassport||'',
+    setForm({ firstName: c.firstName, lastName: c.lastName, dniPassport: c.dniPassport||'',
       nationality: c.nationality||'', birthDate: c.birthDate ? c.birthDate.split('T')[0] : '',
-      email: c.email||'', phone: c.phone||'', notes: c.notes||'',
-    });
+      email: c.email||'', phone: c.phone||'', notes: c.notes||'' });
     setShowForm(true);
   };
 
@@ -78,12 +79,9 @@ export default function Clients() {
       </div>
 
       <div className="mb-4">
-        <input
-          placeholder="Buscar por nombre, DNI o email..."
-          value={search}
+        <input placeholder="Buscar por nombre, DNI o email..." value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full max-w-md px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
-        />
+          className="w-full max-w-md px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
       </div>
 
       {isLoading ? (
@@ -105,19 +103,21 @@ export default function Clients() {
             </thead>
             <tbody>
               {clients.map((c: Client) => (
-                <tr key={c.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                <tr key={c.id}
+                  onClick={() => navigate(`/clients/${c.id}`)}
+                  className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
                   <td className="px-4 py-3 font-medium">{c.firstName} {c.lastName}</td>
                   <td className="px-4 py-3 text-slate-400 font-mono text-xs">{c.dniPassport || '—'}</td>
                   <td className="px-4 py-3 text-slate-400">{c.email || '—'}</td>
                   <td className="px-4 py-3 text-slate-400">{c.phone || '—'}</td>
                   <td className="px-4 py-3 text-slate-400">{c.nationality || '—'}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex gap-2 justify-end">
-                      <button onClick={() => openEdit(c)}
+                      <button onClick={e => openEdit(e, c)}
                         className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
                         Editar
                       </button>
-                      <button onClick={() => { if(confirm('¿Eliminar cliente?')) deleteMutation.mutate(c.id); }}
+                      <button onClick={e => { e.stopPropagation(); if(confirm('¿Eliminar cliente?')) deleteMutation.mutate(c.id); }}
                         className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
                         Eliminar
                       </button>

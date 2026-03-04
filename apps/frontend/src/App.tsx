@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Properties from './pages/Properties';
 import Clients from './pages/Clients';
+import ClientDetail from './pages/ClientDetail';
 import Bookings from './pages/Bookings';
 import BookingDetail from './pages/BookingDetail';
 import Financials from './pages/Financials';
@@ -33,6 +34,7 @@ export default function App() {
               <Route index element={<Dashboard />} />
               <Route path="properties"          element={<Properties />} />
               <Route path="clients"             element={<Clients />} />
+              <Route path="clients/:id"         element={<ClientDetail />} />
               <Route path="bookings"            element={<Bookings />} />
               <Route path="bookings/:id"        element={<BookingDetail />} />
               <Route path="financials"          element={<Financials />} />
