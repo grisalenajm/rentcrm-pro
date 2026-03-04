@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, Ip, Res } from '@nestjs/common';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { ContractsService } from './contracts.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { CreateContractDto } from './dto/create-contract.dto';
