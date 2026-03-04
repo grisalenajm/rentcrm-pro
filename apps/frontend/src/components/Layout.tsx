@@ -2,18 +2,19 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const nav = [
-  { to: '/',                    icon: '📊', label: 'Dashboard'   },
-  { to: '/properties',          icon: '🏠', label: 'Propiedades' },
-  { to: '/clients',             icon: '👥', label: 'Clientes'    },
-  { to: '/bookings',            icon: '📅', label: 'Reservas'    },
-  { to: '/financials',          icon: '💶', label: 'Financiero'  },
-  { to: '/contracts',           icon: '📄', label: 'Contratos'   },
-  { to: '/contracts/templates', icon: '📝', label: 'Templates'   },
-  { to: '/police',              icon: '📡', label: 'Partes SES'  },
-  { to: '/settings',            icon: '⚙️', label: 'Configuración' },
+  { to: '/',                    icon: '📊', label: t('nav.dashboard')   },
+  { to: '/properties',          icon: '🏠', label: t('nav.properties') },
+  { to: '/clients',             icon: '👥', label: t('nav.clients')    },
+  { to: '/bookings',            icon: '📅', label: t('nav.bookings')    },
+  { to: '/financials',          icon: '💶', label: t('nav.financials')  },
+  { to: '/contracts',           icon: '📄', label: t('nav.contracts')   },
+  { to: '/contracts/templates', icon: '📝', label: t('nav.templates')   },
+  { to: '/police',              icon: '📡', label: t('nav.police')  },
+  { to: '/settings',            icon: '⚙️', label: t('nav.settings') },
 ];
 
 export default function Layout() {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 

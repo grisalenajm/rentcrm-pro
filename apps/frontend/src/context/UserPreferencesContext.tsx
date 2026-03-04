@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import i18n from '../i18n/index';
 
 type Theme = 'dark' | 'light';
 type Language = 'es' | 'en';
@@ -11,10 +12,8 @@ interface UserPreferences {
 }
 
 const UserPreferencesContext = createContext<UserPreferences>({
-  theme: 'dark',
-  language: 'es',
-  setTheme: () => {},
-  setLanguage: () => {},
+  theme: 'dark', language: 'es',
+  setTheme: () => {}, setLanguage: () => {},
 });
 
 export function UserPreferencesProvider({ children }: { children: React.ReactNode }) {
@@ -34,10 +33,12 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
   const setLanguage = (l: Language) => {
     setLanguageState(l);
     localStorage.setItem('language', l);
+    i18n.changeLanguage(l);
   };
 
   useEffect(() => {
     document.documentElement.classList.toggle('light-mode', theme === 'light');
+    i18n.changeLanguage(language);
   }, []);
 
   return (
