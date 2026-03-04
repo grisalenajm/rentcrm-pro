@@ -10,8 +10,6 @@ import * as nodemailer from 'nodemailer';
 export class ContractsService {
   constructor(private prisma: PrismaService) {}
 
-  // ── TEMPLATES ──────────────────────────────────────────
-
   async findAllTemplates(organizationId: string) {
     return this.prisma.contractTemplate.findMany({
       where: { organizationId },
@@ -20,9 +18,7 @@ export class ContractsService {
   }
 
   async createTemplate(dto: CreateTemplateDto, organizationId: string) {
-    return this.prisma.contractTemplate.create({
-      data: { ...dto, organizationId },
-    });
+    return this.prisma.contractTemplate.create({ data: { ...dto, organizationId } });
   }
 
   async updateTemplate(id: string, dto: Partial<CreateTemplateDto>, organizationId: string) {
@@ -37,14 +33,12 @@ export class ContractsService {
     return this.prisma.contractTemplate.delete({ where: { id } });
   }
 
-  // ── CONTRACTS ──────────────────────────────────────────
-
   async findAll(organizationId: string, bookingId?: string) {
     return this.prisma.contract.findMany({
       where: { organizationId, ...(bookingId ? { bookingId } : {}) },
       include: {
         template: { select: { name: true, type: true } },
-        booking:  { include: { client: { select: { firstName: true, lastName: true, email: true } }, property: { select: { name: true } } } },
+        booking: { include: { client: { select: { firstName: true, lastName: true, email: true } }, property: { select: { name: true } } } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -53,10 +47,7 @@ export class ContractsService {
   async findOne(id: string, organizationId: string) {
     const contract = await this.prisma.contract.findFirst({
       where: { id, organizationId },
-      include: {
-        template: true,
-        booking:  { include: { client: true, property: true } },
-      },
+      include: { template: true, booking: { include: { client: true, property: true } } },
     });
     if (!contract) throw new NotFoundException('Contrato no encontrado');
     return contract;
@@ -65,10 +56,7 @@ export class ContractsService {
   async findByToken(token: string) {
     const contract = await this.prisma.contract.findUnique({
       where: { token },
-      include: {
-        template: true,
-        booking:  { include: { client: true, property: true } },
-      },
+      include: { template: true, booking: { include: { client: true, property: true } } },
     });
     if (!contract) throw new NotFoundException('Contrato no encontrado');
     if (contract.status === 'signed') throw new BadRequestException('Este contrato ya ha sido firmado');
@@ -101,7 +89,7 @@ export class ContractsService {
       },
       include: {
         template: { select: { name: true, type: true } },
-        booking:  { include: { client: { select: { firstName: true, lastName: true, email: true } }, property: { select: { name: true } } } },
+        booking: { include: { client: { select: { firstName: true, lastName: true, email: true } }, property: { select: { name: true } } } },
       },
     });
   }
@@ -134,39 +122,105 @@ export class ContractsService {
           <a href="${signUrl}" style="background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0">
             Revisar y firmar contrato
           </a>
-          <p>El enlace es válido y único para tu reserva.</p>
         `,
       });
     }
 
-    return this.prisma.contract.update({
-      where: { id },
-      data: { status: 'sent', sentAt: new Date() },
-    });
+    return this.prisma.contract.update({ where: { id }, data: { status: 'sent', sentAt: new Date() } });
   }
 
   async sign(token: string, dto: SignContractDto, ip: string) {
     const contract = await this.findByToken(token);
-
     return this.prisma.contract.update({
       where: { id: contract.id },
-      data: {
-        status: 'signed',
-        signatureImage: dto.signatureImage,
-        signerName: dto.signerName,
-        signerIp: ip,
-        signedAt: new Date(),
-      },
+      data: { status: 'signed', signatureImage: dto.signatureImage, signerName: dto.signerName, signerIp: ip, signedAt: new Date() },
     });
   }
 
   async cancel(id: string, organizationId: string) {
     const contract = await this.findOne(id, organizationId);
     if (contract.status === 'signed') throw new BadRequestException('No se puede cancelar un contrato firmado');
-    return this.prisma.contract.update({
-      where: { id },
-      data: { status: 'cancelled' },
-    });
+    return this.prisma.contract.update({ where: { id }, data: { status: 'cancelled' } });
+  }
+
+  private fillVariables(content: string, contract: any): string {
+    const b = contract.booking;
+    const t = contract.template;
+    return content
+      .replace(/\{\{clienteNombre\}\}/g, `${b.client.firstName} ${b.client.lastName}`)
+      .replace(/\{\{clienteDni\}\}/g, b.client.dniPassport || '—')
+      .replace(/\{\{propietarioNombre\}\}/g, t.ownerName)
+      .replace(/\{\{propietarioNif\}\}/g, t.ownerNif)
+      .replace(/\{\{propietarioDireccion\}\}/g, t.ownerAddress || '—')
+      .replace(/\{\{propiedadDireccion\}\}/g, b.property.address || '—')
+      .replace(/\{\{propiedadCiudad\}\}/g, b.property.city || '—')
+      .replace(/\{\{fechaEntrada\}\}/g, new Date(b.checkInDate).toLocaleDateString('es-ES'))
+      .replace(/\{\{fechaSalida\}\}/g, new Date(b.checkOutDate).toLocaleDateString('es-ES'))
+      .replace(/\{\{precioTotal\}\}/g, b.totalAmount)
+      .replace(/\{\{fianza\}\}/g, String(contract.depositAmount || t.depositAmount || '—'))
+      .replace(/\{\{clausulas\}\}/g, t.clauses || '')
+      .replace(/\{\{ciudad\}\}/g, b.property.city || '—')
+      .replace(/\{\{fecha\}\}/g, new Date(contract.createdAt).toLocaleDateString('es-ES'))
+      .replace(/\{\{fechaFirma\}\}/g, contract.signedAt ? new Date(contract.signedAt).toLocaleDateString('es-ES') : '—');
+  }
+
+  async renderContractHtml(id: string, organizationId: string): Promise<string> {
+    const contract = await this.findOne(id, organizationId);
+    const content = this.fillVariables(contract.template.content, contract);
+    const lines = content.split('\n').map(l => `<p>${l || '&nbsp;'}</p>`).join('');
+
+    const signatureSection = contract.status === 'signed' ? `
+      <div style="margin-top:40px;padding-top:20px;border-top:2px solid #e2e8f0;">
+        <h3 style="color:#1e293b;margin-bottom:20px;">Firma del arrendatario</h3>
+        <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap;">
+          <div>
+            <p style="color:#64748b;font-size:12px;margin-bottom:8px;">Firmado por: <strong>${contract.signerName}</strong></p>
+            <p style="color:#64748b;font-size:12px;margin-bottom:8px;">Fecha: <strong>${new Date(contract.signedAt!).toLocaleString('es-ES')}</strong></p>
+            <p style="color:#64748b;font-size:12px;margin-bottom:12px;">IP: ${contract.signerIp}</p>
+            <img src="${contract.signatureImage}" style="border:1px solid #e2e8f0;border-radius:8px;max-width:300px;background:white;" />
+          </div>
+          <div>
+            <p style="color:#64748b;font-size:12px;margin-bottom:8px;">Firma del arrendador:</p>
+            <div style="width:300px;height:120px;border:1px dashed #cbd5e1;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+              <span style="color:#94a3b8;font-size:12px;">Firma pendiente</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    ` : `
+      <div style="margin-top:40px;padding-top:20px;border-top:2px solid #e2e8f0;">
+        <p style="color:#f59e0b;font-weight:600;">⏳ Contrato pendiente de firma</p>
+      </div>
+    `;
+
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contrato — ${contract.booking.property.name}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Georgia, serif; color: #1e293b; background: #f8fafc; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; background: white; padding: 60px; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+    .header h1 { font-size: 20px; color: #0f172a; letter-spacing: 1px; }
+    .content p { line-height: 1.8; margin-bottom: 8px; font-size: 14px; }
+    .print-btn { position: fixed; top: 20px; right: 20px; background: #16a34a; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+    @media print { .print-btn { display: none; } body { background: white; padding: 0; } .container { box-shadow: none; padding: 40px; } }
+  </style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">🖨️ Imprimir / PDF</button>
+  <div class="container">
+    <div class="header">
+      <h1>${contract.template.name.toUpperCase()}</h1>
+    </div>
+    <div class="content">${lines}</div>
+    ${signatureSection}
+  </div>
+</body>
+</html>`;
   }
 
   renderContent(content: string, data: Record<string, string>) {

@@ -9,6 +9,8 @@ interface Contract {
   depositAmount?: string;
   sentAt?: string;
   signedAt?: string;
+  signerName?: string;
+  signatureImage?: string;
   createdAt: string;
   template: { name: string; type: string };
   booking: {
@@ -34,7 +36,7 @@ export default function Contracts() {
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ bookingId: '', templateId: '', depositAmount: '' });
-  const [signatureView, setSignatureView] = useState<any | null>(null);
+  const [signatureView, setSignatureView] = useState<Contract | null>(null);
   const [linkModal, setLinkModal] = useState<string | null>(null);
 
   const { data: contracts = [], isLoading } = useQuery({
@@ -74,7 +76,22 @@ export default function Contracts() {
   const getSignUrl = (token: string) =>
     `${window.location.protocol}//${window.location.hostname}:3000/sign/${token}`;
 
-  const openLinkModal = (token: string) => setLinkModal(getSignUrl(token));
+  const openContract = (id: string) => {
+    const token = localStorage.getItem('token');
+    window.open(`http://${window.location.hostname}:3001/api/contracts/${id}/view?token=${token}`, '_blank');
+  };
+
+  // Abrimos la vista del contrato con el token JWT en el header via fetch + blob
+  const viewContract = async (id: string) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`http://${window.location.hostname}:3001/api/contracts/${id}/view`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const html = await res.text();
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  };
 
   return (
     <div className="p-6">
@@ -125,7 +142,11 @@ export default function Contracts() {
                     {c.signedAt ? new Date(c.signedAt).toLocaleDateString('es-ES') : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2 justify-end">
+                    <div className="flex gap-2 justify-end flex-wrap">
+                      <button onClick={() => viewContract(c.id)}
+                        className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                        📄 Ver
+                      </button>
                       {c.status === 'draft' && (
                         <button onClick={() => sendMutation.mutate(c.id)}
                           className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
@@ -133,7 +154,7 @@ export default function Contracts() {
                         </button>
                       )}
                       {(c.status === 'draft' || c.status === 'sent') && (
-                        <button onClick={() => openLinkModal(c.token)}
+                        <button onClick={() => setLinkModal(getSignUrl(c.token))}
                           className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
                           🔗 Link firma
                         </button>
@@ -237,10 +258,10 @@ export default function Contracts() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm">
             <h2 className="text-lg font-bold mb-4">Firma del contrato</h2>
             <div className="bg-white rounded-xl p-4 mb-4">
-              <img src={signatureView.signatureImage} alt="Firma" className="w-full" />
+              <img src={(signatureView as any).signatureImage} alt="Firma" className="w-full" />
             </div>
-            <p className="text-sm text-slate-400 mb-1">Firmado por: <span className="text-white">{signatureView.signerName}</span></p>
-            <p className="text-sm text-slate-400 mb-4">Fecha: <span className="text-white">{new Date(signatureView.signedAt).toLocaleString('es-ES')}</span></p>
+            <p className="text-sm text-slate-400 mb-1">Firmado por: <span className="text-white">{(signatureView as any).signerName}</span></p>
+            <p className="text-sm text-slate-400 mb-4">Fecha: <span className="text-white">{new Date(signatureView.signedAt!).toLocaleString('es-ES')}</span></p>
             <button onClick={() => setSignatureView(null)}
               className="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
               Cerrar

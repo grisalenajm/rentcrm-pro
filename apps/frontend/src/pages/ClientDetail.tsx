@@ -13,7 +13,7 @@ function Stars({ score, onChange }: { score: number; onChange?: (s: number) => v
     <div className="flex gap-1">
       {[1,2,3,4,5].map(s => (
         <button key={s} type="button" onClick={() => onChange?.(s)}
-          className={`text-xl transition-colors ${onChange ? 'cursor-pointer hover:scale-110' : 'cursor-default'} ${s <= score ? 'text-amber-400' : 'text-slate-600'}`}>
+          className={`text-xl transition-transform ${onChange ? 'cursor-pointer hover:scale-125' : 'cursor-default'} ${s <= score ? 'text-amber-400' : 'text-slate-600'}`}>
           ★
         </button>
       ))}
@@ -28,6 +28,7 @@ export default function ClientDetail() {
   const [ratingBookingId, setRatingBookingId] = useState<string | null>(null);
   const [ratingScore, setRatingScore] = useState(5);
   const [ratingNotes, setRatingNotes] = useState('');
+  const [editingEval, setEditingEval] = useState<any | null>(null);
 
   const { data: summary, isLoading } = useQuery({
     queryKey: ['client-summary', id],
@@ -51,92 +52,71 @@ export default function ClientDetail() {
     },
   });
 
+  const updateEvalMutation = useMutation({
+    mutationFn: ({ evalId, data }: any) => api.put(`/evaluations/${evalId}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['client-summary', id] });
+      setEditingEval(null);
+    },
+  });
+
   const handleRating = () => {
     if (!ratingBookingId) return;
-    const booking = summary.bookings.find((b: any) => b.id === ratingBookingId);
-    createEvalMutation.mutate({
-      bookingId: ratingBookingId,
-      clientId: id,
-      score: ratingScore,
-      notes: ratingNotes || undefined,
-    });
+    createEvalMutation.mutate({ bookingId: ratingBookingId, clientId: id, score: ratingScore, notes: ratingNotes || undefined });
+  };
+
+  const handleUpdateRating = () => {
+    if (!editingEval) return;
+    updateEvalMutation.mutate({ evalId: editingEval.id, data: { score: ratingScore, notes: ratingNotes || undefined } });
+  };
+
+  const openRating = (bookingId: string) => {
+    setRatingBookingId(bookingId);
+    setRatingScore(5);
+    setRatingNotes('');
+  };
+
+  const openEditRating = (eval_: any) => {
+    setEditingEval(eval_);
+    setRatingScore(eval_.score);
+    setRatingNotes(eval_.notes || '');
   };
 
   if (isLoading) return <div className="p-6 text-slate-400">Cargando...</div>;
   if (!summary) return <div className="p-6 text-slate-400">Cliente no encontrado</div>;
 
-  const bookingsPendingRating = summary.bookings.filter((b: any) => !b.evaluation && new Date(b.checkOutDate) < new Date());
-
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/clients')}
-          className="text-slate-400 hover:text-white transition-colors">← Volver</button>
+        <button onClick={() => navigate('/clients')} className="text-slate-400 hover:text-white transition-colors">← Volver</button>
         <span className="text-slate-600">/</span>
-        <h1 className="text-xl font-bold">
-          {client?.firstName} {client?.lastName}
-        </h1>
+        <h1 className="text-xl font-bold">{client?.firstName} {client?.lastName}</h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {/* Datos del cliente */}
         <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
           <h2 className="font-semibold mb-4 text-slate-300 text-sm uppercase tracking-wider">Datos del cliente</h2>
           {client && (
             <div className="grid grid-cols-2 gap-3 text-sm">
-              {client.dniPassport && (
-                <>
-                  <span className="text-slate-400">DNI/Pasaporte</span>
-                  <span className="font-mono">{client.dniPassport}</span>
-                </>
-              )}
-              {client.nationality && (
-                <>
-                  <span className="text-slate-400">Nacionalidad</span>
-                  <span>{client.nationality}</span>
-                </>
-              )}
-              {client.birthDate && (
-                <>
-                  <span className="text-slate-400">Nacimiento</span>
-                  <span>{new Date(client.birthDate).toLocaleDateString('es-ES')}</span>
-                </>
-              )}
-              {client.email && (
-                <>
-                  <span className="text-slate-400">Email</span>
-                  <a href={`mailto:${client.email}`} className="text-emerald-400 hover:underline">{client.email}</a>
-                </>
-              )}
-              {client.phone && (
-                <>
-                  <span className="text-slate-400">Teléfono</span>
-                  <a href={`tel:${client.phone}`} className="text-emerald-400 hover:underline">{client.phone}</a>
-                </>
-              )}
-              {client.notes && (
-                <>
-                  <span className="text-slate-400">Notas</span>
-                  <span className="text-slate-300">{client.notes}</span>
-                </>
-              )}
+              {client.dniPassport && <><span className="text-slate-400">DNI/Pasaporte</span><span className="font-mono">{client.dniPassport}</span></>}
+              {client.nationality && <><span className="text-slate-400">Nacionalidad</span><span>{client.nationality}</span></>}
+              {client.birthDate && <><span className="text-slate-400">Nacimiento</span><span>{new Date(client.birthDate).toLocaleDateString('es-ES')}</span></>}
+              {client.email && <><span className="text-slate-400">Email</span><a href={`mailto:${client.email}`} className="text-emerald-400 hover:underline">{client.email}</a></>}
+              {client.phone && <><span className="text-slate-400">Teléfono</span><a href={`tel:${client.phone}`} className="text-emerald-400 hover:underline">{client.phone}</a></>}
+              {client.notes && <><span className="text-slate-400">Notas</span><span className="text-slate-300">{client.notes}</span></>}
             </div>
           )}
         </div>
 
-        {/* Resumen */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
           <h2 className="font-semibold text-slate-300 text-sm uppercase tracking-wider">Resumen</h2>
           <div>
             <div className="text-xs text-slate-400 mb-1">Reservas totales</div>
-            <div className="text-2xl font-bold text-white">{summary.totalBookings}</div>
+            <div className="text-2xl font-bold">{summary.totalBookings}</div>
           </div>
           <div>
             <div className="text-xs text-slate-400 mb-1">Total gastado</div>
-            <div className="text-2xl font-bold text-emerald-400">
-              €{Number(summary.totalSpent).toLocaleString('es-ES', {minimumFractionDigits:2})}
-            </div>
+            <div className="text-2xl font-bold text-emerald-400">€{Number(summary.totalSpent).toLocaleString('es-ES', {minimumFractionDigits:2})}</div>
           </div>
           <div>
             <div className="text-xs text-slate-400 mb-1">Valoración media</div>
@@ -145,21 +125,11 @@ export default function ClientDetail() {
                 <Stars score={Math.round(summary.avgScore)} />
                 <span className="text-sm text-slate-400">({summary.avgScore.toFixed(1)})</span>
               </div>
-            ) : (
-              <span className="text-slate-500 text-sm">Sin valoraciones</span>
-            )}
+            ) : <span className="text-slate-500 text-sm">Sin valoraciones</span>}
           </div>
-          {bookingsPendingRating.length > 0 && (
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-              <div className="text-xs text-amber-400 font-semibold">
-                {bookingsPendingRating.length} reserva{bookingsPendingRating.length > 1 ? 's' : ''} sin valorar
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Historial de reservas */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
         <h2 className="font-semibold mb-4 text-slate-300 text-sm uppercase tracking-wider">Historial de reservas</h2>
         {summary.bookings.length === 0 ? (
@@ -168,7 +138,6 @@ export default function ClientDetail() {
           <div className="space-y-3">
             {summary.bookings.map((b: any) => {
               const nights = Math.round((new Date(b.checkOutDate).getTime() - new Date(b.checkInDate).getTime()) / 86400000);
-              const isPast = new Date(b.checkOutDate) < new Date();
               return (
                 <div key={b.id} className="border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition-colors">
                   <div className="flex items-start justify-between mb-3">
@@ -184,25 +153,24 @@ export default function ClientDetail() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="text-sm text-slate-400">
                       {new Date(b.checkInDate).toLocaleDateString('es-ES')} → {new Date(b.checkOutDate).toLocaleDateString('es-ES')}
                     </div>
-
                     {b.evaluation ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Stars score={b.evaluation.score} />
-                        {b.evaluation.notes && (
-                          <span className="text-xs text-slate-400 italic">"{b.evaluation.notes}"</span>
-                        )}
+                        {b.evaluation.notes && <span className="text-xs text-slate-400 italic">"{b.evaluation.notes}"</span>}
+                        <button onClick={() => openEditRating(b.evaluation)}
+                          className="px-2 py-0.5 text-xs bg-slate-700 hover:bg-slate-600 rounded transition-colors">
+                          Editar
+                        </button>
                       </div>
-                    ) : isPast ? (
-                      <button onClick={() => { setRatingBookingId(b.id); setRatingScore(5); setRatingNotes(''); }}
-                        className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
-                        + Valorar estancia
-                      </button>
                     ) : (
-                      <span className="text-xs text-slate-500">Reserva futura</span>
+                      <button onClick={() => openRating(b.id)}
+                        className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
+                        ★ Valorar estancia
+                      </button>
                     )}
                   </div>
                 </div>
@@ -212,41 +180,58 @@ export default function ClientDetail() {
         )}
       </div>
 
-      {/* Modal rating */}
+      {/* Modal nueva valoración */}
       {ratingBookingId && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-lg font-bold mb-2">Valorar estancia</h2>
             <p className="text-slate-400 text-sm mb-5">
-              {(() => {
-                const b = summary.bookings.find((b: any) => b.id === ratingBookingId);
-                return b ? `${b.property.name} · ${new Date(b.checkInDate).toLocaleDateString('es-ES')} – ${new Date(b.checkOutDate).toLocaleDateString('es-ES')}` : '';
-              })()}
+              {(() => { const b = summary.bookings.find((b: any) => b.id === ratingBookingId);
+                return b ? `${b.property.name} · ${new Date(b.checkInDate).toLocaleDateString('es-ES')} – ${new Date(b.checkOutDate).toLocaleDateString('es-ES')}` : ''; })()}
             </p>
             <div className="mb-5">
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Puntuación *</label>
               <Stars score={ratingScore} onChange={setRatingScore} />
-              <div className="text-xs text-slate-500 mt-2">
-                {['', 'Muy malo', 'Malo', 'Normal', 'Bueno', 'Excelente'][ratingScore]}
-              </div>
+              <div className="text-xs text-slate-500 mt-2">{['','Muy malo','Malo','Normal','Bueno','Excelente'][ratingScore]}</div>
             </div>
             <div className="mb-5">
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Comentario</label>
-              <input
-                value={ratingNotes}
-                onChange={e => setRatingNotes(e.target.value)}
+              <input value={ratingNotes} onChange={e => setRatingNotes(e.target.value)}
                 placeholder="Ej: Cliente muy cuidadoso, dejó la casa perfecta"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
-              />
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setRatingBookingId(null)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
-                Cancelar
-              </button>
+              <button onClick={() => setRatingBookingId(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">Cancelar</button>
               <button onClick={handleRating} disabled={createEvalMutation.isPending}
                 className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
                 {createEvalMutation.isPending ? 'Guardando...' : 'Guardar valoración'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal editar valoración */}
+      {editingEval && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-bold mb-5">Editar valoración</h2>
+            <div className="mb-5">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Puntuación *</label>
+              <Stars score={ratingScore} onChange={setRatingScore} />
+              <div className="text-xs text-slate-500 mt-2">{['','Muy malo','Malo','Normal','Bueno','Excelente'][ratingScore]}</div>
+            </div>
+            <div className="mb-5">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Comentario</label>
+              <input value={ratingNotes} onChange={e => setRatingNotes(e.target.value)}
+                placeholder="Ej: Cliente muy cuidadoso, dejó la casa perfecta"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setEditingEval(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">Cancelar</button>
+              <button onClick={handleUpdateRating} disabled={updateEvalMutation.isPending}
+                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                {updateEvalMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
               </button>
             </div>
           </div>
