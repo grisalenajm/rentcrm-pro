@@ -10,7 +10,7 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const org = await prisma.organization.upsert({
-    where: { nif: 'B12345678' },
+    where: { id: 'a80a9d68-5dd0-43eb-b0eb-2ac389dab5a2' },
     update: {},
     create: {
       name: 'RentCRM Demo',
