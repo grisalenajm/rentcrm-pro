@@ -1,173 +1,140 @@
-# RentCRM Pro — Estado del Proyecto
-*Última actualización: 03/03/2026*
+# 🏘️ RentCRM Pro — Estado del Proyecto
 
-## Stack Tecnológico
-- **Frontend:** React + Vite + TypeScript + Tailwind CSS + TanStack Query
-- **Backend:** NestJS + TypeScript + Prisma 7
-- **Base de datos:** PostgreSQL 16
-- **Cache:** Redis 7
-- **Infraestructura:** Docker Compose en LXC Proxmox
-- **CI/CD:** GitHub Actions (self-hosted runner)
+**Última actualización:** 04/03/2026  
+**Versión:** 1.0  
+**Entorno:** LXC Docker · 192.168.1.123 · Frontend :3000 · API :3001
 
-## Infraestructura
-- **LXC:** rentcrm@192.168.1.123
-- **Frontend:** http://192.168.1.123:3000
-- **API:** http://192.168.1.123:3001/api
-- **PostgreSQL:** localhost:5432 (solo accesible internamente)
-- **Redis:** interno Docker (sin puerto expuesto)
-- **Repo:** github.com/grisalenajm/rentcrm-pro
+---
 
-## Credenciales Demo
-- **Email:** admin@rentcrm.com
-- **Password:** admin123
-- **Rol:** admin
+## ✅ Módulos Completados
 
-## Módulos Backend Completados ✅
+### Backend (NestJS + Prisma + PostgreSQL)
+- **Auth** — JWT, guards de roles (admin / gestor / viewer)
+- **Users** — CRUD básico
+- **Properties** — CRUD completo
+- **Clients** — CRUD + búsqueda
+- **Bookings** — CRUD + huéspedes + estados
+- **Financials** — ingresos/gastos + categorías
+- **Contracts** — templates con variables, firma digital, link público, vista HTML con firmas
+- **Evaluations** — ratings 1-5 por reserva, media por cliente, resumen
+- **Organization** — configuración completa (logo, SMTP, moneda, fecha, NIF)
 
-### Auth
-- Login con JWT
-- Guards de autenticación y roles
-- Roles: admin, gestor, consultor
+### Frontend (React + Vite + TypeScript + Tailwind)
+- **Login** — autenticación JWT
+- **Dashboard** — métricas básicas
+- **Properties** — CRUD completo
+- **Clients** — lista con valoración media + ficha detallada + historial
+- **Bookings** — lista + detalle con navegación cruzada
+- **BookingDetail** — cliente, propiedad, huéspedes, contrato, financiero, valoración
+- **ClientDetail** — historial de reservas + ratings + resumen
+- **Financials** — ingresos/gastos + filtros
+- **Contracts** — CRUD + envío + link firma + vista HTML completa
+- **ContractTemplates** — editor con variables + firma arrendador (canvas)
+- **SignContract** — página pública de firma con canvas
+- **Settings** — 5 pestañas: Usuario, General, Fiscal, SMTP, Preferencias
+- **i18n** — traducciones ES/EN con i18next (menú lateral y Settings completos)
 
-### Users
-- CRUD completo
-- Gestión de contraseñas con bcrypt
-- Endpoint GET /api/users/me
+---
 
-### Properties
-- CRUD completo
-- Soft delete
-- Estados: active, maintenance, inactive
+## 🔄 Pendiente Inmediato
 
-### Clients
-- CRUD completo + búsqueda por nombre/DNI/email
-- Soft delete
-- Campos: nombre, DNI/pasaporte, nacionalidad, fecha nacimiento, email, teléfono, notas
+| Prioridad | Tarea |
+|-----------|-------|
+| 🔴 Alta | Completar traducciones EN en todas las páginas (Clients, Bookings, BookingDetail, ClientDetail, Contracts, ContractTemplates, Financials, Dashboard, Properties) |
+| 🔴 Alta | Gestión de usuarios — CRUD con roles desde panel admin |
+| 🟡 Media | Calendario de ocupación por propiedad |
+| 🟡 Media | Dashboard mejorado — KPIs, gráficos de ingresos, tasa de ocupación |
+| 🟢 Baja | Partes SES (registro de huéspedes para SES Hospedajes España) |
+| 🟢 Baja | iCal Sync (Airbnb, Booking, Vrbo) |
+| 🟢 Baja | Notificaciones (check-in próximo, contratos sin firmar, pagos pendientes) |
 
-### Bookings
-- CRUD completo
-- Validación de disponibilidad (sin solapamiento de fechas)
-- Estado siempre "confirmed" al crear
-- Fuentes: direct, airbnb, booking, vrbo, manual_block
-- Soporte de huéspedes adicionales
+---
 
-### Financials
-- CRUD completo
-- Categorías de ingresos y gastos
-- Endpoint summary con P&L (ingresos, gastos, beneficio)
-- Filtros por propiedad, tipo, rango de fechas
-
-### Contracts
-- Templates con variables dinámicas {{variable}}
-- Variables disponibles: ciudad, fecha, propietarioNombre, propietarioNif,
-  propietarioDireccion, clienteNombre, clienteDni, propiedadDireccion,
-  propiedadCiudad, fechaEntrada, fechaSalida, precioTotal, fianza,
-  clausulas, fechaFirma
-- Firma manuscrita digital (canvas base64)
-- Token único por contrato para link público
-- Estados: draft → sent → signed / cancelled
-- Registro de IP del firmante
-- Envío por email (requiere SMTP configurado)
-
-**Templates creados:**
-- Contrato Alquiler Vacacional (ES)
-- Holiday Rental Agreement (EN)
-
-## Módulos Frontend Completados ✅
-
-### Login
-- Autenticación con JWT
-- Redirección automática si ya está logado
-
-### Layout / Sidebar
-- Navegación: Dashboard, Propiedades, Clientes, Reservas, Financiero, Partes SES
-- Muestra usuario y rol
-- Logout
-
-### Dashboard
-- Contador de propiedades activas
-- Roadmap visual de funcionalidades
-
-### Properties
-- Listado en cards
-- CRUD completo con modal
-- Badge de estado (activa, mantenimiento, inactiva)
-
-### Clients
-- Listado en tabla
-- Búsqueda en tiempo real
-- CRUD completo con modal
-
-### Bookings
-- Listado en tabla con noches calculadas
-- Crear reserva con cliente existente O nuevo cliente inline
-- Cancelar reserva
-- Estado siempre confirmado al crear
-
-### Financials
-- Summary P&L (ingresos, gastos, beneficio)
-- Listado de registros
-- Crear registro con categorías filtradas por tipo
-- Eliminar registro
-
-## Módulos Pendientes 🚧
-
-### Frontend Pendiente
-- **Contratos:** sección propia con lista + editor de templates + vista previa + firma
-- **Partes SES:** integración con sistema de hospedajes
-- **Dashboard mejorado:** gráficos, ocupación por propiedad, calendario
-
-### Backend Pendiente
-- **Police Reports (SES Hospedajes):** generación y envío de partes
-- **iCal Sync:** sincronización con Airbnb/Booking/Vrbo
-
-## Variables de Entorno Requeridas
-```env
-DATABASE_URL=postgresql://rentcrm:PASSWORD@postgres:5432/rentcrm
-POSTGRES_PASSWORD=...
-JWT_SECRET=...
-JWT_EXPIRES_IN=15m
-JWT_REFRESH_SECRET=...
-JWT_REFRESH_EXPIRES_IN=7d
-REDIS_URL=redis://redis:6379
-FRONTEND_URL=http://192.168.1.123:3000
-# Opcional para envío de emails:
-SMTP_HOST=...
-SMTP_PORT=587
-SMTP_USER=...
-SMTP_PASS=...
-SMTP_FROM=noreply@rentcrm.com
-```
-
-## Decisiones de Diseño Tomadas
-1. **Precio por noche** en propiedad es orientativo — el precio real lo introduce el gestor al crear la reserva o viene de la plataforma
-2. **Reservas directas** → precio manual por el gestor
-3. **Reservas de plataforma** → precio de la plataforma registrado manualmente
-4. **Estado de reserva** → siempre "confirmed" al crear (sin estado pendiente)
-5. **Firma de contratos** → firma manuscrita digital en navegador, sin servicios externos
-6. **Templates de contrato** → múltiples según tipo de alquiler (vacacional, larga estancia, etc.)
-7. **Build strategy** → npm install + build en runner, Docker solo ejecuta binarios
-
-## Estructura del Monorepo
+## 🗂️ Estructura del Proyecto
 ```
 rentcrm-pro/
 ├── apps/
-│   ├── api/          — NestJS backend
+│   ├── api/                        # NestJS backend
 │   │   ├── src/
-│   │   │   ├── auth/
+│   │   │   ├── auth/               # JWT + guards + roles
 │   │   │   ├── users/
 │   │   │   ├── properties/
 │   │   │   ├── clients/
 │   │   │   ├── bookings/
 │   │   │   ├── financials/
-│   │   │   └── contracts/
+│   │   │   ├── contracts/          # Templates + firma digital + HTML view
+│   │   │   ├── evaluations/        # Ratings por estancia
+│   │   │   └── organization/       # Configuración organización
 │   │   └── prisma/
-│   └── frontend/     — React frontend
+│   │       ├── schema.prisma
+│   │       ├── migrations/
+│   │       └── seed.ts
+│   └── frontend/                   # React + Vite
 │       └── src/
-│           ├── pages/
-│           ├── components/
-│           ├── context/
-│           └── lib/
+│           ├── pages/              # 12 páginas implementadas
+│           ├── components/         # Layout + navegación i18n
+│           ├── context/            # AuthContext + UserPreferencesContext
+│           ├── i18n/               # Traducciones ES/EN
+│           └── lib/                # api.ts (axios)
+├── docs/
+│   ├── RentCRM_Pro_Documentacion_ES.docx
+│   └── RentCRM_Pro_Documentation_EN.docx
 ├── docker-compose.yml
-└── .github/workflows/deploy.yml
+└── .env
 ```
+
+---
+
+## 🏗️ Arquitectura
+
+| Capa | Tecnología | Puerto |
+|------|-----------|--------|
+| Frontend | React + Vite + TypeScript + Tailwind | 3000 |
+| Backend | NestJS + TypeScript | 3001 |
+| Base de datos | PostgreSQL + Prisma ORM | 5432 |
+| i18n | i18next + react-i18next | ES / EN |
+| Auth | JWT + Guards NestJS | — |
+| Infra | Docker Compose en LXC | 192.168.1.123 |
+
+---
+
+## 📦 Modelos de Base de Datos
+
+| Modelo | Campos destacados |
+|--------|------------------|
+| Organization | name, nif, logo, smtp*, currency, dateFormat |
+| User | name, email, passwordHash, role, isActive |
+| Property | name, address, city, province, rooms, isActive |
+| Client | firstName, lastName, dniPassport, nationality, birthDate, email, phone |
+| Booking | checkIn, checkOut, totalAmount, source, status |
+| Contract | token, status, signatureImage, signerName, signedAt, depositAmount |
+| ContractTemplate | name, type, content, ownerName, ownerNif, ownerSignature, clauses |
+| Financial | type, amount, date, description, categoryId |
+| ClientEvaluation | score (1-5), notes, bookingId (unique), clientId |
+
+---
+
+## 🔑 Variables de Entorno (.env)
+```
+DATABASE_URL=postgresql://rentcrm:...@postgres:5432/rentcrm
+JWT_SECRET=...
+FRONTEND_URL=http://192.168.1.123:3000
+POSTGRES_PASSWORD=...
+```
+> SMTP configurable también desde UI en Configuración → Email SMTP
+
+---
+
+## 📋 Sesión Anterior — Resumen de Cambios
+
+- ✅ Valoraciones: botón disponible en cualquier momento (sin restricción de fecha)
+- ✅ Valorar estancia desde detalle de reserva
+- ✅ Media de valoraciones visible en lista de clientes
+- ✅ Vista HTML del contrato completo con firma arrendador + arrendatario
+- ✅ Firma del arrendador guardada en template (canvas HTML5)
+- ✅ Fix CORS para 192.168.1.123
+- ✅ Configuración de organización (5 pestañas)
+- ✅ i18n ES/EN con i18next — menú lateral y Settings traducidos
+- ✅ Tema dark/light (localStorage)
+- ✅ Selector de idioma dropdown en Settings → Usuario
+- ✅ Documentación técnica ES/EN generada y subida a docs/
