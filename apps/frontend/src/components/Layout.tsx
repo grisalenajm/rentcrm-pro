@@ -10,6 +10,7 @@ const nav = [
   { to: '/contracts',           icon: '📄', label: 'Contratos'   },
   { to: '/contracts/templates', icon: '📝', label: 'Templates'   },
   { to: '/police',              icon: '📡', label: 'Partes SES'  },
+  { to: '/settings',            icon: '⚙️', label: 'Configuración' },
 ];
 
 export default function Layout() {

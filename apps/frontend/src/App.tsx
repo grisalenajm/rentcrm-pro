@@ -14,6 +14,7 @@ import Contracts from './pages/Contracts';
 import ContractTemplates from './pages/ContractTemplates';
 import SignContract from './pages/SignContract';
 import ComingSoon from './pages/ComingSoon';
+import Settings from './pages/Settings';
 
 const qc = new QueryClient();
 
@@ -41,6 +42,7 @@ export default function App() {
               <Route path="contracts"           element={<Contracts />} />
               <Route path="contracts/templates" element={<ContractTemplates />} />
               <Route path="police"              element={<ComingSoon title="Partes SES" />} />
+              <Route path="settings"             element={<Settings />} />
             </Route>
           </Routes>
         </BrowserRouter>

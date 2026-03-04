@@ -9,8 +9,18 @@ datasource db {
 model Organization {
   id        String   @id @default(uuid()) @db.Uuid
   name      String   @db.VarChar(255)
-  nif       String   @unique @db.VarChar(20)
+  nif       String?  @db.VarChar(20)
   address   String?  @db.Text
+  phone     String?  @db.VarChar(30)
+  email     String?  @db.VarChar(255)
+  logo      String?  @db.Text
+  smtpHost  String?  @map("smtp_host") @db.VarChar(255)
+  smtpPort  Int?     @map("smtp_port")
+  smtpUser  String?  @map("smtp_user") @db.VarChar(255)
+  smtpPass  String?  @map("smtp_pass") @db.VarChar(255)
+  smtpFrom  String?  @map("smtp_from") @db.VarChar(255)
+  currency  String?  @default("EUR") @db.VarChar(10)
+  dateFormat String? @default("dd/MM/yyyy") @map("date_format") @db.VarChar(20)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
