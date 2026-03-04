@@ -180,10 +180,11 @@ export class ContractsService {
             <img src="${contract.signatureImage}" style="border:1px solid #e2e8f0;border-radius:8px;max-width:300px;background:white;" />
           </div>
           <div>
-            <p style="color:#64748b;font-size:12px;margin-bottom:8px;">Firma del arrendador:</p>
-            <div style="width:300px;height:120px;border:1px dashed #cbd5e1;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-              <span style="color:#94a3b8;font-size:12px;">Firma pendiente</span>
-            </div>
+            <p style="color:#64748b;font-size:12px;margin-bottom:8px;">Firma del arrendador: <strong>${contract.template.ownerName}</strong></p>
+            \${contract.template.ownerSignature
+              ? \`<img src="\${contract.template.ownerSignature}" style="border:1px solid #e2e8f0;border-radius:8px;max-width:300px;background:white;" />\`
+              : \`<div style="width:300px;height:80px;border:1px dashed #cbd5e1;border-radius:8px;display:flex;align-items:center;justify-content:center;"><span style="color:#94a3b8;font-size:12px;">Sin firma registrada</span></div>\`
+            }
           </div>
         </div>
       </div>
