@@ -15,6 +15,7 @@ import ContractTemplates from './pages/ContractTemplates';
 import SignContract from './pages/SignContract';
 import ComingSoon from './pages/ComingSoon';
 import Settings from './pages/Settings';
+import { UserPreferencesProvider } from './context/UserPreferencesContext';
 
 const qc = new QueryClient();
 
@@ -26,6 +27,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
+      <UserPreferencesProvider>
       <AuthProvider>
         <BrowserRouter>
           <Routes>
@@ -47,6 +49,7 @@ export default function App() {
           </Routes>
         </BrowserRouter>
       </AuthProvider>
+      </UserPreferencesProvider>
     </QueryClientProvider>
   );
 }

@@ -1,1 +1,28 @@
 @import "tailwindcss";
+
+/* Light mode */
+.light-mode {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --border-color: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+}
+
+.light-mode body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.light-mode .bg-slate-950 { background-color: #f8fafc !important; }
+.light-mode .bg-slate-900 { background-color: #ffffff !important; }
+.light-mode .bg-slate-800 { background-color: #f1f5f9 !important; }
+.light-mode .bg-slate-700 { background-color: #e2e8f0 !important; }
+.light-mode .border-slate-800 { border-color: #e2e8f0 !important; }
+.light-mode .border-slate-700 { border-color: #cbd5e1 !important; }
+.light-mode .text-white { color: #0f172a !important; }
+.light-mode .text-slate-400 { color: #64748b !important; }
+.light-mode .text-slate-500 { color: #94a3b8 !important; }
+.light-mode .hover\:bg-slate-800:hover { background-color: #f1f5f9 !important; }
+.light-mode .hover\:bg-slate-700:hover { background-color: #e2e8f0 !important; }

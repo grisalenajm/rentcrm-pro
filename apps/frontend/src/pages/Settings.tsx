@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 
@@ -9,9 +10,10 @@ export default function Settings() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general'|'fiscal'|'email'|'preferences'>('general');
+  const [activeTab, setActiveTab] = useState<'usuario'|'general'|'fiscal'|'email'|'preferences'>('usuario');
   const [smtpPass, setSmtpPass] = useState('');
   const [form, setForm] = useState<any>({});
+  const { theme, language, setTheme, setLanguage } = useUserPreferences();
 
   const { data: org, isLoading } = useQuery({
     queryKey: ['organization'],
@@ -49,6 +51,7 @@ export default function Settings() {
     setForm({ ...form, [field]: e.target.value });
 
   const tabs = [
+    { id: 'usuario',     label: '👤 Usuario' },
     { id: 'general',     label: '🏢 General' },
     { id: 'fiscal',      label: '📋 Fiscal' },
     { id: 'email',       label: '📧 Email SMTP' },
@@ -80,6 +83,53 @@ export default function Settings() {
       </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
+
+        {activeTab === 'usuario' && (
+          <>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Tema de visualización</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setTheme('dark')}
+                  className={`p-4 rounded-xl border-2 transition-colors text-left ${theme === 'dark' ? 'border-emerald-500 bg-slate-800' : 'border-slate-700 bg-slate-800 hover:border-slate-600'}`}>
+                  <div className="text-2xl mb-2">🌙</div>
+                  <div className="font-semibold text-sm">Oscuro</div>
+                  <div className="text-xs text-slate-400 mt-0.5">Fondo oscuro, texto claro</div>
+                  {theme === 'dark' && <div className="text-xs text-emerald-400 mt-1">✓ Activo</div>}
+                </button>
+                <button onClick={() => setTheme('light')}
+                  className={`p-4 rounded-xl border-2 transition-colors text-left ${theme === 'light' ? 'border-emerald-500 bg-slate-800' : 'border-slate-700 bg-slate-800 hover:border-slate-600'}`}>
+                  <div className="text-2xl mb-2">☀️</div>
+                  <div className="font-semibold text-sm">Claro</div>
+                  <div className="text-xs text-slate-400 mt-0.5">Fondo claro, texto oscuro</div>
+                  {theme === 'light' && <div className="text-xs text-emerald-400 mt-1">✓ Activo</div>}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Idioma del sistema</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setLanguage('es')}
+                  className={`p-4 rounded-xl border-2 transition-colors text-left ${language === 'es' ? 'border-emerald-500 bg-slate-800' : 'border-slate-700 bg-slate-800 hover:border-slate-600'}`}>
+                  <div className="text-2xl mb-2">🇪🇸</div>
+                  <div className="font-semibold text-sm">Español</div>
+                  {language === 'es' && <div className="text-xs text-emerald-400 mt-1">✓ Activo</div>}
+                </button>
+                <button onClick={() => setLanguage('en')}
+                  className={`p-4 rounded-xl border-2 transition-colors text-left ${language === 'en' ? 'border-emerald-500 bg-slate-800' : 'border-slate-700 bg-slate-800 hover:border-slate-600'}`}>
+                  <div className="text-2xl mb-2">🇬🇧</div>
+                  <div className="font-semibold text-sm">English</div>
+                  {language === 'en' && <div className="text-xs text-emerald-400 mt-1">✓ Active</div>}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-slate-800 rounded-xl p-4 text-sm text-slate-400">
+              <p className="font-semibold text-white mb-1">ℹ️ Preferencias personales</p>
+              <p>Estas preferencias se guardan en tu navegador y solo afectan a tu sesión.</p>
+            </div>
+          </>
+        )}
 
         {activeTab === 'general' && (
           <>
