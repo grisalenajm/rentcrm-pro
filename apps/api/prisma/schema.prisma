@@ -323,6 +323,7 @@ model ContractTemplate {
   ownerName      String   @map("owner_name") @db.VarChar(255)
   ownerNif       String   @map("owner_nif") @db.VarChar(20)
   ownerAddress   String?  @map("owner_address") @db.Text
+  ownerSignature     String?  @map("owner_signature") @db.Text
   depositAmount  Decimal? @map("deposit_amount") @db.Decimal(10, 2)
   clauses        String?  @db.Text
   isActive       Boolean  @default(true) @map("is_active")
