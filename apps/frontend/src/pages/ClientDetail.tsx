@@ -206,7 +206,7 @@ export default function ClientDetail() {
               <button onClick={() => setRatingBookingId(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">{t('common.cancel')}</button>
               <button onClick={handleRating} disabled={createEvalMutation.isPending}
                 className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
-                {createEvalMutation.isPending ? 'Guardando...' : '{t('evaluations.save')}'}
+                {createEvalMutation.isPending ? 'Guardando...' : {t('evaluations.save')}}
               </button>
             </div>
           </div>
@@ -233,7 +233,7 @@ export default function ClientDetail() {
               <button onClick={() => setEditingEval(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">{t('common.cancel')}</button>
               <button onClick={handleUpdateRating} disabled={updateEvalMutation.isPending}
                 className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
-                {updateEvalMutation.isPending ? 'Guardando...' : '{t('common.save')}'}
+                {updateEvalMutation.isPending ? 'Guardando...' : {t('common.save')}}
               </button>
             </div>
           </div>
