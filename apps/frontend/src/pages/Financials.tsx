@@ -158,7 +158,7 @@ export default function Financials() {
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Categoría *</label>
                 <select value={form.categoryId} onChange={e => setForm({...form, categoryId: e.target.value})}
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" required>
-                  <option value=""{t('common.search') + '...'}>/option>
+                  <option value="">{t('common.search') + '...'}</option>
                   {filteredCategories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
