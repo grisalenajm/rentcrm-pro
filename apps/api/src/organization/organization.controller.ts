@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Post, Body, Request, UseGuards } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -18,5 +18,11 @@ export class OrganizationController {
   @Roles('admin')
   update(@Request() req, @Body() dto: any) {
     return this.organizationService.update(req.user.organizationId, dto);
+  }
+
+  @Post('test-smtp')
+  @Roles('admin')
+  testSmtp(@Request() req, @Body() body: { email: string }) {
+    return this.organizationService.testSmtp(req.user.organizationId, body.email);
   }
 }

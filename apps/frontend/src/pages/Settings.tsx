@@ -18,6 +18,9 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<'usuario'|'general'|'fiscal'|'email'|'preferences'>('usuario');
   const [smtpPass, setSmtpPass] = useState('');
+  const [testEmail, setTestEmail] = useState('');
+  const [testResult, setTestResult] = useState<{ok: boolean; message: string} | null>(null);
+  const [testing, setTesting] = useState(false);
   const [form, setForm] = useState<any>({});
   const { theme, language, setTheme, setLanguage } = useUserPreferences();
 
@@ -51,6 +54,20 @@ export default function Settings() {
     const reader = new FileReader();
     reader.onload = () => setForm({ ...form, logo: reader.result as string });
     reader.readAsDataURL(file);
+  };
+
+  const handleTestSmtp = async () => {
+    if (!testEmail) return;
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await api.post('/organization/test-smtp', { email: testEmail });
+      setTestResult({ ok: true, message: res.data.message });
+    } catch (err: any) {
+      setTestResult({ ok: false, message: err.response?.data?.message || 'Error desconocido' });
+    } finally {
+      setTesting(false);
+    }
   };
 
   const f = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -241,6 +258,32 @@ export default function Settings() {
                 <input value={currentValue('smtpFrom')} onChange={f('smtpFrom')} placeholder="noreply@tuempresa.com"
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
               </div>
+            </div>
+
+            <div className="border-t border-slate-700 pt-4">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                {language === 'en' ? 'Test email configuration' : 'Probar configuración de email'}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={testEmail}
+                  onChange={e => setTestEmail(e.target.value)}
+                  placeholder={language === 'en' ? 'Send test to...' : 'Enviar prueba a...'}
+                  className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                />
+                <button
+                  onClick={handleTestSmtp}
+                  disabled={!testEmail || testing}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap">
+                  {testing ? '⏳' : '📧'} {language === 'en' ? 'Send test' : 'Enviar prueba'}
+                </button>
+              </div>
+              {testResult && (
+                <div className={`mt-3 p-3 rounded-lg text-sm ${testResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                  {testResult.ok ? '✅' : '❌'} {testResult.message}
+                </div>
+              )}
             </div>
           </>
         )}
