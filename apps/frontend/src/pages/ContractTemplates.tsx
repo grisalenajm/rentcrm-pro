@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 
 interface Template {
@@ -20,21 +20,21 @@ interface Template {
 const TYPES = ['vacacional', 'larga_estancia', 'temporada', 'otro'];
 
 const VARIABLES = [
-  { key: '{{clienteNombre}}',        desc: 'Nombre completo del cliente' },
-  { key: '{{clienteDni}}',           desc: 'DNI/Pasaporte del cliente' },
-  { key: '{{propietarioNombre}}',    desc: 'Nombre del propietario' },
-  { key: '{{propietarioNif}}',       desc: 'NIF del propietario' },
-  { key: '{{propietarioDireccion}}', desc: 'Dirección del propietario' },
-  { key: '{{propiedadDireccion}}',   desc: 'Dirección de la propiedad' },
-  { key: '{{propiedadCiudad}}',      desc: 'Ciudad de la propiedad' },
-  { key: '{{fechaEntrada}}',         desc: 'Fecha de check-in' },
-  { key: '{{fechaSalida}}',          desc: 'Fecha de check-out' },
-  { key: '{{precioTotal}}',          desc: 'Precio total de la reserva' },
-  { key: '{{fianza}}',               desc: 'Importe de la fianza' },
-  { key: '{{clausulas}}',            desc: 'Cláusulas adicionales' },
-  { key: '{{ciudad}}',               desc: 'Ciudad del contrato' },
-  { key: '{{fecha}}',                desc: 'Fecha de creación' },
-  { key: '{{fechaFirma}}',           desc: 'Fecha de firma' },
+  { key: '{{clienteNombre}}',        desc_es: 'Nombre completo del cliente',    desc_en: 'Client full name' },
+  { key: '{{clienteDni}}',           desc_es: 'DNI/Pasaporte del cliente',       desc_en: 'Client ID/Passport' },
+  { key: '{{propietarioNombre}}',    desc_es: 'Nombre del propietario',          desc_en: 'Owner name' },
+  { key: '{{propietarioNif}}',       desc_es: 'NIF del propietario',             desc_en: 'Owner tax ID' },
+  { key: '{{propietarioDireccion}}', desc_es: 'Dirección del propietario',       desc_en: 'Owner address' },
+  { key: '{{propiedadDireccion}}',   desc_es: 'Dirección de la propiedad',       desc_en: 'Property address' },
+  { key: '{{propiedadCiudad}}',      desc_es: 'Ciudad de la propiedad',          desc_en: 'Property city' },
+  { key: '{{fechaEntrada}}',         desc_es: 'Fecha de check-in',               desc_en: 'Check-in date' },
+  { key: '{{fechaSalida}}',          desc_es: 'Fecha de check-out',              desc_en: 'Check-out date' },
+  { key: '{{precioTotal}}',          desc_es: 'Precio total de la reserva',      desc_en: 'Total booking price' },
+  { key: '{{fianza}}',               desc_es: 'Importe de la fianza',            desc_en: 'Deposit amount' },
+  { key: '{{clausulas}}',            desc_es: 'Cláusulas adicionales',           desc_en: 'Additional clauses' },
+  { key: '{{ciudad}}',               desc_es: 'Ciudad del contrato',             desc_en: 'Contract city' },
+  { key: '{{fecha}}',                desc_es: 'Fecha de creación',               desc_en: 'Creation date' },
+  { key: '{{fechaFirma}}',           desc_es: 'Fecha de firma',                  desc_en: 'Signature date' },
 ];
 
 const emptyForm = {
@@ -42,7 +42,12 @@ const emptyForm = {
   ownerNif: '', ownerAddress: '', ownerSignature: '', depositAmount: '', clauses: '', isActive: true,
 };
 
-function SignaturePad({ value, onChange }: { value?: string; onChange: (sig: string) => void }) {
+function SignaturePad({ value, onChange, clearLabel, drawLabel }: {
+  value?: string;
+  onChange: (sig: string) => void;
+  clearLabel: string;
+  drawLabel: string;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
@@ -130,9 +135,9 @@ function SignaturePad({ value, onChange }: { value?: string; onChange: (sig: str
         />
       </div>
       <div className="flex items-center justify-between mt-1">
-        <p className="text-xs text-slate-500">Dibuja la firma aquí</p>
+        <p className="text-xs text-slate-500">{drawLabel}</p>
         {hasSignature && (
-          <button type="button" onClick={clear} className="text-xs text-red-400 hover:text-red-300">Borrar</button>
+          <button type="button" onClick={clear} className="text-xs text-red-400 hover:text-red-300">{clearLabel}</button>
         )}
       </div>
     </div>
@@ -140,13 +145,15 @@ function SignaturePad({ value, onChange }: { value?: string; onChange: (sig: str
 }
 
 export default function ContractTemplates() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const qc = useQueryClient();
   const [selected, setSelected] = useState<Template | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [showNew, setShowNew] = useState(false);
   const [preview, setPreview] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const isEN = i18n.language === 'en';
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ['contract-templates'],
@@ -209,26 +216,29 @@ export default function ContractTemplates() {
       .replace(/\{\{fechaFirma\}\}/g, new Date().toLocaleDateString('es-ES'));
   };
 
+  const inputClass = "w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
+  const labelClass = "block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1";
+
   return (
     <div className="flex h-full">
       {/* Lista */}
       <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
         <div className="p-4 border-b border-slate-800">
-          <h2 className="font-bold text-sm mb-3">Templates de contrato</h2>
+          <h2 className="font-bold text-sm mb-3">{t('templates.title')}</h2>
           <button onClick={() => { setShowNew(true); setSelected(null); setForm(emptyForm); }}
             className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-semibold transition-colors">
             + {t('templates.new')}
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
-          {isLoading ? <div className="text-slate-400 text-xs text-center py-8">Cargando...</div> :
-            templates.map((t: Template) => (
-              <button key={t.id} onClick={() => { setSelected(t); setShowNew(false); setPreview(false); }}
-                className={`w-full text-left px-3 py-3 rounded-lg mb-1 transition-colors ${selected?.id === t.id ? 'bg-slate-700' : 'hover:bg-slate-800'}`}>
-                <div className="text-sm font-medium text-white truncate">{t.name}</div>
+          {isLoading ? <div className="text-slate-400 text-xs text-center py-8">{t('common.loading')}</div> :
+            templates.map((tpl: Template) => (
+              <button key={tpl.id} onClick={() => { setSelected(tpl); setShowNew(false); setPreview(false); }}
+                className={`w-full text-left px-3 py-3 rounded-lg mb-1 transition-colors ${selected?.id === tpl.id ? 'bg-slate-700' : 'hover:bg-slate-800'}`}>
+                <div className="text-sm font-medium text-white truncate">{tpl.name}</div>
                 <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                  {t.type}
-                  {t.ownerSignature && <span className="text-emerald-400">✓ Firmado</span>}
+                  {tpl.type}
+                  {tpl.ownerSignature && <span className="text-emerald-400">✓ {isEN ? 'Signed' : 'Firmado'}</span>}
                 </div>
               </button>
             ))
@@ -240,64 +250,66 @@ export default function ContractTemplates() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {showNew ? (
           <div className="flex-1 overflow-y-auto p-6">
-            <h2 className="text-xl font-bold mb-6">Nuevo template</h2>
+            <h2 className="text-xl font-bold mb-6">{t('templates.new')}</h2>
             <div className="max-w-2xl space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Nombre *</label>
-                  <input value={form.name} onChange={e => setForm({...form, name: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  <label className={labelClass}>{t('common.name')} *</label>
+                  <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Tipo *</label>
+                  <label className={labelClass}>{t('common.type')} *</label>
                   <select value={form.type} onChange={e => setForm({...form, type: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
-                    {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    className={inputClass}>
+                    {TYPES.map(tp => <option key={tp} value={tp}>{tp}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Nombre propietario *</label>
-                  <input value={form.ownerName} onChange={e => setForm({...form, ownerName: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  <label className={labelClass}>{t('templates.owner')} *</label>
+                  <input value={form.ownerName} onChange={e => setForm({...form, ownerName: e.target.value})} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">NIF propietario *</label>
-                  <input value={form.ownerNif} onChange={e => setForm({...form, ownerNif: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  <label className={labelClass}>{t('templates.ownerNif')} *</label>
+                  <input value={form.ownerNif} onChange={e => setForm({...form, ownerNif: e.target.value})} className={inputClass} />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Dirección propietario</label>
-                  <input value={form.ownerAddress} onChange={e => setForm({...form, ownerAddress: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  <label className={labelClass}>{t('templates.ownerAddress')}</label>
+                  <input value={form.ownerAddress} onChange={e => setForm({...form, ownerAddress: e.target.value})} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Fianza (€)</label>
-                  <input type="number" value={form.depositAmount} onChange={e => setForm({...form, depositAmount: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  <label className={labelClass}>{t('bookings.deposit')} (€)</label>
+                  <input type="number" value={form.depositAmount} onChange={e => setForm({...form, depositAmount: e.target.value})} className={inputClass} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Cláusulas adicionales</label>
+                <label className={labelClass}>{t('templates.clauses')}</label>
                 <textarea value={form.clauses} onChange={e => setForm({...form, clauses: e.target.value})} rows={3}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none" />
+                  className={inputClass + " resize-none"} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('templates.ownerSignature')}</label>
-                <SignaturePad value={form.ownerSignature} onChange={sig => setForm({...form, ownerSignature: sig})} />
+                <label className={labelClass}>{t('templates.ownerSignature')}</label>
+                <SignaturePad
+                  value={form.ownerSignature}
+                  onChange={sig => setForm({...form, ownerSignature: sig})}
+                  clearLabel={t('common.delete')}
+                  drawLabel={isEN ? 'Draw signature here' : 'Dibuja la firma aquí'}
+                />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Contenido del contrato *</label>
+                <label className={labelClass}>{t('templates.content')} *</label>
                 <textarea value={form.content} onChange={e => setForm({...form, content: e.target.value})} rows={15}
-                  placeholder="Escribe el contenido del contrato usando {{variables}}..."
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none font-mono" />
+                  placeholder={isEN ? 'Write contract content using {{variables}}...' : 'Escribe el contenido del contrato usando {{variables}}...'}
+                  className={inputClass + " resize-none font-mono"} />
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setShowNew(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">{t('common.cancel')}</button>
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                  {t('common.cancel')}
+                </button>
                 <button onClick={() => createMutation.mutate({ ...form, depositAmount: form.depositAmount ? Number(form.depositAmount) : undefined })}
                   disabled={!form.name || !form.ownerName || !form.ownerNif || !form.content}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
-                  Crear template
+                  {t('templates.new')}
                 </button>
               </div>
             </div>
@@ -308,7 +320,7 @@ export default function ContractTemplates() {
               <div>
                 <h2 className="font-bold">{selected.name}</h2>
                 <p className="text-xs text-slate-400">
-                  {selected.type} · {selected.ownerSignature ? t('templates.ownerSignature') + ' ✓' : '⚠️ ' + t('templates.ownerSignature')}
+                  {selected.type} · {selected.ownerSignature ? `✓ ${isEN ? 'Signature saved' : 'Firma guardada'}` : `⚠️ ${isEN ? 'No landlord signature' : 'Sin firma del arrendador'}`}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -322,7 +334,7 @@ export default function ContractTemplates() {
                 </button>
                 <button onClick={() => { if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(selected.id); }}
                   className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-semibold transition-colors">
-                  Eliminar
+                  {t('common.delete')}
                 </button>
               </div>
             </div>
@@ -331,62 +343,57 @@ export default function ContractTemplates() {
               {!preview && (
                 <div className="w-72 border-r border-slate-800 overflow-y-auto p-4 space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Nombre</label>
-                    <input value={selected.name} onChange={e => setSelected({...selected, name: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    <label className={labelClass}>{t('common.name')}</label>
+                    <input value={selected.name} onChange={e => setSelected({...selected, name: e.target.value})} className={inputClass.replace('text-sm', 'text-xs')} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Tipo</label>
+                    <label className={labelClass}>{t('common.type')}</label>
                     <select value={selected.type} onChange={e => setSelected({...selected, type: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500">
-                      {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      className={inputClass.replace('text-sm', 'text-xs')}>
+                      {TYPES.map(tp => <option key={tp} value={tp}>{tp}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Propietario</label>
-                    <input value={selected.ownerName} onChange={e => setSelected({...selected, ownerName: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    <label className={labelClass}>{t('templates.owner')}</label>
+                    <input value={selected.ownerName} onChange={e => setSelected({...selected, ownerName: e.target.value})} className={inputClass.replace('text-sm', 'text-xs')} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">NIF</label>
-                    <input value={selected.ownerNif} onChange={e => setSelected({...selected, ownerNif: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    <label className={labelClass}>{t('templates.ownerNif')}</label>
+                    <input value={selected.ownerNif} onChange={e => setSelected({...selected, ownerNif: e.target.value})} className={inputClass.replace('text-sm', 'text-xs')} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Dirección</label>
-                    <input value={selected.ownerAddress || ''} onChange={e => setSelected({...selected, ownerAddress: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    <label className={labelClass}>{t('templates.ownerAddress')}</label>
+                    <input value={selected.ownerAddress || ''} onChange={e => setSelected({...selected, ownerAddress: e.target.value})} className={inputClass.replace('text-sm', 'text-xs')} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Fianza (€)</label>
-                    <input type="number" value={selected.depositAmount || ''} onChange={e => setSelected({...selected, depositAmount: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500" />
+                    <label className={labelClass}>{t('bookings.deposit')} (€)</label>
+                    <input type="number" value={selected.depositAmount || ''} onChange={e => setSelected({...selected, depositAmount: e.target.value})} className={inputClass.replace('text-sm', 'text-xs')} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Cláusulas</label>
+                    <label className={labelClass}>{t('templates.clauses')}</label>
                     <textarea value={selected.clauses || ''} onChange={e => setSelected({...selected, clauses: e.target.value})} rows={3}
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-emerald-500 resize-none" />
+                      className={inputClass.replace('text-sm', 'text-xs') + " resize-none"} />
                   </div>
 
                   <div className="border-t border-slate-700 pt-4">
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                      Firma del arrendador
-                    </label>
+                    <label className={labelClass}>{t('templates.ownerSignature')}</label>
                     <SignaturePad
                       key={selected.id}
                       value={selected.ownerSignature}
                       onChange={sig => setSelected({...selected, ownerSignature: sig})}
+                      clearLabel={t('common.delete')}
+                      drawLabel={isEN ? 'Draw signature here' : 'Dibuja la firma aquí'}
                     />
                   </div>
 
                   <div className="border-t border-slate-700 pt-4">
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Variables disponibles</label>
+                    <label className={labelClass}>{t('templates.variables')}</label>
                     <div className="space-y-1">
                       {VARIABLES.map(v => (
                         <button key={v.key} onClick={() => insertVariable(v.key)}
                           className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-800 transition-colors group">
                           <div className="text-xs font-mono text-emerald-400">{v.key}</div>
-                          <div className="text-xs text-slate-500 group-hover:text-slate-400">{v.desc}</div>
+                          <div className="text-xs text-slate-500 group-hover:text-slate-400">{isEN ? v.desc_en : v.desc_es}</div>
                         </button>
                       ))}
                     </div>
@@ -402,7 +409,7 @@ export default function ContractTemplates() {
                     </pre>
                     {selected.ownerSignature && (
                       <div className="mt-8 pt-4 border-t border-slate-200">
-                        <p className="text-xs text-slate-500 mb-2">Firma del arrendador:</p>
+                        <p className="text-xs text-slate-500 mb-2">{t('templates.ownerSignature')}:</p>
                         <img src={selected.ownerSignature} className="max-w-xs border border-slate-200 rounded" alt="Firma" />
                       </div>
                     )}
@@ -411,7 +418,7 @@ export default function ContractTemplates() {
                   <textarea id="content-editor" value={selected.content}
                     onChange={e => setSelected({...selected, content: e.target.value})}
                     className="w-full h-full min-h-96 px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500 resize-none font-mono leading-relaxed"
-                    placeholder="Contenido del contrato..." />
+                    placeholder={isEN ? 'Contract content...' : 'Contenido del contrato...'} />
                 )}
               </div>
             </div>
@@ -420,8 +427,8 @@ export default function ContractTemplates() {
           <div className="flex-1 flex items-center justify-center text-slate-400">
             <div className="text-center">
               <div className="text-4xl mb-3">📄</div>
-              <p>{t('templates.title')}</p>
-              <p className="text-sm mt-1">o crea uno nuevo</p>
+              <p>{isEN ? 'Select a template to edit' : 'Selecciona un template para editar'}</p>
+              <p className="text-sm mt-1">{isEN ? 'or create a new one' : 'o crea uno nuevo'}</p>
             </div>
           </div>
         )}
