@@ -15,9 +15,16 @@ export class OrganizationService {
 
   async update(id: string, dto: any) {
     const data: any = {};
-    const fields = ['name','nif','address','phone','email','logo','smtpHost','smtpPort','smtpUser','smtpFrom','currency','dateFormat'];
-    fields.forEach(f => { if (dto[f] !== undefined) data[f] = dto[f]; });
+    const stringFields = ['name','nif','address','phone','email','logo','smtpHost','smtpUser','smtpFrom','currency','dateFormat'];
+    stringFields.forEach(f => { if (dto[f] !== undefined) data[f] = dto[f]; });
     if (dto.smtpPass) data.smtpPass = dto.smtpPass;
+
+    // smtpPort siempre como Int
+    if (dto.smtpPort !== undefined) {
+      const port = parseInt(dto.smtpPort, 10);
+      data.smtpPort = isNaN(port) ? null : port;
+    }
+
     return this.prisma.organization.update({ where: { id }, data });
   }
 
@@ -47,9 +54,7 @@ export class OrganizationService {
         subject: '✅ Test de email — RentCRM Pro',
         html: `
           <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px;">
-            <div style="text-align:center;margin-bottom:24px;">
-              <span style="font-size:48px;">✅</span>
-            </div>
+            <div style="text-align:center;margin-bottom:24px;"><span style="font-size:48px;">✅</span></div>
             <h2 style="color:#16a34a;text-align:center;margin-bottom:8px;">Email configurado correctamente</h2>
             <p style="color:#475569;text-align:center;">Tu configuración SMTP en <strong>RentCRM Pro</strong> funciona correctamente.</p>
             <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
