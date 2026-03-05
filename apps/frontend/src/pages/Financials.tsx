@@ -8,7 +8,6 @@ const emptyForm = { propertyId:'', categoryId:'', type:'income', amount:'', desc
 
 export default function Financials() {
   const { t } = useTranslation();
-  const { t } = useTranslation();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
