@@ -23,7 +23,7 @@ const contractStatusColor: Record<string, string> = {
 };
 
 const contractStatusLabel: Record<string, string> = {
-  draft: 'Borrador', sent: 'Enviado', signed: 'Firmado', cancelled: 'Cancelado',
+  draft: t('contracts.statuses.draft'), sent: t('contracts.statuses.sent'), signed: t('contracts.statuses.signed'), cancelled: t('contracts.statuses.cancelled'),
 };
 
 function Stars({ score, onChange }: { score: number; onChange?: (s: number) => void }) {
@@ -158,7 +158,7 @@ export default function BookingDetail() {
             <div className="flex justify-between"><span className="text-slate-400 text-sm">{t('bookings.source')}</span><span className="font-medium">{sourceLabel[booking.source] || booking.source}</span></div>
           </div>
           {booking.status !== 'cancelled' && (
-            <button onClick={() => { if(confirm('¿Cancelar esta reserva?')) cancelMutation.mutate(); }}
+            <button onClick={() => { if(confirm(t('bookings.cancel'))) cancelMutation.mutate(); }}
               className="mt-4 w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-semibold transition-colors">
               {t('bookings.cancel')}
             </button>
@@ -203,7 +203,7 @@ export default function BookingDetail() {
             <h2 className="font-semibold text-slate-300 text-sm uppercase tracking-wider">Valoración de la estancia</h2>
             <button onClick={openRating}
               className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
-              {evaluation ? 'Editar' : '★ Valorar'}
+              {evaluation ? t('common.edit') : t('evaluations.rate')}
             </button>
           </div>
           {evaluation ? (
@@ -252,7 +252,7 @@ export default function BookingDetail() {
                   <div className="font-medium text-sm">{c.template.name}</div>
                   <div className="text-xs text-slate-400 mt-0.5">
                     Creado: {new Date(c.createdAt).toLocaleDateString('es-ES')}
-                    {c.signedAt && ` · Firmado: ${new Date(c.signedAt).toLocaleDateString('es-ES')}`}
+                    {c.signedAt && ` · {t('contracts.signed')}: ${new Date(c.signedAt).toLocaleDateString('es-ES')}`}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -261,7 +261,7 @@ export default function BookingDetail() {
                   </span>
                   <button onClick={() => viewContract(c.id)}
                     className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
-                    📄 Ver contrato
+                    {t('contracts.viewContract')}
                   </button>
                   {(c.status === 'draft' || c.status === 'sent') && (
                     <button onClick={() => setLinkModal(getSignUrl(c.token))}
@@ -348,7 +348,7 @@ export default function BookingDetail() {
               </button>
               <button onClick={handleRating} disabled={createEvalMutation.isPending || updateEvalMutation.isPending}
                 className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
-                {createEvalMutation.isPending || updateEvalMutation.isPending ? 'Guardando...' : 'Guardar valoración'}
+                {createEvalMutation.isPending || updateEvalMutation.isPending ? t('common.saving') : t('evaluations.save')}
               </button>
             </div>
           </div>

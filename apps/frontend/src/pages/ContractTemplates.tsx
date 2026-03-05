@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 
@@ -139,6 +140,7 @@ function SignaturePad({ value, onChange }: { value?: string; onChange: (sig: str
 }
 
 export default function ContractTemplates() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [selected, setSelected] = useState<Template | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -215,7 +217,7 @@ export default function ContractTemplates() {
           <h2 className="font-bold text-sm mb-3">Templates de contrato</h2>
           <button onClick={() => { setShowNew(true); setSelected(null); setForm(emptyForm); }}
             className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-semibold transition-colors">
-            + Nuevo template
+            + {t('templates.new')}
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
@@ -280,7 +282,7 @@ export default function ContractTemplates() {
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Firma del arrendador</label>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('templates.ownerSignature')}</label>
                 <SignaturePad value={form.ownerSignature} onChange={sig => setForm({...form, ownerSignature: sig})} />
               </div>
               <div>
@@ -291,7 +293,7 @@ export default function ContractTemplates() {
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setShowNew(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">Cancelar</button>
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">{t('common.cancel')}</button>
                 <button onClick={() => createMutation.mutate({ ...form, depositAmount: form.depositAmount ? Number(form.depositAmount) : undefined })}
                   disabled={!form.name || !form.ownerName || !form.ownerNif || !form.content}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
@@ -306,19 +308,19 @@ export default function ContractTemplates() {
               <div>
                 <h2 className="font-bold">{selected.name}</h2>
                 <p className="text-xs text-slate-400">
-                  {selected.type} · {selected.ownerSignature ? '✓ Firma guardada' : '⚠️ Sin firma del arrendador'}
+                  {selected.type} · {selected.ownerSignature ? t('templates.ownerSignature') + ' ✓' : '⚠️ ' + t('templates.ownerSignature')}
                 </p>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setPreview(!preview)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${preview ? 'bg-emerald-600 text-white' : 'bg-slate-800 hover:bg-slate-700'}`}>
-                  {preview ? '✏️ Editar' : '👁 Vista previa'}
+                  {preview ? t('templates.edit') : t('templates.preview')}
                 </button>
                 <button onClick={() => updateMutation.mutate({ id: selected.id, data: selected })} disabled={updateMutation.isPending}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-semibold transition-colors">
-                  {saved ? '✅ Guardado' : updateMutation.isPending ? 'Guardando...' : '💾 Guardar'}
+                  {saved ? t('common.saved') : updateMutation.isPending ? t('common.saving') : t('common.save')}
                 </button>
-                <button onClick={() => { if(confirm('¿Eliminar template?')) deleteMutation.mutate(selected.id); }}
+                <button onClick={() => { if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(selected.id); }}
                   className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-semibold transition-colors">
                   Eliminar
                 </button>
