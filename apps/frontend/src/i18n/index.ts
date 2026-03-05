@@ -5,7 +5,7 @@ const es = {
   nav: {
     dashboard: "Dashboard", properties: "Propiedades", clients: "Clientes",
     bookings: "Reservas", financials: "Financiero", contracts: "Contratos",
-    templates: "Templates", police: "Partes SES", settings: "Configuración"
+    templates: "Templates", ical: "iCal Sync", police: "Partes SES", settings: "Configuración"
   },
   common: {
     save: "Guardar cambios", saving: "Guardando...", saved: "✅ Guardado",
@@ -78,6 +78,34 @@ const es = {
     scores: ["", "Muy malo", "Malo", "Normal", "Bueno", "Excelente"],
     save: "Guardar valoración", noRating: "Sin valoraciones", avgRating: "Valoración media",
     totalBookings: "Reservas totales", totalSpent: "Total gastado"
+  },
+  ical: {
+    title: "Sincronización iCal",
+    subtitle: "Importa reservas desde Airbnb y Booking.com y exporta tu calendario",
+    addFeed: "Añadir feed",
+    addFeedTitle: "Nuevo feed iCal",
+    platform: "Plataforma",
+    property: "Propiedad",
+    selectProperty: "Selecciona una propiedad",
+    icalUrl: "URL del calendario iCal",
+    icalUrlHint: "Copia la URL iCal desde la configuración de Airbnb o Booking.com",
+    other: "Otra",
+    save: "Guardar",
+    saving: "Guardando...",
+    cancel: "Cancelar",
+    loading: "Cargando feeds...",
+    noFeeds: "No hay feeds configurados",
+    noFeedsHint: "Añade un feed para importar reservas automáticamente",
+    lastSync: "Última sincronización",
+    neverSynced: "Nunca sincronizado",
+    sync: "Sincronizar",
+    syncResult: "Importadas: {{imported}} · Omitidas: {{skipped}} · Total: {{total}}",
+    exportUrl: "URL de exportación",
+    copy: "Copiar",
+    confirmDelete: "¿Eliminar este feed?",
+    errorRequired: "Propiedad y URL son obligatorios",
+    errorSave: "Error al guardar el feed",
+    errorSync: "Error al sincronizar"
   }
 };
 
@@ -85,7 +113,7 @@ const en = {
   nav: {
     dashboard: "Dashboard", properties: "Properties", clients: "Clients",
     bookings: "Bookings", financials: "Financials", contracts: "Contracts",
-    templates: "Templates", police: "Guest Reports", settings: "Settings"
+    templates: "Templates", ical: "iCal Sync", police: "Guest Reports", settings: "Settings"
   },
   common: {
     save: "Save changes", saving: "Saving...", saved: "✅ Saved",
@@ -158,6 +186,34 @@ const en = {
     scores: ["", "Very bad", "Bad", "Average", "Good", "Excellent"],
     save: "Save rating", noRating: "No ratings", avgRating: "Average rating",
     totalBookings: "Total bookings", totalSpent: "Total spent"
+  },
+  ical: {
+    title: "iCal Sync",
+    subtitle: "Import bookings from Airbnb and Booking.com and export your calendar",
+    addFeed: "Add feed",
+    addFeedTitle: "New iCal feed",
+    platform: "Platform",
+    property: "Property",
+    selectProperty: "Select a property",
+    icalUrl: "iCal calendar URL",
+    icalUrlHint: "Copy the iCal URL from your Airbnb or Booking.com settings",
+    other: "Other",
+    save: "Save",
+    saving: "Saving...",
+    cancel: "Cancel",
+    loading: "Loading feeds...",
+    noFeeds: "No feeds configured",
+    noFeedsHint: "Add a feed to automatically import bookings",
+    lastSync: "Last sync",
+    neverSynced: "Never synced",
+    sync: "Sync",
+    syncResult: "Imported: {{imported}} · Skipped: {{skipped}} · Total: {{total}}",
+    exportUrl: "Export URL",
+    copy: "Copy",
+    confirmDelete: "Delete this feed?",
+    errorRequired: "Property and URL are required",
+    errorSave: "Error saving feed",
+    errorSync: "Error syncing feed"
   }
 };
 

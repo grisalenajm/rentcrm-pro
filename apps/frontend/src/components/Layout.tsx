@@ -15,6 +15,7 @@ export default function Layout() {
     { to: '/financials',          icon: '💶', label: t('nav.financials') },
     { to: '/contracts',           icon: '📄', label: t('nav.contracts')  },
     { to: '/contracts/templates', icon: '📝', label: t('nav.templates')  },
+    { to: '/ical',                icon: '📅', label: t('nav.ical')      },
     { to: '/police',              icon: '📡', label: t('nav.police')     },
     { to: '/settings',            icon: '⚙️', label: t('nav.settings')  },
   ];
