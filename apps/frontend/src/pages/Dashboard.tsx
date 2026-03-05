@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { data: properties = [] } = useQuery({
     queryKey: ['properties'],
