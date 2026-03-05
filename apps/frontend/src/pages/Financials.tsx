@@ -1,10 +1,14 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 
 const emptyForm = { propertyId:'', categoryId:'', type:'income', amount:'', description:'', date:'' };
 
 export default function Financials() {
+  const { t } = useTranslation();
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -141,8 +145,8 @@ export default function Financials() {
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Tipo *</label>
                   <select value={form.type} onChange={e => setForm({...form, type: e.target.value, categoryId: ''})}
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
-                    <option value="income">Ingreso</option>
-                    <option value="expense">Gasto</option>
+                    <option value="income"{t('financials.income')}</option>
+                    <option value="expense"{t('financials.expense')}</option>
                   </select>
                 </div>
                 <div>
@@ -155,7 +159,7 @@ export default function Financials() {
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Categoría *</label>
                 <select value={form.categoryId} onChange={e => setForm({...form, categoryId: e.target.value})}
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" required>
-                  <option value="">Seleccionar...</option>
+                  <option value=""{t('common.search') + '...'}>/option>
                   {filteredCategories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
@@ -163,7 +167,7 @@ export default function Financials() {
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Propiedad</label>
                 <select value={form.propertyId} onChange={e => setForm({...form, propertyId: e.target.value})}
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
-                  <option value="">Sin propiedad específica</option>
+                  <option value="">—</option>
                   {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>

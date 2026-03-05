@@ -420,7 +420,7 @@ export default function ContractTemplates() {
           <div className="flex-1 flex items-center justify-center text-slate-400">
             <div className="text-center">
               <div className="text-4xl mb-3">📄</div>
-              <p>Selecciona un template para editar</p>
+              <p>{t('templates.title')}</p>
               <p className="text-sm mt-1">o crea uno nuevo</p>
             </div>
           </div>
