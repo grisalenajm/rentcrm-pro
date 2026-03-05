@@ -144,8 +144,8 @@ export default function Financials() {
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Tipo *</label>
                   <select value={form.type} onChange={e => setForm({...form, type: e.target.value, categoryId: ''})}
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
-                    <option value="income"{t('financials.income')}</option>
-                    <option value="expense"{t('financials.expense')}</option>
+                    <option value="income">{t('financials.income')}</option>
+                    <option value="expense">{t('financials.expense')}</option>
                   </select>
                 </div>
                 <div>
