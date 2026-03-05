@@ -22,9 +22,7 @@ const contractStatusColor: Record<string, string> = {
   cancelled: 'bg-red-500/10 text-red-400',
 };
 
-const contractStatusLabel: Record<string, string> = {
-  draft: t('contracts.statuses.draft'), sent: t('contracts.statuses.sent'), signed: t('contracts.statuses.signed'), cancelled: t('contracts.statuses.cancelled'),
-};
+
 
 function Stars({ score, onChange }: { score: number; onChange?: (s: number) => void }) {
   return (
@@ -257,7 +255,7 @@ export default function BookingDetail() {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={`text-xs font-semibold px-2 py-1 rounded-full ${contractStatusColor[c.status]}`}>
-                    {contractStatusLabel[c.status]}
+                    {t(`contracts.statuses.${c.status}`)}
                   </span>
                   <button onClick={() => viewContract(c.id)}
                     className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
