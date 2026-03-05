@@ -1,13 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-
-const sourceLabel: Record<string, string> = {
-  direct: 'Directo', airbnb: 'Airbnb',
-  booking: 'Booking', vrbo: 'Vrbo', manual_block: 'Bloqueo',
-};
 
 function Stars({ score, onChange }: { score: number; onChange?: (s: number) => void }) {
   return (
@@ -31,6 +26,14 @@ export default function ClientDetail() {
   const [ratingScore, setRatingScore] = useState(5);
   const [ratingNotes, setRatingNotes] = useState('');
   const [editingEval, setEditingEval] = useState<any | null>(null);
+
+  const sourceLabel: Record<string, string> = {
+    direct: t('bookings.sources.direct'),
+    airbnb: 'Airbnb',
+    booking: 'Booking',
+    vrbo: 'Vrbo',
+    manual_block: t('bookings.sources.manual_block'),
+  };
 
   const { data: summary, isLoading } = useQuery({
     queryKey: ['client-summary', id],
@@ -64,146 +67,173 @@ export default function ClientDetail() {
 
   const handleRating = () => {
     if (!ratingBookingId) return;
-    createEvalMutation.mutate({ bookingId: ratingBookingId, clientId: id, score: ratingScore, notes: ratingNotes || undefined });
+    createEvalMutation.mutate({ bookingId: ratingBookingId, clientId: id, score: ratingScore, notes: ratingNotes });
   };
 
   const handleUpdateRating = () => {
     if (!editingEval) return;
-    updateEvalMutation.mutate({ evalId: editingEval.id, data: { score: ratingScore, notes: ratingNotes || undefined } });
+    updateEvalMutation.mutate({ evalId: editingEval.id, data: { score: editingEval.score, notes: editingEval.notes } });
   };
 
-  const openRating = (bookingId: string) => {
-    setRatingBookingId(bookingId);
-    setRatingScore(5);
-    setRatingNotes('');
-  };
+  if (isLoading) return <div className="p-6 text-slate-400">{t('common.loading')}</div>;
 
-  const openEditRating = (eval_: any) => {
-    setEditingEval(eval_);
-    setRatingScore(eval_.score);
-    setRatingNotes(eval_.notes || '');
-  };
-
-  if (isLoading) return <div className="p-6 text-slate-400">Cargando...</div>;
-  if (!summary) return <div className="p-6 text-slate-400">Cliente no encontrado</div>;
+  const bookings = summary?.bookings || [];
+  const avgScore = summary?.avgScore;
+  const totalBookings = summary?.totalBookings || 0;
+  const totalSpent = summary?.totalSpent || 0;
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/clients')} className="text-slate-400 hover:text-white transition-colors">{t('common.back')}</button>
-        <span className="text-slate-600">/</span>
-        <h1 className="text-xl font-bold">{client?.firstName} {client?.lastName}</h1>
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={() => navigate('/clients')}
+          className="text-slate-400 hover:text-white transition-colors text-sm">
+          {t('common.back')}
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        {/* Datos cliente */}
         <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <h2 className="font-semibold mb-4 text-slate-300 text-sm uppercase tracking-wider">Datos del cliente</h2>
-          {client && (
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {client.dniPassport && <><span className="text-slate-400">DNI/Pasaporte</span><span className="font-mono">{client.dniPassport}</span></>}
-              {client.nationality && <><span className="text-slate-400">Nacionalidad</span><span>{client.nationality}</span></>}
-              {client.birthDate && <><span className="text-slate-400">Nacimiento</span><span>{new Date(client.birthDate).toLocaleDateString('es-ES')}</span></>}
-              {client.email && <><span className="text-slate-400">Email</span><a href={`mailto:${client.email}`} className="text-emerald-400 hover:underline">{client.email}</a></>}
-              {client.phone && <><span className="text-slate-400">Teléfono</span><a href={`tel:${client.phone}`} className="text-emerald-400 hover:underline">{client.phone}</a></>}
-              {client.notes && <><span className="text-slate-400">Notas</span><span className="text-slate-300">{client.notes}</span></>}
-            </div>
+          <h2 className="font-bold text-lg mb-4">{client?.firstName} {client?.lastName}</h2>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            {client?.dniPassport && (
+              <div>
+                <span className="text-slate-400">{t('clients.dni')}: </span>
+                <span className="font-mono">{client.dniPassport}</span>
+              </div>
+            )}
+            {client?.nationality && (
+              <div>
+                <span className="text-slate-400">{t('clients.nationality')}: </span>
+                <span>{client.nationality}</span>
+              </div>
+            )}
+            {client?.email && (
+              <div>
+                <span className="text-slate-400">{t('common.email')}: </span>
+                <span>{client.email}</span>
+              </div>
+            )}
+            {client?.phone && (
+              <div>
+                <span className="text-slate-400">{t('common.phone')}: </span>
+                <span>{client.phone}</span>
+              </div>
+            )}
+            {client?.birthDate && (
+              <div>
+                <span className="text-slate-400">{t('clients.birthDate')}: </span>
+                <span>{new Date(client.birthDate).toLocaleDateString('es-ES')}</span>
+              </div>
+            )}
+          </div>
+          {client?.notes && (
+            <div className="mt-3 text-sm text-slate-400 border-t border-slate-800 pt-3">{client.notes}</div>
           )}
         </div>
 
+        {/* Resumen */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-          <h2 className="font-semibold text-slate-300 text-sm uppercase tracking-wider">Resumen</h2>
           <div>
-            <div className="text-xs text-slate-400 mb-1">Reservas totales</div>
-            <div className="text-2xl font-bold">{summary.totalBookings}</div>
+            <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.totalBookings')}</div>
+            <div className="text-2xl font-bold">{totalBookings}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-400 mb-1">Total gastado</div>
-            <div className="text-2xl font-bold text-emerald-400">€{Number(summary.totalSpent).toLocaleString('es-ES', {minimumFractionDigits:2})}</div>
+            <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.totalSpent')}</div>
+            <div className="text-2xl font-bold text-emerald-400">€{Number(totalSpent).toLocaleString('es-ES')}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-400 mb-1">Valoración media</div>
-            {summary.avgScore ? (
+            <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.avgRating')}</div>
+            {avgScore ? (
               <div className="flex items-center gap-2">
-                <Stars score={Math.round(summary.avgScore)} />
-                <span className="text-sm text-slate-400">({summary.avgScore.toFixed(1)})</span>
+                <Stars score={Math.round(avgScore)} />
+                <span className="text-sm text-slate-400">({avgScore.toFixed(1)})</span>
               </div>
-            ) : <span className="text-slate-500 text-sm">Sin valoraciones</span>}
+            ) : (
+              <div className="text-slate-500 text-sm">{t('evaluations.noRating')}</div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-        <h2 className="font-semibold mb-4 text-slate-300 text-sm uppercase tracking-wider">Historial de reservas</h2>
-        {summary.bookings.length === 0 ? (
-          <p className="text-slate-500 text-sm">Sin reservas registradas</p>
+      {/* Historial reservas */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-800">
+          <h3 className="font-semibold">{t('bookings.title')}</h3>
+        </div>
+        {bookings.length === 0 ? (
+          <div className="text-slate-400 text-center py-10 text-sm">{t('common.noData')}</div>
         ) : (
-          <div className="space-y-3">
-            {summary.bookings.map((b: any) => {
-              const nights = Math.round((new Date(b.checkOutDate).getTime() - new Date(b.checkInDate).getTime()) / 86400000);
-              return (
-                <div key={b.id} className="border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition-colors">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <Link to={`/bookings/${b.id}`} className="font-semibold text-emerald-400 hover:underline">
-                        {b.property.name}
-                      </Link>
-                      <div className="text-xs text-slate-400 mt-0.5">{b.property.city} · {sourceLabel[b.source] || b.source}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-emerald-400">€{b.totalAmount}</div>
-                      <div className="text-xs text-slate-400">{nights} noches</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="text-sm text-slate-400">
-                      {new Date(b.checkInDate).toLocaleDateString('es-ES')} → {new Date(b.checkOutDate).toLocaleDateString('es-ES')}
-                    </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800">
+                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
+                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
+                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkOut')}</th>
+                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('common.total')}</th>
+                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.source')}</th>
+                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('clients.rating')}</th>
+                <th className="px-5 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {bookings.map((b: any) => (
+                <tr key={b.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                  <td className="px-5 py-3 font-medium">{b.property?.name || '—'}</td>
+                  <td className="px-5 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
+                  <td className="px-5 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
+                  <td className="px-5 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
+                  <td className="px-5 py-3 text-slate-400">{sourceLabel[b.source] || b.source}</td>
+                  <td className="px-5 py-3">
                     {b.evaluation ? (
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
                         <Stars score={b.evaluation.score} />
-                        {b.evaluation.notes && <span className="text-xs text-slate-400 italic">"{b.evaluation.notes}"</span>}
-                        <button onClick={() => openEditRating(b.evaluation)}
-                          className="px-2 py-0.5 text-xs bg-slate-700 hover:bg-slate-600 rounded transition-colors">
-                          Editar
+                        <button onClick={() => setEditingEval({ ...b.evaluation })}
+                          className="text-xs text-slate-400 hover:text-white transition-colors">
+                          {t('common.edit')}
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => openRating(b.id)}
+                      <span className="text-slate-600 text-xs">{t('clients.noRating')}</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3">
+                    {!b.evaluation && (
+                      <button onClick={() => { setRatingBookingId(b.id); setRatingScore(5); setRatingNotes(''); }}
                         className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
                         {t('evaluations.rate')}
                       </button>
                     )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
-      {/* Modal nueva valoración */}
+      {/* Modal crear valoración */}
       {ratingBookingId && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-lg font-bold mb-2">Valorar estancia</h2>
-            <p className="text-slate-400 text-sm mb-5">
-              {(() => { const b = summary.bookings.find((b: any) => b.id === ratingBookingId);
-                return b ? `${b.property.name} · ${new Date(b.checkInDate).toLocaleDateString('es-ES')} – ${new Date(b.checkOutDate).toLocaleDateString('es-ES')}` : ''; })()}
-            </p>
-            <div className="mb-5">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Puntuación *</label>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm">
+            <h2 className="text-lg font-bold mb-4">{t('evaluations.title')}</h2>
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('evaluations.score')}</label>
               <Stars score={ratingScore} onChange={setRatingScore} />
-              <div className="text-xs text-slate-500 mt-2">{['','Muy malo','Malo','Normal','Bueno','Excelente'][ratingScore]}</div>
+              <p className="text-xs text-slate-400 mt-1">{(t('evaluations.scores') as any)[ratingScore]}</p>
             </div>
-            <div className="mb-5">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Comentario</label>
-              <input value={ratingNotes} onChange={e => setRatingNotes(e.target.value)}
-                placeholder="Ej: Cliente muy cuidadoso, dejó la casa perfecta"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.comment')}</label>
+              <textarea value={ratingNotes} onChange={e => setRatingNotes(e.target.value)} rows={3}
+                placeholder={t('evaluations.commentPlaceholder')}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none" />
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setRatingBookingId(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">{t('common.cancel')}</button>
+              <button onClick={() => setRatingBookingId(null)}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                {t('common.cancel')}
+              </button>
               <button onClick={handleRating} disabled={createEvalMutation.isPending}
                 className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
                 {createEvalMutation.isPending ? t('common.saving') : t('evaluations.save')}
@@ -216,21 +246,23 @@ export default function ClientDetail() {
       {/* Modal editar valoración */}
       {editingEval && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-lg font-bold mb-5">Editar valoración</h2>
-            <div className="mb-5">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Puntuación *</label>
-              <Stars score={ratingScore} onChange={setRatingScore} />
-              <div className="text-xs text-slate-500 mt-2">{['','Muy malo','Malo','Normal','Bueno','Excelente'][ratingScore]}</div>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm">
+            <h2 className="text-lg font-bold mb-4">{t('evaluations.editTitle')}</h2>
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('evaluations.score')}</label>
+              <Stars score={editingEval.score} onChange={s => setEditingEval({ ...editingEval, score: s })} />
+              <p className="text-xs text-slate-400 mt-1">{(t('evaluations.scores') as any)[editingEval.score]}</p>
             </div>
-            <div className="mb-5">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Comentario</label>
-              <input value={ratingNotes} onChange={e => setRatingNotes(e.target.value)}
-                placeholder="Ej: Cliente muy cuidadoso, dejó la casa perfecta"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.comment')}</label>
+              <textarea value={editingEval.notes || ''} onChange={e => setEditingEval({ ...editingEval, notes: e.target.value })} rows={3}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none" />
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setEditingEval(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">{t('common.cancel')}</button>
+              <button onClick={() => setEditingEval(null)}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                {t('common.cancel')}
+              </button>
               <button onClick={handleUpdateRating} disabled={updateEvalMutation.isPending}
                 className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
                 {updateEvalMutation.isPending ? t('common.saving') : t('common.save')}
