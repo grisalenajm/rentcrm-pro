@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
@@ -22,6 +23,7 @@ function Stars({ score, onChange }: { score: number; onChange?: (s: number) => v
 }
 
 export default function ClientDetail() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -88,7 +90,7 @@ export default function ClientDetail() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/clients')} className="text-slate-400 hover:text-white transition-colors">← Volver</button>
+        <button onClick={() => navigate('/clients')} className="text-slate-400 hover:text-white transition-colors">{t('common.back')}</button>
         <span className="text-slate-600">/</span>
         <h1 className="text-xl font-bold">{client?.firstName} {client?.lastName}</h1>
       </div>
@@ -169,7 +171,7 @@ export default function ClientDetail() {
                     ) : (
                       <button onClick={() => openRating(b.id)}
                         className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
-                        ★ Valorar estancia
+                        {t('evaluations.rate')}
                       </button>
                     )}
                   </div>
@@ -201,10 +203,10 @@ export default function ClientDetail() {
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setRatingBookingId(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">Cancelar</button>
+              <button onClick={() => setRatingBookingId(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">{t('common.cancel')}</button>
               <button onClick={handleRating} disabled={createEvalMutation.isPending}
                 className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
-                {createEvalMutation.isPending ? 'Guardando...' : 'Guardar valoración'}
+                {createEvalMutation.isPending ? 'Guardando...' : '{t('evaluations.save')}'}
               </button>
             </div>
           </div>
@@ -228,10 +230,10 @@ export default function ClientDetail() {
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setEditingEval(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">Cancelar</button>
+              <button onClick={() => setEditingEval(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">{t('common.cancel')}</button>
               <button onClick={handleUpdateRating} disabled={updateEvalMutation.isPending}
                 className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
-                {updateEvalMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+                {updateEvalMutation.isPending ? 'Guardando...' : '{t('common.save')}'}
               </button>
             </div>
           </div>

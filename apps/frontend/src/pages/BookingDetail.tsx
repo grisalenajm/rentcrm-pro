@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
@@ -39,6 +40,7 @@ function Stars({ score, onChange }: { score: number; onChange?: (s: number) => v
 }
 
 export default function BookingDetail() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -133,9 +135,9 @@ export default function BookingDetail() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/bookings')} className="text-slate-400 hover:text-white transition-colors">← Volver</button>
+        <button onClick={() => navigate('/bookings')} className="text-slate-400 hover:text-white transition-colors">{t('common.back')}</button>
         <span className="text-slate-600">/</span>
-        <h1 className="text-xl font-bold">Detalle de reserva</h1>
+        <h1 className="text-xl font-bold">{t('bookings.title')}</h1>
         <span className={`ml-auto text-xs font-semibold px-2 py-1 rounded-full ${statusColor[booking.status] || 'bg-slate-500/10 text-slate-400'}`}>
           {booking.status}
         </span>
@@ -144,21 +146,21 @@ export default function BookingDetail() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         {/* Fechas y precio */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <h2 className="font-semibold mb-4 text-slate-300 text-sm uppercase tracking-wider">Reserva</h2>
+          <h2 className="font-semibold mb-4 text-slate-300 text-sm uppercase tracking-wider">{t('bookings.title')}</h2>
           <div className="space-y-3">
             <div className="flex justify-between"><span className="text-slate-400 text-sm">Check-in</span><span className="font-medium">{new Date(booking.checkInDate).toLocaleDateString('es-ES')}</span></div>
             <div className="flex justify-between"><span className="text-slate-400 text-sm">Check-out</span><span className="font-medium">{new Date(booking.checkOutDate).toLocaleDateString('es-ES')}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400 text-sm">Noches</span><span className="font-medium">{nights}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400 text-sm">{t('bookings.nights')}</span><span className="font-medium">{nights}</span></div>
             <div className="flex justify-between border-t border-slate-800 pt-3">
               <span className="text-slate-400 text-sm">Total</span>
               <span className="font-bold text-emerald-400 text-lg">€{booking.totalAmount}</span>
             </div>
-            <div className="flex justify-between"><span className="text-slate-400 text-sm">Origen</span><span className="font-medium">{sourceLabel[booking.source] || booking.source}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400 text-sm">{t('bookings.source')}</span><span className="font-medium">{sourceLabel[booking.source] || booking.source}</span></div>
           </div>
           {booking.status !== 'cancelled' && (
             <button onClick={() => { if(confirm('¿Cancelar esta reserva?')) cancelMutation.mutate(); }}
               className="mt-4 w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-semibold transition-colors">
-              Cancelar reserva
+              {t('bookings.cancel')}
             </button>
           )}
         </div>
@@ -211,7 +213,7 @@ export default function BookingDetail() {
               {evaluation.notes && <p className="text-sm text-slate-300 italic">"{evaluation.notes}"</p>}
             </div>
           ) : (
-            <p className="text-slate-500 text-sm">Sin valoración todavía</p>
+            <p className="text-slate-500 text-sm">{t('bookings.noRating')}</p>
           )}
         </div>
       </div>
@@ -235,7 +237,7 @@ export default function BookingDetail() {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-slate-300 text-sm uppercase tracking-wider">Contrato</h2>
-          <Link to="/contracts" className="text-xs text-emerald-400 hover:underline">Gestionar contratos →</Link>
+          <Link to="/contracts" className="text-xs text-emerald-400 hover:underline">{t('common.view')} →</Link>
         </div>
         {contracts.length === 0 ? (
           <div className="flex items-center justify-between">
