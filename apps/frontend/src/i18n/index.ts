@@ -59,6 +59,19 @@ const es = {
     languageNote: "Estas preferencias se guardan en tu navegador y solo afectan a tu sesión.",
     fiscalNote: "El NIF y la dirección fiscal se usan en los contratos y documentos generados."
   },
+  templates: {
+    title: 'Templates de contrato',
+    new: 'Nuevo template',
+    owner: 'Propietario',
+    ownerNif: 'NIF propietario',
+    ownerAddress: 'Dirección propietario',
+    ownerSignature: 'Firma del arrendador',
+    clauses: 'Cláusulas adicionales',
+    content: 'Contenido del contrato',
+    preview: '👁 Vista previa',
+    edit: '✏️ Editar',
+    variables: 'Variables disponibles',
+  },
   evaluations: {
     rate: "★ Valorar estancia", edit: "Editar", title: "Valorar estancia", editTitle: "Editar valoración",
     score: "Puntuación", comment: "Comentario", commentPlaceholder: "Ej: Cliente muy cuidadoso, dejó la casa perfecta",
@@ -125,6 +138,19 @@ const en = {
     themeDark: "Dark", themeLight: "Light", language: "System language",
     languageNote: "These preferences are saved in your browser and only affect your session.",
     fiscalNote: "Tax ID and address are used in contracts and generated documents."
+  },
+  templates: {
+    title: 'Contract templates',
+    new: 'New template',
+    owner: 'Owner',
+    ownerNif: 'Owner NIF',
+    ownerAddress: 'Owner address',
+    ownerSignature: 'Landlord signature',
+    clauses: 'Additional clauses',
+    content: 'Contract content',
+    preview: '👁 Preview',
+    edit: '✏️ Edit',
+    variables: 'Available variables',
   },
   evaluations: {
     rate: "★ Rate stay", edit: "Edit", title: "Rate stay", editTitle: "Edit rating",
