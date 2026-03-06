@@ -76,6 +76,66 @@ const emptyGuest = () => ({
   docCountry: 'ES', birthDate: '', phoneCode: '+34', phoneNumber: '',
 });
 
+const inputCls = "w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
+const labelCls = "block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1";
+
+function DocFields({ prefix, docType, docNumber, docCountry, onDocType, onDocNumber, onDocCountry, readonly, warnings }: {
+  prefix: string; docType: string; docNumber: string; docCountry: string;
+  onDocType: any; onDocNumber: any; onDocCountry: any; readonly?: boolean;
+  warnings: Record<string, string>;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelCls}>Tipo doc.</label>
+          <select value={docType} onChange={onDocType} disabled={readonly}
+            className={`${inputCls} ${readonly ? 'opacity-60 cursor-default' : ''}`}>
+            <option value="dni">DNI Nacional</option>
+            <option value="passport">Pasaporte</option>
+            <option value="nie">NIE</option>
+            <option value="other">Otro</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>País expedición</label>
+          <select value={docCountry} onChange={onDocCountry} disabled={readonly}
+            className={`${inputCls} ${readonly ? 'opacity-60 cursor-default' : ''}`}>
+            {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className={labelCls}>Nº documento *</label>
+        <input value={docNumber} onChange={onDocNumber} readOnly={readonly}
+          placeholder={docType === 'dni' ? '12345678A' : docType === 'passport' ? 'AAA123456' : ''}
+          className={`${inputCls} ${readonly ? 'opacity-60 cursor-default' : ''}`} />
+        {warnings[prefix] && (
+          <p className="text-amber-400 text-xs mt-1">⚠ {warnings[prefix]}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PhoneField({ phoneCode, phoneNumber, onCode, onNumber, readonly }: {
+  phoneCode: string; phoneNumber: string; onCode: any; onNumber: any; readonly?: boolean;
+}) {
+  return (
+    <div>
+      <label className={labelCls}>Teléfono</label>
+      <div className="flex gap-2">
+        <select value={phoneCode} onChange={onCode} disabled={readonly}
+          className={`px-2 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 w-28 ${readonly ? 'opacity-60 cursor-default' : ''}`}>
+          {COUNTRIES.map(c => <option key={c.code} value={c.phone}>{c.phone} {c.code}</option>)}
+        </select>
+        <input value={phoneNumber} onChange={onNumber} readOnly={readonly} placeholder="600000000"
+          className={`flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 ${readonly ? 'opacity-60 cursor-default' : ''}`} />
+      </div>
+    </div>
+  );
+}
+
 export default function Bookings() {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -255,8 +315,7 @@ export default function Bookings() {
     (clientMode === 'existing' ? !form.clientId : !newClient.firstName || !newClient.lastName) ||
     createMutation.isPending || createClientMutation.isPending;
 
-  const inputCls = "w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
-  const labelCls = "block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1";
+
 
   // ── Sección datos cliente/huésped ─────────────────────────────────────────
   const DocFields = ({ prefix, docType, docNumber, docCountry, onDocType, onDocNumber, onDocCountry, readonly }:
@@ -418,6 +477,7 @@ export default function Bookings() {
                       docType={newClient.docType} docNumber={newClient.dniPassport} docCountry={newClient.docCountry}
                       onDocType={fc('docType')} onDocNumber={fc('dniPassport')} onDocCountry={fc('docCountry')}
                       readonly={clientMode === 'existing'}
+                      warnings={docWarnings}
                     />
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -493,6 +553,7 @@ export default function Bookings() {
                       onDocType={e => updateGuest(i, 'docType', e.target.value)}
                       onDocNumber={e => updateGuest(i, 'docNumber', e.target.value)}
                       onDocCountry={e => updateGuest(i, 'docCountry', e.target.value)}
+                      warnings={docWarnings}
                     />
                     <div className="grid grid-cols-2 gap-3">
                       <div>
