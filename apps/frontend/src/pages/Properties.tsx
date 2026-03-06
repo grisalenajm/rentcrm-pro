@@ -11,9 +11,10 @@ interface Property {
   province?: string;
   rooms: number;
   isActive: boolean;
+  sesCodigoEstablecimiento?: string;
 }
 
-const emptyForm = { name:'', address:'', city:'', province:'', rooms:'1', isActive: true };
+const emptyForm = { name:'', address:'', city:'', province:'', rooms:'1', isActive: true, sesCodigoEstablecimiento:'' };
 
 export default function Properties() {
   const { t } = useTranslation();
@@ -45,7 +46,7 @@ export default function Properties() {
   const openCreate = () => { setEditing(null); setForm(emptyForm); setShowForm(true); };
   const openEdit = (p: Property) => {
     setEditing(p);
-    setForm({ name: p.name, address: p.address, city: p.city, province: p.province||'', rooms: String(p.rooms), isActive: p.isActive });
+    setForm({ name: p.name, address: p.address, city: p.city, province: p.province||'', rooms: String(p.rooms), isActive: p.isActive, sesCodigoEstablecimiento: (p as any).sesCodigoEstablecimiento||'' });
     setShowForm(true);
   };
 
@@ -148,6 +149,13 @@ export default function Properties() {
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('properties.rooms')} *</label>
                   <input type="number" min="1" value={form.rooms} onChange={f('rooms')} required
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">🚔 Código SES Establecimiento</label>
+                  <input value={form.sesCodigoEstablecimiento} onChange={f('sesCodigoEstablecimiento')}
+                    placeholder="0000000002"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  <p className="text-xs text-slate-500 mt-1">Código asignado a esta propiedad en SES Hospedajes</p>
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
