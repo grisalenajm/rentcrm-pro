@@ -31,11 +31,11 @@ function isCheckIn(b: Booking, day: Date)  { return sameDay(startOfDay(new Date(
 function isCheckOut(b: Booking, day: Date) { return sameDay(startOfDay(new Date(b.checkOutDate)), startOfDay(new Date(day))); }
 
 function bookingColor(b: Booking, dark: boolean) {
-  if (b.source === 'airbnb')    return { solid: '#e8414a', bg: dark ? '#e8414a99' : '#e8414a66', text: dark ? '#ffb3b6' : '#9b1c23' };
-  if (b.source === 'booking')   return { solid: '#1a6fc4', bg: dark ? '#1a6fc499' : '#1a6fc466', text: dark ? '#93c5fd' : '#0e4d8f' };
-  if (b.status === 'confirmed') return { solid: '#059669', bg: dark ? '#05966999' : '#05966966', text: dark ? '#6ee7b7' : '#047857' };
-  if (b.status === 'cancelled') return { solid: '#dc2626', bg: dark ? '#dc262699' : '#dc262666', text: dark ? '#fca5a5' : '#991b1b' };
-  return                               { solid: '#d97706', bg: dark ? '#d9770699' : '#d9770666', text: dark ? '#fcd34d' : '#92400e' };
+  if (b.source === 'airbnb')    return { solid: '#e8414a', bg: dark ? '#e8414acc' : '#e8414aaa', text: dark ? '#ffb3b6' : '#9b1c23' };
+  if (b.source === 'booking')   return { solid: '#1a6fc4', bg: dark ? '#1a6fc4cc' : '#1a6fc4aa', text: dark ? '#93c5fd' : '#0e4d8f' };
+  if (b.status === 'confirmed') return { solid: '#059669', bg: dark ? '#059669cc' : '#059669aa', text: dark ? '#6ee7b7' : '#047857' };
+  if (b.status === 'cancelled') return { solid: '#dc2626', bg: dark ? '#dc2626cc' : '#dc2626aa', text: dark ? '#fca5a5' : '#991b1b' };
+  return                               { solid: '#d97706', bg: dark ? '#d97706cc' : '#d97706aa', text: dark ? '#fcd34d' : '#92400e' };
 }
 
 const DAY_W  = 46;
@@ -261,7 +261,7 @@ export default function OccupancyCalendar() {
                         }}>
                         {startsHere && startIdx >= 0 && (
                           <div style={{padding:'0 10px',overflow:'hidden',whiteSpace:'nowrap'}}>
-                            <span style={{fontSize:11,fontWeight:700,color:col.text}}>
+                            <span style={{fontSize:11,fontWeight:700,color:'#ffffff'}}>
                               {bk.client.firstName} {bk.client.lastName[0]}.
                             </span>
                             <span style={{fontSize:10,color:dark?'#64748b':'#94a3b8',marginLeft:4}}>
@@ -401,7 +401,7 @@ export default function OccupancyCalendar() {
                       }}>
                       {startsThisWeek && (
                         <div style={{padding:'0 8px',overflow:'hidden',whiteSpace:'nowrap'}}>
-                          <span style={{fontSize:11,fontWeight:700,color:col.text}}>
+                          <span style={{fontSize:11,fontWeight:700,color:'#ffffff'}}>
                             ▶ {bk.client.firstName} {bk.client.lastName[0]}.
                           </span>
                           <span style={{fontSize:10,color:dark?'#64748b':'#94a3b8',marginLeft:6}}>
