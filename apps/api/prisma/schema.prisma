@@ -153,6 +153,9 @@ model Booking {
   @@index([clientId])
   contracts     Contract[]
   guestsSes    BookingGuestSes[]
+  sesLote       String?   @map("ses_lote") @db.VarChar(50)
+  sesStatus     String?   @map("ses_status") @db.VarChar(20)
+  sesSentAt     DateTime? @map("ses_sent_at")
 
   @@map("bookings")
 }

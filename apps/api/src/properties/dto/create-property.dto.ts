@@ -42,4 +42,8 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsIn(['active', 'maintenance', 'inactive'])
   status?: string;
+
+  @IsOptional()
+  @IsString()
+  sesCodigoEstablecimiento?: string;
 }
