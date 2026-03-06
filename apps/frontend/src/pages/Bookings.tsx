@@ -17,7 +17,7 @@ export default function Bookings() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     clientId: '', propertyId: '',
-    checkIn: '', checkOut: '',
+    checkInDate: '', checkOutDate: '',
     totalAmount: '', source: 'direct', status: 'confirmed', notes: '',
   });
 
@@ -44,7 +44,7 @@ export default function Bookings() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['bookings'] });
       setShowForm(false);
-      setForm({ clientId: '', propertyId: '', checkIn: '', checkOut: '', totalAmount: '', source: 'direct', status: 'confirmed', notes: '' });
+      setForm({ clientId: '', propertyId: '', checkInDate: '', checkOutDate: '', totalAmount: '', source: 'direct', status: 'confirmed', notes: '' });
     },
   });
 
@@ -55,12 +55,11 @@ export default function Bookings() {
     createMutation.mutate({
       clientId:    form.clientId,
       propertyId:  form.propertyId,
-      checkIn:     form.checkIn,
-      checkOut:    form.checkOut,
+      checkInDate: form.checkInDate,
+      checkOutDate: form.checkOutDate,
       totalAmount: Number(form.totalAmount),
       source:      form.source,
       status:      form.status,
-      notes:       form.notes || undefined,
     });
   };
 
@@ -101,8 +100,8 @@ export default function Bookings() {
                   className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
                   <td className="px-4 py-3 font-medium">{b.client?.firstName} {b.client?.lastName}</td>
                   <td className="px-4 py-3 text-slate-400">{b.property?.name}</td>
-                  <td className="px-4 py-3 text-slate-400">{new Date(b.checkIn || b.checkInDate).toLocaleDateString('es-ES')}</td>
-                  <td className="px-4 py-3 text-slate-400">{new Date(b.checkOut || b.checkOutDate).toLocaleDateString('es-ES')}</td>
+                  <td className="px-4 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
+                  <td className="px-4 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
                   <td className="px-4 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
                   <td className="px-4 py-3 text-slate-400">{t(`bookings.sources.${b.source}`) || b.source}</td>
                   <td className="px-4 py-3">
@@ -148,12 +147,12 @@ export default function Bookings() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('bookings.checkIn')} *</label>
-                  <input type="date" value={form.checkIn} onChange={f('checkIn')}
+                  <input type="date" value={form.checkInDate} onChange={f('checkInDate')}
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('bookings.checkOut')} *</label>
-                  <input type="date" value={form.checkOut} onChange={f('checkOut')}
+                  <input type="date" value={form.checkOutDate} onChange={f('checkOutDate')}
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
                 </div>
               </div>
@@ -185,7 +184,7 @@ export default function Bookings() {
                 </button>
                 <button
                   onClick={handleSubmit}
-                  disabled={!form.clientId || !form.propertyId || !form.checkIn || !form.checkOut || !form.totalAmount || createMutation.isPending}
+                  disabled={!form.clientId || !form.propertyId || !form.checkInDate || !form.checkOutDate || !form.totalAmount || createMutation.isPending}
                   className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
                   {createMutation.isPending ? t('common.saving') : t('bookings.new')}
                 </button>
