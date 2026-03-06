@@ -31,11 +31,11 @@ function isCheckIn(b: Booking, day: Date)  { return sameDay(startOfDay(new Date(
 function isCheckOut(b: Booking, day: Date) { return sameDay(startOfDay(new Date(b.checkOutDate)), startOfDay(new Date(day))); }
 
 function bookingColor(b: Booking, dark: boolean) {
-  if (b.source === 'airbnb')    return { solid: '#e8414a', bg: dark ? '#e8414a55' : '#e8414a33', text: dark ? '#ffb3b6' : '#9b1c23' };
-  if (b.source === 'booking')   return { solid: '#1a6fc4', bg: dark ? '#1a6fc455' : '#1a6fc433', text: dark ? '#93c5fd' : '#0e4d8f' };
-  if (b.status === 'confirmed') return { solid: '#059669', bg: dark ? '#05966955' : '#05966933', text: dark ? '#6ee7b7' : '#047857' };
-  if (b.status === 'cancelled') return { solid: '#dc2626', bg: dark ? '#dc262655' : '#dc262633', text: dark ? '#fca5a5' : '#991b1b' };
-  return                               { solid: '#d97706', bg: dark ? '#d9770655' : '#d9770633', text: dark ? '#fcd34d' : '#92400e' };
+  if (b.source === 'airbnb')    return { solid: '#e8414a', bg: dark ? '#e8414a99' : '#e8414a66', text: dark ? '#ffb3b6' : '#9b1c23' };
+  if (b.source === 'booking')   return { solid: '#1a6fc4', bg: dark ? '#1a6fc499' : '#1a6fc466', text: dark ? '#93c5fd' : '#0e4d8f' };
+  if (b.status === 'confirmed') return { solid: '#059669', bg: dark ? '#05966999' : '#05966966', text: dark ? '#6ee7b7' : '#047857' };
+  if (b.status === 'cancelled') return { solid: '#dc2626', bg: dark ? '#dc262699' : '#dc262666', text: dark ? '#fca5a5' : '#991b1b' };
+  return                               { solid: '#d97706', bg: dark ? '#d9770699' : '#d9770666', text: dark ? '#fcd34d' : '#92400e' };
 }
 
 const DAY_W  = 46;
@@ -149,7 +149,7 @@ export default function OccupancyCalendar() {
                     borderBottom:`1px solid ${pal.borderCol}`,
                     borderRight:`1px solid ${pal.borderCol}`,
                     padding:'6px 2px', textAlign:'center', verticalAlign:'bottom', position:'relative',
-                    zIndex: isT ? 5 : 1,
+                    zIndex: 1,
                   }}>
                     {isFirst && (
                       <div style={{position:'absolute',top:2,left:0,right:0,textAlign:'center',
@@ -178,8 +178,20 @@ export default function OccupancyCalendar() {
           <tbody>
             {properties.map((prop, pi) => {
               const propBkgs = bookings.filter(b => b.property?.id===prop.id && b.status!=='cancelled');
+              // Calcular barras para esta fila (mismo enfoque que mensual)
+              const bars: {bk: typeof propBkgs[0]; startIdx: number; endIdx: number}[] = [];
+              for (const bk of propBkgs) {
+                const ci = startOfDay(new Date(bk.checkInDate));
+                const co = startOfDay(new Date(bk.checkOutDate));
+                const startIdx = multiDays.findIndex(d => sameDay(d, ci));
+                const firstVisible = multiDays.findIndex(d => bookingCoversDay(bk, d));
+                const lastVisible  = [...multiDays].reverse().findIndex(d => bookingCoversDay(bk, d));
+                const endIdx = lastVisible >= 0 ? VISIBLE - lastVisible : -1;
+                if (firstVisible < 0) continue;
+                bars.push({ bk, startIdx, endIdx });
+              }
               return (
-                <tr key={prop.id}>
+                <tr key={prop.id} style={{position:'relative'}}>
                   <td style={{
                     position:'sticky', left:0, zIndex:10,
                     background: pi%2===0 ? pal.cellBg : pal.cellBgAlt,
@@ -195,63 +207,69 @@ export default function OccupancyCalendar() {
                     </div>
                   </td>
                   {multiDays.map((day, di) => {
-                    const bk     = propBkgs.find(b => bookingCoversDay(b, day));
-                    const isCi   = bk && isCheckIn(bk, day);
-                    const isCo   = bk && isCheckOut(bk, addDays(day,1));
                     const isT    = sameDay(day, today);
                     const isWEnd = day.getDay()===0||day.getDay()===6;
-                    const col    = bk ? bookingColor(bk, dark) : null;
                     const bg     = isT ? pal.cellToday : isWEnd ? pal.cellWEnd : pi%2===0 ? pal.cellBg : pal.cellBgAlt;
                     return (
-                      <td key={di}
-                        onClick={() => bk && navigate(`/bookings/${bk.id}`)}
-                        onMouseEnter={e => bk && setTooltip({b:bk, x:e.clientX, y:e.clientY})}
-                        onMouseLeave={() => setTooltip(null)}
-                        style={{
-                          background: bg,
-                          borderBottom:`1px solid ${pal.borderCol}`,
-                          borderRight:`1px solid ${pal.borderCol}`,
-                          padding:0, height: ROW_H, position:'relative',
-                          cursor: bk ? 'pointer' : 'default',
-                          zIndex: bk ? 3 : isT ? 2 : 1,
-                        }}>
-                        {/* línea vertical de hoy — detrás de la reserva */}
+                      <td key={di} style={{
+                        background: bg,
+                        borderBottom:`1px solid ${pal.borderCol}`,
+                        borderRight:`1px solid ${pal.borderCol}`,
+                        padding:0, height: ROW_H, position:'relative',
+                      }}>
                         {isT && (
                           <div style={{
-                            position:'absolute', inset:0, zIndex:1,
+                            position:'absolute', inset:0,
                             borderLeft:`1px solid ${pal.todayBorder}40`,
                             borderRight:`1px solid ${pal.todayBorder}40`,
                             pointerEvents:'none',
                           }} />
                         )}
-                        {/* barra de reserva — z-index alto, siempre encima */}
-                        {bk && (
-                          <div style={{
-                            position:'absolute', top:8, bottom:8,
-                            left: isCi ? 3 : 0,
-                            right: isCo ? 3 : 0,
-                            background: col!.bg,
-                            borderLeft:   isCi ? `3px solid ${col!.solid}` : 'none',
-                            borderRight:  isCo ? `3px solid ${col!.solid}` : 'none',
-                            borderTop:    `1px solid ${col!.solid}80`,
-                            borderBottom: `1px solid ${col!.solid}80`,
-                            borderRadius: isCi&&isCo ? 5 : isCi ? '5px 0 0 5px' : isCo ? '0 5px 5px 0' : 0,
-                            display:'flex', alignItems:'center', overflow:'hidden',
-                            zIndex:4,
-                          }}>
-                            {isCi && (
-                              <div style={{padding:'0 8px',overflow:'hidden',whiteSpace:'nowrap',zIndex:5}}>
-                                <span style={{fontSize:11,fontWeight:700,color:col!.text}}>
-                                  {bk.client.firstName} {bk.client.lastName[0]}.
-                                </span>
-                                <span style={{fontSize:10,color:dark?'#64748b':'#94a3b8',marginLeft:4}}>
-                                  {Number(bk.totalAmount).toLocaleString()}€
-                                </span>
-                              </div>
-                            )}
+                      </td>
+                    );
+                  })}
+                  {/* Barras de reservas — absolutas sobre la fila, encima de todo */}
+                  {bars.map(({bk, startIdx, endIdx}, bi) => {
+                    const col        = bookingColor(bk, dark);
+                    const ciDay      = startOfDay(new Date(bk.checkInDate));
+                    const startsHere = multiDays.some(d => sameDay(d, ciDay));
+                    const endsHere   = endIdx < VISIBLE;
+                    const leftPx     = PROP_W + Math.max(0, startIdx) * DAY_W + (startsHere ? 3 : 0);
+                    const rightPx    = startsHere && startIdx < 0
+                      ? PROP_W
+                      : (VISIBLE - endIdx) * DAY_W + (endsHere ? 3 : 0);
+                    return (
+                      <div
+                        key={bk.id}
+                        onClick={() => navigate(`/bookings/${bk.id}`)}
+                        onMouseEnter={e => setTooltip({b:bk, x:e.clientX, y:e.clientY})}
+                        onMouseLeave={() => setTooltip(null)}
+                        style={{
+                          position:'absolute',
+                          top: 8, bottom: 8,
+                          left: leftPx,
+                          right: rightPx,
+                          background: col.bg,
+                          borderLeft:   startsHere ? `3px solid ${col.solid}` : 'none',
+                          borderRight:  endsHere   ? `3px solid ${col.solid}` : 'none',
+                          borderTop:    `1px solid ${col.solid}80`,
+                          borderBottom: `1px solid ${col.solid}80`,
+                          borderRadius: startsHere&&endsHere ? 5 : startsHere ? '5px 0 0 5px' : endsHere ? '0 5px 5px 0' : 0,
+                          display:'flex', alignItems:'center', overflow:'hidden',
+                          cursor:'pointer', zIndex:20,
+                          pointerEvents:'all',
+                        }}>
+                        {startsHere && startIdx >= 0 && (
+                          <div style={{padding:'0 10px',overflow:'hidden',whiteSpace:'nowrap'}}>
+                            <span style={{fontSize:11,fontWeight:700,color:col.text}}>
+                              {bk.client.firstName} {bk.client.lastName[0]}.
+                            </span>
+                            <span style={{fontSize:10,color:dark?'#64748b':'#94a3b8',marginLeft:4}}>
+                              {Number(bk.totalAmount).toLocaleString()}€
+                            </span>
                           </div>
                         )}
-                      </td>
+                      </div>
                     );
                   })}
                 </tr>
