@@ -328,13 +328,13 @@ export default function Settings() {
                 <p className="text-xs text-slate-500 mt-1">Código del alojamiento en SES</p>
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Endpoint</label>
-                <input value={currentValue('sesEndpoint')} onChange={f('sesEndpoint')}
-                  placeholder="https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                <p className="text-xs text-slate-500 mt-1">
-                  Producción: hospedajes.ses.mir.es · Pruebas: hospedajes.pre-ses.mir.es
-                </p>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Entorno</label>
+                <select value={currentValue('sesEndpoint')} onChange={f('sesEndpoint')}
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                  <option value="">— Seleccionar —</option>
+                  <option value="https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion">🟢 SES Hospedajes — Producción</option>
+                  <option value="https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/v1/comunicacion">🧪 SES Hospedajes — Pruebas</option>
+                </select>
               </div>
             </div>
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-sm text-amber-400">
