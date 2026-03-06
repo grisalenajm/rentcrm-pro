@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -158,12 +158,21 @@ export default function Bookings() {
   const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [k]: e.target.value });
 
+  const validationTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const scheduleValidation = (key: string, fn: () => void) => {
+    if (validationTimers.current[key]) clearTimeout(validationTimers.current[key]);
+    validationTimers.current[key] = setTimeout(fn, 600);
+  };
+
   const fc = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const updated = { ...newClient, [k]: e.target.value };
     setNewClient(updated);
     if (k === 'dniPassport' || k === 'docType' || k === 'docCountry') {
-      const warn = validateDoc(updated.docType, updated.dniPassport, updated.docCountry);
-      setDocWarnings(w => ({ ...w, main: warn || '' }));
+      scheduleValidation('main', () => {
+        const warn = validateDoc(updated.docType, updated.dniPassport, updated.docCountry);
+        setDocWarnings(w => ({ ...w, main: warn || '' }));
+      });
     }
   };
 
@@ -192,9 +201,11 @@ export default function Bookings() {
     const updated = guests.map((g, idx) => idx === i ? { ...g, [k]: v } : g);
     setGuests(updated);
     if (k === 'docNumber' || k === 'docType' || k === 'docCountry') {
-      const g = updated[i];
-      const warn = validateDoc(g.docType, g.docNumber, g.docCountry);
-      setDocWarnings(w => ({ ...w, [`guest_${i}`]: warn || '' }));
+      scheduleValidation(`guest_${i}`, () => {
+        const g = updated[i];
+        const warn = validateDoc(g.docType, g.docNumber, g.docCountry);
+        setDocWarnings(w => ({ ...w, [`guest_${i}`]: warn || '' }));
+      });
     }
   };
 
