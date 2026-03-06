@@ -31,12 +31,11 @@ function isCheckIn(b: Booking, day: Date)  { return sameDay(startOfDay(new Date(
 function isCheckOut(b: Booking, day: Date) { return sameDay(startOfDay(new Date(b.checkOutDate)), startOfDay(new Date(day))); }
 
 function bookingColor(b: Booking, dark: boolean) {
-  const o = dark ? '30' : '22'; // opacidad bg: más en dark, más en light también
-  if (b.source === 'airbnb')    return { solid: '#e8414a', bg: `#e8414a${o}`, text: dark ? '#ff8a8e' : '#c0272e' };
-  if (b.source === 'booking')   return { solid: '#1a6fc4', bg: `#1a6fc4${o}`, text: dark ? '#6ab0f5' : '#0e4d8f' };
-  if (b.status === 'confirmed') return { solid: '#059669', bg: `#05966920`, text: dark ? '#34d399' : '#047857' };
-  if (b.status === 'cancelled') return { solid: '#dc2626', bg: `#dc262620`, text: dark ? '#f87171' : '#991b1b' };
-  return                               { solid: '#d97706', bg: `#d9770620`, text: dark ? '#fbbf24' : '#92400e' };
+  if (b.source === 'airbnb')    return { solid: '#e8414a', bg: dark ? '#e8414a55' : '#e8414a33', text: dark ? '#ffb3b6' : '#9b1c23' };
+  if (b.source === 'booking')   return { solid: '#1a6fc4', bg: dark ? '#1a6fc455' : '#1a6fc433', text: dark ? '#93c5fd' : '#0e4d8f' };
+  if (b.status === 'confirmed') return { solid: '#059669', bg: dark ? '#05966955' : '#05966933', text: dark ? '#6ee7b7' : '#047857' };
+  if (b.status === 'cancelled') return { solid: '#dc2626', bg: dark ? '#dc262655' : '#dc262633', text: dark ? '#fca5a5' : '#991b1b' };
+  return                               { solid: '#d97706', bg: dark ? '#d9770655' : '#d9770633', text: dark ? '#fcd34d' : '#92400e' };
 }
 
 const DAY_W  = 46;
@@ -44,53 +43,28 @@ const ROW_H  = 52;
 const PROP_W = 176;
 
 export default function OccupancyCalendar() {
-  const { t }      = useTranslation();
-  const navigate   = useNavigate();
-  const { theme }  = useUserPreferences();
-  const dark       = theme === 'dark';
-  const today      = startOfDay(new Date());
+  const { t }     = useTranslation();
+  const navigate  = useNavigate();
+  const { theme } = useUserPreferences();
+  const dark      = theme === 'dark';
+  const today     = startOfDay(new Date());
 
-  // Paleta según tema
   const pal = dark ? {
-    pageBg:     '#0d1117',
-    headerBg:   '#0a0e17',
-    borderCol:  '#1e293b',
-    headerText: '#475569',
-    cellBg:     '#0d1117',
-    cellBgAlt:  '#0a0e17',
-    cellWEnd:   '#0c1220',
-    cellToday:  '#052e16',
-    todayBorder:'#10b981',
-    todayCircle:'#10b981',
-    todayText:  '#fff',
-    numColor:   '#94a3b8',
-    numWEnd:    '#475569',
-    propText:   '#cbd5e1',
-    spanText:   '#94a3b8',
-    btnText:    '#64748b',
-    tooltipBg:  '#0f172a',
-    legendText: '#475569',
-    emptyBg:    '#080c12',
+    pageBg:'#0d1117', headerBg:'#0a0e17', borderCol:'#1e293b',
+    headerText:'#475569', cellBg:'#0d1117', cellBgAlt:'#0a0e17',
+    cellWEnd:'#0c1220', cellToday:'#052e16', todayBorder:'#10b981',
+    todayCircle:'#10b981', numColor:'#94a3b8', numWEnd:'#475569',
+    propText:'#cbd5e1', spanText:'#94a3b8', btnText:'#64748b',
+    tooltipBg:'#0f172a', legendText:'#475569', emptyBg:'#080c12',
+    titleColor:'#f1f5f9',
   } : {
-    pageBg:     '#f8fafc',
-    headerBg:   '#ffffff',
-    borderCol:  '#e2e8f0',
-    headerText: '#94a3b8',
-    cellBg:     '#ffffff',
-    cellBgAlt:  '#f8fafc',
-    cellWEnd:   '#f1f5f9',
-    cellToday:  '#ecfdf5',
-    todayBorder:'#059669',
-    todayCircle:'#059669',
-    todayText:  '#fff',
-    numColor:   '#64748b',
-    numWEnd:    '#94a3b8',
-    propText:   '#1e293b',
-    spanText:   '#475569',
-    btnText:    '#94a3b8',
-    tooltipBg:  '#1e293b',
-    legendText: '#94a3b8',
-    emptyBg:    '#f1f5f9',
+    pageBg:'#f8fafc', headerBg:'#ffffff', borderCol:'#e2e8f0',
+    headerText:'#94a3b8', cellBg:'#ffffff', cellBgAlt:'#f8fafc',
+    cellWEnd:'#f1f5f9', cellToday:'#ecfdf5', todayBorder:'#059669',
+    todayCircle:'#059669', numColor:'#64748b', numWEnd:'#94a3b8',
+    propText:'#1e293b', spanText:'#475569', btnText:'#94a3b8',
+    tooltipBg:'#1e293b', legendText:'#94a3b8', emptyBg:'#f1f5f9',
+    titleColor:'#0f172a',
   };
 
   const [view, setView]             = useState<'multi'|'monthly'>('multi');
@@ -125,15 +99,12 @@ export default function OccupancyCalendar() {
   }, []);
 
   const onMouseDown = (e: React.MouseEvent) => {
-    isDragging.current      = true;
-    dragStartX.current      = e.clientX;
-    dragOffsetStart.current = offset;
-    e.preventDefault();
+    isDragging.current = true; dragStartX.current = e.clientX;
+    dragOffsetStart.current = offset; e.preventDefault();
   };
   const onMouseMove = (e: React.MouseEvent) => {
     if (!isDragging.current) return;
-    const delta = Math.round((dragStartX.current - e.clientX) / DAY_W);
-    setOffset(dragOffsetStart.current + delta);
+    setOffset(dragOffsetStart.current + Math.round((dragStartX.current - e.clientX) / DAY_W));
   };
   const onMouseUp  = () => { isDragging.current = false; };
   const shiftDays  = (n: number) => setOffset(o => o + n);
@@ -148,7 +119,7 @@ export default function OccupancyCalendar() {
       <div
         className="select-none cursor-grab active:cursor-grabbing"
         onMouseDown={onMouseDown} onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}     onMouseLeave={onMouseUp}
+        onMouseUp={onMouseUp} onMouseLeave={onMouseUp}
       >
         <table className="border-collapse" style={{tableLayout:'fixed', width: PROP_W + VISIBLE*DAY_W}}>
           <colgroup>
@@ -159,7 +130,7 @@ export default function OccupancyCalendar() {
             <tr style={{background: pal.headerBg}}>
               <th style={{
                 position:'sticky', left:0, zIndex:20,
-                background: pal.headerBg,
+                background:pal.headerBg,
                 borderBottom:`1px solid ${pal.borderCol}`,
                 borderRight:`2px solid ${pal.borderCol}`,
                 padding:'10px 16px', textAlign:'left',
@@ -170,14 +141,15 @@ export default function OccupancyCalendar() {
               </th>
               {multiDays.map((day, i) => {
                 const isT    = sameDay(day, today);
-                const isWEnd = day.getDay()===0 || day.getDay()===6;
+                const isWEnd = day.getDay()===0||day.getDay()===6;
                 const isFirst= day.getDate()===1;
                 return (
                   <th key={i} style={{
                     background: isT ? pal.cellToday : isWEnd ? pal.cellWEnd : pal.headerBg,
-                    borderBottom: isT ? `2px solid ${pal.todayBorder}` : `1px solid ${pal.borderCol}`,
+                    borderBottom:`1px solid ${pal.borderCol}`,
                     borderRight:`1px solid ${pal.borderCol}`,
                     padding:'6px 2px', textAlign:'center', verticalAlign:'bottom', position:'relative',
+                    zIndex: isT ? 5 : 1,
                   }}>
                     {isFirst && (
                       <div style={{position:'absolute',top:2,left:0,right:0,textAlign:'center',
@@ -188,7 +160,7 @@ export default function OccupancyCalendar() {
                     <div style={{fontSize:10,color:isT?pal.todayBorder:isWEnd?pal.numWEnd:pal.headerText,marginTop:isFirst?10:0}}>
                       {day.toLocaleString('default',{weekday:'narrow'})}
                     </div>
-                    <div style={{fontSize:12,fontWeight:700,color:isT?pal.todayText:isWEnd?pal.numWEnd:pal.numColor,lineHeight:'20px'}}>
+                    <div style={{fontSize:12,fontWeight:700,color:isT?'#fff':isWEnd?pal.numWEnd:pal.numColor,lineHeight:'20px'}}>
                       {isT
                         ? <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',
                             width:22,height:22,background:pal.todayCircle,borderRadius:'50%',
@@ -216,7 +188,7 @@ export default function OccupancyCalendar() {
                     padding:'0 16px', height: ROW_H,
                   }}>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <div style={{width:6,height:6,borderRadius:'50%',background:'#10b981',opacity:0.8,flexShrink:0}} />
+                      <div style={{width:6,height:6,borderRadius:'50%',background:'#10b981',flexShrink:0}} />
                       <span style={{fontSize:13,color:pal.propText,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                         {prop.name}
                       </span>
@@ -225,6 +197,7 @@ export default function OccupancyCalendar() {
                   {multiDays.map((day, di) => {
                     const bk     = propBkgs.find(b => bookingCoversDay(b, day));
                     const isCi   = bk && isCheckIn(bk, day);
+                    const isCo   = bk && isCheckOut(bk, addDays(day,1));
                     const isT    = sameDay(day, today);
                     const isWEnd = day.getDay()===0||day.getDay()===6;
                     const col    = bk ? bookingColor(bk, dark) : null;
@@ -240,27 +213,34 @@ export default function OccupancyCalendar() {
                           borderRight:`1px solid ${pal.borderCol}`,
                           padding:0, height: ROW_H, position:'relative',
                           cursor: bk ? 'pointer' : 'default',
+                          zIndex: bk ? 3 : isT ? 2 : 1,
                         }}>
+                        {/* línea vertical de hoy — detrás de la reserva */}
                         {isT && (
-                          <div style={{position:'absolute',inset:0,
-                            borderLeft:`1px solid ${pal.todayBorder}30`,
-                            borderRight:`1px solid ${pal.todayBorder}30`,
-                            pointerEvents:'none'}} />
+                          <div style={{
+                            position:'absolute', inset:0, zIndex:1,
+                            borderLeft:`1px solid ${pal.todayBorder}40`,
+                            borderRight:`1px solid ${pal.todayBorder}40`,
+                            pointerEvents:'none',
+                          }} />
                         )}
+                        {/* barra de reserva — z-index alto, siempre encima */}
                         {bk && (
                           <div style={{
                             position:'absolute', top:8, bottom:8,
-                            left: isCi ? 3 : 0, right: isCheckOut(bk,addDays(day,1)) ? 3 : 0,
+                            left: isCi ? 3 : 0,
+                            right: isCo ? 3 : 0,
                             background: col!.bg,
-                            borderLeft:   isCi ? `3px solid ${col!.solid}` : `1px solid ${col!.solid}50`,
-                            borderRight:  isCheckOut(bk,addDays(day,1)) ? `3px solid ${col!.solid}` : `1px solid ${col!.solid}50`,
-                            borderTop:    `1px solid ${col!.solid}60`,
-                            borderBottom: `1px solid ${col!.solid}60`,
-                            borderRadius: isCi&&isCheckOut(bk,addDays(day,1)) ? 5 : isCi ? '5px 0 0 5px' : isCheckOut(bk,addDays(day,1)) ? '0 5px 5px 0' : 0,
+                            borderLeft:   isCi ? `3px solid ${col!.solid}` : 'none',
+                            borderRight:  isCo ? `3px solid ${col!.solid}` : 'none',
+                            borderTop:    `1px solid ${col!.solid}80`,
+                            borderBottom: `1px solid ${col!.solid}80`,
+                            borderRadius: isCi&&isCo ? 5 : isCi ? '5px 0 0 5px' : isCo ? '0 5px 5px 0' : 0,
                             display:'flex', alignItems:'center', overflow:'hidden',
+                            zIndex:4,
                           }}>
                             {isCi && (
-                              <div style={{padding:'0 6px',overflow:'hidden',whiteSpace:'nowrap'}}>
+                              <div style={{padding:'0 8px',overflow:'hidden',whiteSpace:'nowrap',zIndex:5}}>
                                 <span style={{fontSize:11,fontWeight:700,color:col!.text}}>
                                   {bk.client.firstName} {bk.client.lastName[0]}.
                                 </span>
@@ -283,21 +263,42 @@ export default function OccupancyCalendar() {
     );
   }
 
-  // ── MENSUAL ───────────────────────────────────────────────────────────────
+  // ── MENSUAL — barras continuas por semana ─────────────────────────────────
   function MonthlyView() {
     const propBkgs = bookings.filter(b => b.property?.id===selProp && b.status!=='cancelled');
-    const firstDow = (new Date(year,month,1).getDay()+6)%7;
+    const firstDow = (new Date(year,month,1).getDay()+6)%7; // lun=0
     const daysInM  = new Date(year,month+1,0).getDate();
     const totalC   = Math.ceil((firstDow+daysInM)/7)*7;
-    const cells    = Array.from({length:totalC},(_,i)=>{
-      const d = i - firstDow + 1;
-      return (d>=1&&d<=daysInM) ? new Date(year,month,d) : null;
-    });
-    const WD = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+    const weeks    = totalC/7;
+    const WD       = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+    // Para cada semana calculamos las barras de reservas que aparecen en ella
+    function getBarsForWeek(weekIdx: number) {
+      const weekStart = addDays(new Date(year,month,1), weekIdx*7 - firstDow);
+      const weekEnd   = addDays(weekStart, 7);
+      const bars: {booking:Booking; startCol:number; endCol:number}[] = [];
+
+      for (const bk of propBkgs) {
+        const ci = startOfDay(new Date(bk.checkInDate));
+        const co = startOfDay(new Date(bk.checkOutDate));
+        if (co <= weekStart || ci >= weekEnd) continue;
+
+        const startCol = Math.max(0, Math.round((ci.getTime() - weekStart.getTime()) / 86400000));
+        const endCol   = Math.min(7, Math.round((co.getTime()  - weekStart.getTime()) / 86400000));
+        bars.push({booking: bk, startCol, endCol});
+      }
+      return bars;
+    }
+
+    const CELL_H   = 90;
+    const BAR_H    = 22;
+    const BAR_TOP  = 28; // debajo del número del día
+
     return (
       <div style={{padding:'0 24px 24px'}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',marginBottom:2}}>
-          {WD.map((d,i)=>(
+        {/* cabeceras días semana */}
+        <div style={{display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:2}}>
+          {WD.map((d,i) => (
             <div key={d} style={{
               padding:'8px 0', textAlign:'center',
               fontSize:10, fontWeight:700,
@@ -306,58 +307,90 @@ export default function OccupancyCalendar() {
             }}>{d}</div>
           ))}
         </div>
-        <div style={{
-          display:'grid', gridTemplateColumns:'repeat(7,1fr)',
-          border:`1px solid ${pal.borderCol}`, borderRadius:8, overflow:'hidden',
-        }}>
-          {cells.map((day,i)=>{
-            if (!day) return (
-              <div key={i} style={{
-                minHeight:88, background:pal.emptyBg,
-                borderRight:`1px solid ${pal.borderCol}`,
-                borderBottom:`1px solid ${pal.borderCol}`,
-              }} />
-            );
-            const dayBkgs = propBkgs.filter(b=>bookingCoversDay(b,day));
-            const isT     = sameDay(day,today);
-            const isWEnd  = day.getDay()===0||day.getDay()===6;
+
+        {/* grid por semanas */}
+        <div style={{border:`1px solid ${pal.borderCol}`, borderRadius:8, overflow:'hidden'}}>
+          {Array.from({length:weeks},(_,wi) => {
+            const bars = getBarsForWeek(wi);
+            const weekCells = Array.from({length:7},(_,di) => {
+              const dayNum = wi*7 + di - firstDow + 1;
+              return (dayNum>=1&&dayNum<=daysInM) ? new Date(year,month,dayNum) : null;
+            });
+
             return (
-              <div key={i} style={{
-                minHeight:88,
-                background: isT ? pal.cellToday : isWEnd ? pal.cellWEnd : pal.cellBg,
-                borderRight:`1px solid ${pal.borderCol}`,
-                borderBottom:`1px solid ${pal.borderCol}`,
-                borderTop: isT ? `2px solid ${pal.todayBorder}` : `2px solid transparent`,
-                padding:'6px 6px 4px',
-                display:'flex', flexDirection:'column', gap:2,
-              }}>
-                <div style={{display:'flex',justifyContent:'flex-end',marginBottom:2}}>
-                  {isT
-                    ? <span style={{width:22,height:22,display:'inline-flex',alignItems:'center',
-                        justifyContent:'center',background:pal.todayCircle,borderRadius:'50%',
-                        fontSize:11,fontWeight:800,color:'#fff'}}>{day.getDate()}</span>
-                    : <span style={{fontSize:11,fontWeight:600,
-                        color:isWEnd?pal.numWEnd:pal.numColor}}>{day.getDate()}</span>
-                  }
-                </div>
-                {dayBkgs.map(bk=>{
-                  const col = bookingColor(bk,dark);
-                  const ci  = isCheckIn(bk,day);
+              <div key={wi} style={{position:'relative', display:'grid', gridTemplateColumns:'repeat(7,1fr)'}}>
+                {/* celdas de fondo */}
+                {weekCells.map((day,di) => {
+                  const isT    = day && sameDay(day,today);
+                  const isWEnd = di>=5;
                   return (
-                    <div key={bk.id}
-                      onClick={()=>navigate(`/bookings/${bk.id}`)}
-                      onMouseEnter={e=>setTooltip({b:bk,x:e.clientX,y:e.clientY})}
-                      onMouseLeave={()=>setTooltip(null)}
+                    <div key={di} style={{
+                      height: CELL_H,
+                      background: isT ? pal.cellToday : isWEnd ? pal.cellWEnd : pal.cellBg,
+                      borderRight: di<6 ? `1px solid ${pal.borderCol}` : 'none',
+                      borderBottom:`1px solid ${pal.borderCol}`,
+                      borderTop: isT ? `2px solid ${pal.todayBorder}` : '2px solid transparent',
+                      padding:'6px 8px',
+                      boxSizing:'border-box',
+                    }}>
+                      {day && (
+                        isT
+                          ? <span style={{width:22,height:22,display:'inline-flex',alignItems:'center',
+                              justifyContent:'center',background:pal.todayCircle,borderRadius:'50%',
+                              fontSize:11,fontWeight:800,color:'#fff',float:'right'}}>
+                              {day.getDate()}
+                            </span>
+                          : <span style={{fontSize:11,fontWeight:600,color:isWEnd?pal.numWEnd:pal.numColor,float:'right'}}>
+                              {day.getDate()}
+                            </span>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* barras continuas — posicionadas absolutas sobre la fila */}
+                {bars.map(({booking:bk, startCol, endCol}, bi) => {
+                  const col     = bookingColor(bk, dark);
+                  const ci      = startOfDay(new Date(bk.checkInDate));
+                  const weekSt  = addDays(new Date(year,month,1), wi*7 - firstDow);
+                  const startsThisWeek = sameDay(ci, addDays(weekSt, startCol));
+                  const endsThisWeek   = endCol < 7;
+                  const pct     = 100/7;
+                  const left    = `calc(${startCol*pct}% + ${startsThisWeek?4:0}px)`;
+                  const right   = `calc(${(7-endCol)*pct}% + ${endsThisWeek?4:0}px)`;
+
+                  return (
+                    <div
+                      key={bk.id+wi}
+                      onClick={() => navigate(`/bookings/${bk.id}`)}
+                      onMouseEnter={e => setTooltip({b:bk,x:e.clientX,y:e.clientY})}
+                      onMouseLeave={() => setTooltip(null)}
                       style={{
+                        position:'absolute',
+                        top: BAR_TOP + bi*26,
+                        left, right,
+                        height: BAR_H,
                         background: col.bg,
-                        borderLeft:`2px solid ${col.solid}`,
-                        borderRadius:3,
-                        padding:'2px 6px',
-                        fontSize:10, fontWeight:ci?700:400,
-                        color:col.text, cursor:'pointer',
-                        overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                        borderLeft:   startsThisWeek ? `3px solid ${col.solid}` : 'none',
+                        borderRight:  endsThisWeek   ? `3px solid ${col.solid}` : 'none',
+                        borderTop:    `1px solid ${col.solid}80`,
+                        borderBottom: `1px solid ${col.solid}80`,
+                        borderRadius: startsThisWeek&&endsThisWeek ? 5
+                          : startsThisWeek ? '5px 0 0 5px'
+                          : endsThisWeek   ? '0 5px 5px 0' : 0,
+                        display:'flex', alignItems:'center',
+                        overflow:'hidden', cursor:'pointer', zIndex:10,
                       }}>
-                      {ci ? `▶ ${bk.client.firstName} · ${Number(bk.totalAmount).toLocaleString()}€` : `  ${bk.client.firstName}`}
+                      {startsThisWeek && (
+                        <div style={{padding:'0 8px',overflow:'hidden',whiteSpace:'nowrap'}}>
+                          <span style={{fontSize:11,fontWeight:700,color:col.text}}>
+                            ▶ {bk.client.firstName} {bk.client.lastName[0]}.
+                          </span>
+                          <span style={{fontSize:10,color:dark?'#64748b':'#94a3b8',marginLeft:6}}>
+                            {Number(bk.totalAmount).toLocaleString()}€
+                          </span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -382,7 +415,7 @@ export default function OccupancyCalendar() {
         background:pal.headerBg,
       }}>
         <div>
-          <h1 style={{fontSize:18,fontWeight:700,color:dark?'#f1f5f9':'#0f172a',margin:0,letterSpacing:'-0.02em'}}>
+          <h1 style={{fontSize:18,fontWeight:700,color:pal.titleColor,margin:0,letterSpacing:'-0.02em'}}>
             {t('calendar.title')}
           </h1>
           <p style={{fontSize:11,color:pal.headerText,margin:'2px 0 0'}}>{t('calendar.subtitle')}</p>
@@ -391,7 +424,8 @@ export default function OccupancyCalendar() {
         <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
           <button onClick={goToday} style={{
             padding:'5px 12px',fontSize:11,fontWeight:600,
-            color:'#059669',border:`1px solid ${dark?'#064e3b':'#a7f3d0'}`,
+            color: dark?'#10b981':'#059669',
+            border:`1px solid ${dark?'#064e3b':'#a7f3d0'}`,
             background:'transparent',borderRadius:6,cursor:'pointer',
           }}>Hoy</button>
 
@@ -409,12 +443,11 @@ export default function OccupancyCalendar() {
             background:pal.cellBg,border:`1px solid ${pal.borderCol}`,borderRadius:6,padding:2}}>
             <button onClick={()=>view==='multi'?shiftDays(-7):prevMonth()} style={{
               width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',
-              background:'transparent',border:'none',color:pal.btnText,
-              cursor:'pointer',borderRadius:4,fontSize:16,
+              background:'transparent',border:'none',color:pal.btnText,cursor:'pointer',borderRadius:4,fontSize:16,
             }}>‹</button>
             <span style={{
-              padding:'0 12px',fontSize:11,fontWeight:600,
-              color:pal.spanText,minWidth:160,textAlign:'center',textTransform:'capitalize',
+              padding:'0 12px',fontSize:11,fontWeight:600,color:pal.spanText,
+              minWidth:160,textAlign:'center',textTransform:'capitalize',
             }}>
               {view==='multi'
                 ? `${multiDays[0].toLocaleDateString('es',{day:'numeric',month:'short'})} — ${multiDays[VISIBLE-1].toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}`
@@ -423,8 +456,7 @@ export default function OccupancyCalendar() {
             </span>
             <button onClick={()=>view==='multi'?shiftDays(7):nextMonth()} style={{
               width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',
-              background:'transparent',border:'none',color:pal.btnText,
-              cursor:'pointer',borderRadius:4,fontSize:16,
+              background:'transparent',border:'none',color:pal.btnText,cursor:'pointer',borderRadius:4,fontSize:16,
             }}>›</button>
           </div>
 
@@ -432,7 +464,7 @@ export default function OccupancyCalendar() {
             {(['multi','monthly'] as const).map(v=>(
               <button key={v} onClick={()=>setView(v)} style={{
                 padding:'4px 12px',fontSize:11,fontWeight:600,
-                background: view===v ? '#059669' : 'transparent',
+                background: view===v ? (dark?'#10b981':'#059669') : 'transparent',
                 color: view===v ? '#fff' : pal.btnText,
                 border:'none',borderRadius:5,cursor:'pointer',transition:'all 0.15s',
               }}>
@@ -446,9 +478,7 @@ export default function OccupancyCalendar() {
       {/* Leyenda */}
       <div style={{
         display:'flex',alignItems:'center',gap:16,
-        padding:'8px 24px',
-        borderBottom:`1px solid ${pal.borderCol}`,
-        background:pal.headerBg,
+        padding:'8px 24px',borderBottom:`1px solid ${pal.borderCol}`,background:pal.headerBg,
       }}>
         {[
           {label:'Confirmada',color:'#059669'},
@@ -463,7 +493,7 @@ export default function OccupancyCalendar() {
           </div>
         ))}
         {view==='multi' && (
-          <span style={{marginLeft:'auto',fontSize:10,color:dark?'#1e293b':'#cbd5e1',fontStyle:'italic'}}>
+          <span style={{marginLeft:'auto',fontSize:10,color:dark?'#1e293b':'#e2e8f0',fontStyle:'italic'}}>
             ← arrastra para desplazarte →
           </span>
         )}
@@ -475,10 +505,10 @@ export default function OccupancyCalendar() {
           <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:240}}>
             <div style={{textAlign:'center'}}>
               <div style={{
-                width:28,height:28,border:'2px solid #059669',
+                width:28,height:28,border:`2px solid ${dark?'#10b981':'#059669'}`,
                 borderTopColor:'transparent',borderRadius:'50%',
                 animation:'spin 0.8s linear infinite',margin:'0 auto 12px',
-              }} />
+              }}/>
               <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
               <p style={{color:pal.headerText,fontSize:12}}>{t('calendar.loading')}</p>
             </div>
@@ -491,11 +521,11 @@ export default function OccupancyCalendar() {
         <div style={{position:'fixed',zIndex:50,pointerEvents:'none',left:tooltip.x+14,top:tooltip.y-10}}>
           <div style={{
             background:pal.tooltipBg,border:`1px solid ${pal.borderCol}`,
-            borderRadius:10,boxShadow:'0 20px 40px #00000040',
+            borderRadius:10,boxShadow:'0 20px 40px #00000050',
             padding:'12px 14px',minWidth:190,
           }}>
             <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
-              <div style={{width:7,height:7,borderRadius:'50%',background:bookingColor(tooltip.b,dark).solid}} />
+              <div style={{width:7,height:7,borderRadius:'50%',background:bookingColor(tooltip.b,dark).solid}}/>
               <span style={{fontWeight:700,color:'#f1f5f9',fontSize:13}}>
                 {tooltip.b.client.firstName} {tooltip.b.client.lastName}
               </span>
@@ -507,7 +537,7 @@ export default function OccupancyCalendar() {
               {new Date(tooltip.b.checkOutDate).toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}
             </div>
             <div style={{marginTop:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <span style={{fontWeight:700,fontSize:14,color:'#34d399'}}>
+              <span style={{fontWeight:700,fontSize:14,color:dark?'#34d399':'#059669'}}>
                 {Number(tooltip.b.totalAmount).toLocaleString()}€
               </span>
               <span style={{
