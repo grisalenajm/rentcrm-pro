@@ -346,7 +346,7 @@ export default function Settings() {
           </>
         )}
 
-        {/* PREFERENCES */
+        {/* PREFERENCES */}
         {activeTab === 'preferences' && (
           <>
             <div className="grid grid-cols-2 gap-4">
