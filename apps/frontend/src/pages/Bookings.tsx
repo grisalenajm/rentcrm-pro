@@ -316,58 +316,6 @@ export default function Bookings() {
     createMutation.isPending || createClientMutation.isPending;
 
 
-
-  // ── Sección datos cliente/huésped ─────────────────────────────────────────
-  const DocFields = ({ prefix, docType, docNumber, docCountry, onDocType, onDocNumber, onDocCountry, readonly }:
-    { prefix: string; docType: string; docNumber: string; docCountry: string;
-      onDocType: any; onDocNumber: any; onDocCountry: any; readonly?: boolean }) => (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={labelCls}>Tipo doc.</label>
-          <select value={docType} onChange={onDocType} disabled={readonly}
-            className={`${inputCls} ${readonly ? 'opacity-60 cursor-default' : ''}`}>
-            <option value="dni">DNI Nacional</option>
-            <option value="passport">Pasaporte</option>
-            <option value="nie">NIE</option>
-            <option value="other">Otro</option>
-          </select>
-        </div>
-        <div>
-          <label className={labelCls}>País expedición</label>
-          <select value={docCountry} onChange={onDocCountry} disabled={readonly}
-            className={`${inputCls} ${readonly ? 'opacity-60 cursor-default' : ''}`}>
-            {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-          </select>
-        </div>
-      </div>
-      <div>
-        <label className={labelCls}>Nº documento *</label>
-        <input value={docNumber} onChange={onDocNumber} readOnly={readonly}
-          placeholder={docType === 'dni' ? '12345678A' : docType === 'passport' ? 'AAA123456' : ''}
-          className={`${inputCls} ${readonly ? 'opacity-60 cursor-default' : ''}`} />
-        {docWarnings[prefix] && (
-          <p className="text-amber-400 text-xs mt-1">⚠ {docWarnings[prefix]}</p>
-        )}
-      </div>
-    </div>
-  );
-
-  const PhoneField = ({ phoneCode, phoneNumber, onCode, onNumber, readonly }:
-    { phoneCode: string; phoneNumber: string; onCode: any; onNumber: any; readonly?: boolean }) => (
-    <div>
-      <label className={labelCls}>Teléfono</label>
-      <div className="flex gap-2">
-        <select value={phoneCode} onChange={onCode} disabled={readonly}
-          className={`px-2 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 w-28 ${readonly ? 'opacity-60 cursor-default' : ''}`}>
-          {COUNTRIES.map(c => <option key={c.code} value={c.phone}>{c.phone} {c.code}</option>)}
-        </select>
-        <input value={phoneNumber} onChange={onNumber} readOnly={readonly} placeholder="600000000"
-          className={`flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 ${readonly ? 'opacity-60 cursor-default' : ''}`} />
-      </div>
-    </div>
-  );
-
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
