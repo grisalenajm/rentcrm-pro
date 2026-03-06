@@ -15,7 +15,6 @@ interface Booking {
   property: { id: string; name: string; };
 }
 
-// ── Utilidades de fecha ───────────────────────────────────────────────────────
 function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function startOfDay(d: Date) { const r = new Date(d); r.setHours(0,0,0,0); return r; }
 function sameDay(a: Date, b: Date) {
@@ -24,50 +23,45 @@ function sameDay(a: Date, b: Date) {
 function bookingCoversDay(b: Booking, day: Date) {
   const ci = startOfDay(new Date(b.checkInDate));
   const co = startOfDay(new Date(b.checkOutDate));
-  const d  = startOfDay(day);
+  const d  = startOfDay(new Date(day));
   return d >= ci && d < co;
 }
-function isCheckIn(b: Booking, day: Date) { return sameDay(startOfDay(new Date(b.checkInDate)), startOfDay(day)); }
-function isCheckOut(b: Booking, day: Date) {
-  const co = startOfDay(new Date(b.checkOutDate));
-  const d  = startOfDay(day);
-  return sameDay(co, d);
-}
+function isCheckIn(b: Booking, day: Date)  { return sameDay(startOfDay(new Date(b.checkInDate)), startOfDay(new Date(day))); }
+function isCheckOut(b: Booking, day: Date) { return sameDay(startOfDay(new Date(b.checkOutDate)), startOfDay(new Date(day))); }
 
-// ── Colores por fuente/estado ─────────────────────────────────────────────────
 function bookingColor(b: Booking) {
-  if (b.source === 'airbnb')   return { pill: '#FF5A5F', light: '#FF5A5F22', label: 'Airbnb' };
-  if (b.source === 'booking')  return { pill: '#003580', light: '#00358022', label: 'Booking' };
-  if (b.status === 'confirmed') return { pill: '#10b981', light: '#10b98122', label: '' };
-  if (b.status === 'cancelled') return { pill: '#ef4444', light: '#ef444422', label: '' };
-  return { pill: '#f59e0b', light: '#f59e0b22', label: '' };
+  if (b.source === 'airbnb')    return { solid: '#e8414a', bg: '#e8414a18', text: '#ff8a8e' };
+  if (b.source === 'booking')   return { solid: '#1a6fc4', bg: '#1a6fc418', text: '#6ab0f5' };
+  if (b.status === 'confirmed') return { solid: '#059669', bg: '#05966918', text: '#34d399' };
+  if (b.status === 'cancelled') return { solid: '#dc2626', bg: '#dc262618', text: '#f87171' };
+  return                               { solid: '#d97706', bg: '#d9770618', text: '#fbbf24' };
 }
 
-const DAY_W = 44; // px ancho de cada día
+const DAY_W   = 46;
+const ROW_H   = 52;
+const PROP_W  = 176;
 
 export default function OccupancyCalendar() {
-  const { t } = useTranslation();
+  const { t }    = useTranslation();
   const navigate = useNavigate();
-  const today = startOfDay(new Date());
+  const today    = startOfDay(new Date());
 
-  const [view, setView]               = useState<'multi'|'monthly'>('multi');
-  const [properties, setProperties]   = useState<Property[]>([]);
-  const [bookings, setBookings]        = useState<Booking[]>([]);
-  const [loading, setLoading]          = useState(true);
-  const [selProp, setSelProp]          = useState('');
-  const [year, setYear]               = useState(today.getFullYear());
-  const [month, setMonth]             = useState(today.getMonth());
-  const [tooltip, setTooltip]         = useState<{b: Booking; x: number; y: number}|null>(null);
+  const [view, setView]             = useState<'multi'|'monthly'>('multi');
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [bookings,   setBookings]   = useState<Booking[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [selProp,    setSelProp]    = useState('');
+  const [year,       setYear]       = useState(today.getFullYear());
+  const [month,      setMonth]      = useState(today.getMonth());
+  const [offset,     setOffset]     = useState(-2);
+  const [tooltip,    setTooltip]    = useState<{b:Booking;x:number;y:number}|null>(null);
 
-  // Scroll multi-view: días offset desde hoy
-  const [offset, setOffset]           = useState(-3); // empieza 3 días antes de hoy
-  const scrollRef                     = useRef<HTMLDivElement>(null);
-  const isDragging                    = useRef(false);
-  const dragStart                     = useRef(0);
-  const dragOffset                    = useRef(0);
+  const isDragging  = useRef(false);
+  const dragStartX  = useRef(0);
+  const dragOffsetStart = useRef(0);
 
-  const VISIBLE_DAYS = 35;
-  const multiDays = Array.from({ length: VISIBLE_DAYS }, (_, i) => addDays(today, offset + i));
+  const VISIBLE = 35;
+  const multiDays = Array.from({length: VISIBLE}, (_, i) => addDays(today, offset + i));
 
   useEffect(() => {
     (async () => {
@@ -83,75 +77,92 @@ export default function OccupancyCalendar() {
     })();
   }, []);
 
-  // ── Arrastre scroll ───────────────────────────────────────────────────────
   const onMouseDown = (e: React.MouseEvent) => {
-    isDragging.current = true;
-    dragStart.current  = e.clientX;
-    dragOffset.current = offset;
+    isDragging.current    = true;
+    dragStartX.current    = e.clientX;
+    dragOffsetStart.current = offset;
     e.preventDefault();
   };
   const onMouseMove = (e: React.MouseEvent) => {
     if (!isDragging.current) return;
-    const delta = Math.round((dragStart.current - e.clientX) / DAY_W);
-    setOffset(dragOffset.current + delta);
+    const delta = Math.round((dragStartX.current - e.clientX) / DAY_W);
+    setOffset(dragOffsetStart.current + delta);
   };
   const onMouseUp = () => { isDragging.current = false; };
 
-  const shiftDays = (n: number) => setOffset(o => o + n);
+  const shiftDays  = (n: number) => setOffset(o => o + n);
+  const prevMonth  = () => { if (month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1); };
+  const nextMonth  = () => { if (month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1); };
+  const goToday    = () => { setOffset(-2); setMonth(today.getMonth()); setYear(today.getFullYear()); };
+  const monthLabel = new Date(year,month,1).toLocaleString('default',{month:'long',year:'numeric'});
 
-  // ── Navegación mensual ────────────────────────────────────────────────────
-  const prevMonth = () => { if (month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1); };
-  const nextMonth = () => { if (month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1); };
-  const goToday   = () => { setOffset(-3); setMonth(today.getMonth()); setYear(today.getFullYear()); };
-
-  const monthLabel = new Date(year, month, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-
-  // ── Vista MULTI-PROPIEDAD ─────────────────────────────────────────────────
+  // ── MULTI-PROPIEDAD ───────────────────────────────────────────────────────
   function MultiView() {
     return (
       <div
-        ref={scrollRef}
-        className="select-none cursor-grab active:cursor-grabbing overflow-hidden"
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        onMouseLeave={onMouseUp}
+        className="select-none cursor-grab active:cursor-grabbing"
+        onMouseDown={onMouseDown} onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}     onMouseLeave={onMouseUp}
       >
-        <table className="border-collapse" style={{ tableLayout: 'fixed', width: `${180 + VISIBLE_DAYS * DAY_W}px` }}>
+        <table className="border-collapse" style={{tableLayout:'fixed', width: PROP_W + VISIBLE*DAY_W}}>
           <colgroup>
-            <col style={{ width: 180 }} />
-            {multiDays.map((_, i) => <col key={i} style={{ width: DAY_W }} />)}
+            <col style={{width: PROP_W}} />
+            {multiDays.map((_,i) => <col key={i} style={{width: DAY_W}} />)}
           </colgroup>
           <thead>
-            <tr>
-              <th className="sticky left-0 z-20 bg-slate-950 border-b border-slate-800 px-4 py-3 text-left">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Propiedad</span>
+            <tr style={{background:'#0d1117'}}>
+              {/* cabecera propiedad */}
+              <th style={{
+                position:'sticky', left:0, zIndex:20,
+                background:'#0d1117',
+                borderBottom:'1px solid #1e293b',
+                borderRight:'1px solid #1e293b',
+                padding:'10px 16px', textAlign:'left',
+              }}>
+                <span style={{fontSize:10, fontWeight:700, color:'#475569', letterSpacing:'0.1em', textTransform:'uppercase'}}>
+                  Propiedad
+                </span>
               </th>
+              {/* cabeceras días */}
               {multiDays.map((day, i) => {
                 const isT    = sameDay(day, today);
                 const isWEnd = day.getDay()===0 || day.getDay()===6;
-                const isFirst = day.getDate()===1;
+                const isFirst= day.getDate()===1;
                 return (
-                  <th key={i} className={`border-b border-slate-800 text-center py-2 relative
-                    ${isT ? 'bg-emerald-950/60' : isWEnd ? 'bg-slate-900/60' : ''}`}
-                    style={{ width: DAY_W }}>
+                  <th key={i} style={{
+                    background: isT ? '#052e16' : isWEnd ? '#0f172a' : '#0d1117',
+                    borderBottom: isT ? '2px solid #10b981' : '1px solid #1e293b',
+                    borderRight: '1px solid #1e293b',
+                    padding:'6px 2px',
+                    textAlign:'center',
+                    verticalAlign:'bottom',
+                    position:'relative',
+                  }}>
                     {isFirst && (
-                      <div className="absolute -top-0 left-0 right-0 text-center">
-                        <span className="text-xs text-emerald-500 font-bold uppercase">
-                          {day.toLocaleString('default',{month:'short'})}
-                        </span>
+                      <div style={{
+                        position:'absolute', top:2, left:0, right:0,
+                        fontSize:9, fontWeight:800, color:'#10b981',
+                        textTransform:'uppercase', letterSpacing:'0.08em',
+                      }}>
+                        {day.toLocaleString('default',{month:'short'})}
                       </div>
                     )}
-                    <div className={`text-xs ${isT ? 'text-emerald-400 font-bold' : isWEnd ? 'text-slate-500' : 'text-slate-400'}`}>
+                    <div style={{fontSize:10, color: isT?'#10b981': isWEnd?'#475569':'#64748b', marginTop:isFirst?10:0}}>
                       {day.toLocaleString('default',{weekday:'narrow'})}
                     </div>
-                    <div className={`text-sm font-bold leading-tight
-                      ${isT ? 'text-emerald-300' : isWEnd ? 'text-slate-500' : 'text-slate-300'}`}>
-                      {isT ? (
-                        <span className="inline-flex items-center justify-center w-6 h-6 bg-emerald-500 text-white rounded-full text-xs">
-                          {day.getDate()}
-                        </span>
-                      ) : day.getDate()}
+                    <div style={{
+                      fontSize:12, fontWeight:700,
+                      color: isT?'#ffffff': isWEnd?'#475569':'#94a3b8',
+                      lineHeight:'20px',
+                    }}>
+                      {isT
+                        ? <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',
+                            width:22,height:22,background:'#10b981',borderRadius:'50%',
+                            fontSize:11,color:'#fff',fontWeight:800}}>
+                            {day.getDate()}
+                          </span>
+                        : day.getDate()
+                      }
                     </div>
                   </th>
                 );
@@ -162,46 +173,73 @@ export default function OccupancyCalendar() {
             {properties.map((prop, pi) => {
               const propBkgs = bookings.filter(b => b.property?.id===prop.id && b.status!=='cancelled');
               return (
-                <tr key={prop.id} className={pi % 2 === 0 ? '' : 'bg-slate-900/20'}>
-                  <td className="sticky left-0 z-10 bg-slate-950 border-b border-slate-800/50 px-4 py-0"
-                    style={{ height: 48 }}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500/60 shrink-0" />
-                      <span className="text-sm text-slate-300 font-medium truncate">{prop.name}</span>
+                <tr key={prop.id}>
+                  <td style={{
+                    position:'sticky', left:0, zIndex:10,
+                    background: pi%2===0 ? '#0d1117' : '#0a0e17',
+                    borderBottom:'1px solid #1e293b',
+                    borderRight:'2px solid #1e293b',
+                    padding:'0 16px',
+                    height: ROW_H,
+                  }}>
+                    <div style={{display:'flex', alignItems:'center', gap:8}}>
+                      <div style={{width:6,height:6,borderRadius:'50%',background:'#10b981',opacity:0.7,flexShrink:0}} />
+                      <span style={{fontSize:13,color:'#cbd5e1',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                        {prop.name}
+                      </span>
                     </div>
                   </td>
                   {multiDays.map((day, di) => {
-                    const bk    = propBkgs.find(b => bookingCoversDay(b, day));
-                    const isCi  = bk && isCheckIn(bk, day);
-                    const isCo  = bk && isCheckOut(bk, nextDay(day));
-                    const isT   = sameDay(day, today);
-                    const isWEnd= day.getDay()===0||day.getDay()===6;
-                    const col   = bk ? bookingColor(bk) : null;
+                    const bk   = propBkgs.find(b => bookingCoversDay(b, day));
+                    const isCi = bk && isCheckIn(bk, day);
+                    const isCo = bk && isCheckOut(bk, addDays(day,1));
+                    const isT  = sameDay(day, today);
+                    const isWEnd = day.getDay()===0||day.getDay()===6;
+                    const col  = bk ? bookingColor(bk) : null;
+                    const bg   = isT ? '#052e16' : isWEnd ? '#0c1220' : pi%2===0 ? '#0d1117' : '#0a0e17';
                     return (
                       <td key={di}
-                        className={`border-b border-slate-800/50 p-0 relative overflow-hidden
-                          ${isT ? 'bg-emerald-950/30' : isWEnd ? 'bg-slate-900/30' : ''}
-                          ${bk ? 'cursor-pointer' : ''}`}
-                        style={{ height: 48 }}
                         onClick={() => bk && navigate(`/bookings/${bk.id}`)}
                         onMouseEnter={e => bk && setTooltip({b:bk, x:e.clientX, y:e.clientY})}
                         onMouseLeave={() => setTooltip(null)}
-                      >
-                        {isT && <div className="absolute inset-0 border-x-2 border-emerald-500/20 pointer-events-none" />}
+                        style={{
+                          background: bg,
+                          borderBottom:'1px solid #1e293b',
+                          borderRight:'1px solid #1e293b',
+                          padding:0,
+                          height: ROW_H,
+                          position:'relative',
+                          cursor: bk ? 'pointer' : 'default',
+                        }}>
+                        {isT && (
+                          <div style={{
+                            position:'absolute',inset:0,
+                            borderLeft:'1px solid #10b98130',
+                            borderRight:'1px solid #10b98130',
+                            pointerEvents:'none',
+                          }} />
+                        )}
                         {bk && (
-                          <div className="absolute inset-y-2 left-0 right-0 flex items-center"
-                            style={{
-                              background: col!.light,
-                              borderLeft:  isCi ? `3px solid ${col!.pill}` : 'none',
-                              borderRight: isCheckOut(bk, addDays(day,1)) ? `3px solid ${col!.pill}` : 'none',
-                              borderRadius: isCi ? '4px 0 0 4px' : isCheckOut(bk,addDays(day,1)) ? '0 4px 4px 0' : '0',
-                            }}>
+                          <div style={{
+                            position:'absolute',
+                            top:8, bottom:8,
+                            left: isCi ? 4 : 0,
+                            right: isCo ? 4 : 0,
+                            background: col!.bg,
+                            borderLeft:   isCi ? `3px solid ${col!.solid}` : `1px solid ${col!.solid}30`,
+                            borderRight:  isCo ? `3px solid ${col!.solid}` : `1px solid ${col!.solid}30`,
+                            borderTop:    `1px solid ${col!.solid}40`,
+                            borderBottom: `1px solid ${col!.solid}40`,
+                            borderRadius: isCi&&isCo ? 5 : isCi ? '5px 0 0 5px' : isCo ? '0 5px 5px 0' : 0,
+                            display:'flex', alignItems:'center',
+                            overflow:'hidden',
+                          }}>
                             {isCi && (
-                              <div className="px-2 overflow-hidden whitespace-nowrap">
-                                <span className="text-xs font-semibold" style={{color: col!.pill}}>
+                              <div style={{padding:'0 6px',overflow:'hidden',whiteSpace:'nowrap'}}>
+                                <span style={{fontSize:11,fontWeight:700,color:col!.text}}>
                                   {bk.client.firstName} {bk.client.lastName[0]}.
                                 </span>
-                                <span className="text-xs text-slate-400 ml-1">
+                                <span style={{fontSize:10,color:'#64748b',marginLeft:4}}>
                                   {Number(bk.totalAmount).toLocaleString()}€
                                 </span>
                               </div>
@@ -220,69 +258,107 @@ export default function OccupancyCalendar() {
     );
   }
 
-  function nextDay(d: Date) { return addDays(d, 1); }
-
-  // ── Vista MENSUAL ─────────────────────────────────────────────────────────
+  // ── MENSUAL ───────────────────────────────────────────────────────────────
   function MonthlyView() {
-    const propBkgs = bookings.filter(b => b.property?.id===selProp && b.status!=='cancelled');
-    const firstDow = (new Date(year,month,1).getDay()+6)%7;
-    const daysInM  = new Date(year,month+1,0).getDate();
-    const totalC   = Math.ceil((firstDow+daysInM)/7)*7;
-    const cells    = Array.from({length:totalC},(_,i)=>{
+    const propBkgs  = bookings.filter(b => b.property?.id===selProp && b.status!=='cancelled');
+    const firstDow  = (new Date(year,month,1).getDay()+6)%7;
+    const daysInM   = new Date(year,month+1,0).getDate();
+    const totalC    = Math.ceil((firstDow+daysInM)/7)*7;
+    const cells     = Array.from({length:totalC},(_,i) => {
       const d = i - firstDow + 1;
       return (d>=1&&d<=daysInM) ? new Date(year,month,d) : null;
     });
-    const WEEK_DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+    const WD = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 
     return (
-      <div>
-        <div className="grid grid-cols-7">
-          {WEEK_DAYS.map(d=>(
-            <div key={d} className="py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-widest border-b border-slate-800">
+      <div style={{padding:'0 24px 24px'}}>
+        {/* cabeceras días semana */}
+        <div style={{display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:2}}>
+          {WD.map((d,i) => (
+            <div key={d} style={{
+              padding:'8px 0',
+              textAlign:'center',
+              fontSize:10,
+              fontWeight:700,
+              color: i>=5 ? '#334155' : '#475569',
+              textTransform:'uppercase',
+              letterSpacing:'0.08em',
+            }}>
               {d}
             </div>
           ))}
-          {cells.map((day,i)=>{
-            if(!day) return (
-              <div key={i} className="min-h-28 border-b border-r border-slate-800/40 bg-slate-950/50" />
+        </div>
+        {/* grid días */}
+        <div style={{
+          display:'grid',
+          gridTemplateColumns:'repeat(7,1fr)',
+          border:'1px solid #1e293b',
+          borderRadius:8,
+          overflow:'hidden',
+        }}>
+          {cells.map((day,i) => {
+            if (!day) return (
+              <div key={i} style={{
+                minHeight:88,
+                background:'#080c12',
+                borderRight:'1px solid #1e293b',
+                borderBottom:'1px solid #1e293b',
+              }} />
             );
-            const dayBkgs  = propBkgs.filter(b=>bookingCoversDay(b,day));
-            const isT      = sameDay(day,today);
-            const isWEnd   = day.getDay()===0||day.getDay()===6;
-            const isThisM  = day.getMonth()===month;
+            const dayBkgs = propBkgs.filter(b => bookingCoversDay(b,day));
+            const isT     = sameDay(day, today);
+            const isWEnd  = day.getDay()===0||day.getDay()===6;
             return (
-              <div key={i} className={`min-h-28 border-b border-r border-slate-800/40 p-2 flex flex-col gap-1 transition-colors
-                ${isT ? 'bg-emerald-950/30' : isWEnd ? 'bg-slate-900/30' : 'bg-slate-950'}
-                ${!isThisM ? 'opacity-30' : ''}`}>
-                <div className="flex justify-end">
-                  {isT ? (
-                    <span className="w-7 h-7 flex items-center justify-center bg-emerald-500 text-white text-xs font-bold rounded-full">
-                      {day.getDate()}
-                    </span>
-                  ) : (
-                    <span className={`text-xs font-semibold ${isWEnd ? 'text-slate-500' : 'text-slate-400'}`}>
-                      {day.getDate()}
-                    </span>
-                  )}
+              <div key={i} style={{
+                minHeight:88,
+                background: isT ? '#052e16' : isWEnd ? '#0c1220' : '#0d1117',
+                borderRight:'1px solid #1e293b',
+                borderBottom:'1px solid #1e293b',
+                borderTop: isT ? '2px solid #10b981' : '2px solid transparent',
+                padding:'6px 6px 4px',
+                display:'flex',
+                flexDirection:'column',
+                gap:2,
+              }}>
+                {/* número día */}
+                <div style={{display:'flex',justifyContent:'flex-end',marginBottom:2}}>
+                  {isT
+                    ? <span style={{width:22,height:22,display:'inline-flex',alignItems:'center',
+                        justifyContent:'center',background:'#10b981',borderRadius:'50%',
+                        fontSize:11,fontWeight:800,color:'#fff'}}>
+                        {day.getDate()}
+                      </span>
+                    : <span style={{fontSize:11,fontWeight:600,color:isWEnd?'#334155':'#475569'}}>
+                        {day.getDate()}
+                      </span>
+                  }
                 </div>
-                {dayBkgs.map(bk=>{
+                {/* reservas */}
+                {dayBkgs.map(bk => {
                   const col = bookingColor(bk);
-                  const ci  = isCheckIn(bk,day);
-                  const co  = isCheckOut(bk,addDays(day,1));
+                  const ci  = isCheckIn(bk, day);
                   return (
                     <div key={bk.id}
-                      onClick={()=>navigate(`/bookings/${bk.id}`)}
-                      onMouseEnter={e=>setTooltip({b:bk,x:e.clientX,y:e.clientY})}
-                      onMouseLeave={()=>setTooltip(null)}
-                      className="cursor-pointer hover:brightness-110 transition-all text-xs px-2 py-0.5 truncate"
+                      onClick={() => navigate(`/bookings/${bk.id}`)}
+                      onMouseEnter={e => setTooltip({b:bk, x:e.clientX, y:e.clientY})}
+                      onMouseLeave={() => setTooltip(null)}
                       style={{
-                        background: col.light,
-                        borderLeft: `3px solid ${col.pill}`,
-                        borderRadius: ci ? '4px' : co ? '0 4px 4px 0' : '0',
-                        color: col.pill,
+                        background: col.bg,
+                        borderLeft:`2px solid ${col.solid}`,
+                        borderRadius:3,
+                        padding:'2px 6px',
+                        fontSize:10,
                         fontWeight: ci ? 700 : 400,
+                        color: col.text,
+                        cursor:'pointer',
+                        overflow:'hidden',
+                        textOverflow:'ellipsis',
+                        whiteSpace:'nowrap',
                       }}>
-                      {ci ? `▶ ${bk.client.firstName} · ${Number(bk.totalAmount).toLocaleString()}€` : bk.client.firstName}
+                      {ci
+                        ? `▶ ${bk.client.firstName} · ${Number(bk.totalAmount).toLocaleString()}€`
+                        : `  ${bk.client.firstName}`
+                      }
                     </div>
                   );
                 })}
@@ -296,119 +372,166 @@ export default function OccupancyCalendar() {
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   return (
-    <div className="h-full flex flex-col bg-slate-950">
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#0d1117'}}>
 
-      {/* ── Barra superior ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-slate-800">
+      {/* Barra superior */}
+      <div style={{
+        display:'flex', flexWrap:'wrap', alignItems:'center',
+        justifyContent:'space-between', gap:12,
+        padding:'16px 24px',
+        borderBottom:'1px solid #1e293b',
+        background:'#0a0e17',
+      }}>
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">{t('calendar.title')}</h1>
-          <p className="text-xs text-slate-500 mt-0.5">{t('calendar.subtitle')}</p>
+          <h1 style={{fontSize:18,fontWeight:700,color:'#f1f5f9',margin:0,letterSpacing:'-0.02em'}}>
+            {t('calendar.title')}
+          </h1>
+          <p style={{fontSize:11,color:'#475569',margin:'2px 0 0'}}>{t('calendar.subtitle')}</p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
           {/* Hoy */}
-          <button onClick={goToday}
-            className="px-3 py-1.5 text-xs font-semibold text-emerald-400 border border-emerald-800 hover:bg-emerald-900/30 rounded-lg transition">
+          <button onClick={goToday} style={{
+            padding:'5px 12px', fontSize:11, fontWeight:600,
+            color:'#10b981', border:'1px solid #064e3b',
+            background:'transparent', borderRadius:6, cursor:'pointer',
+          }}>
             Hoy
           </button>
 
-          {/* Vista mensual: selector propiedad */}
+          {/* Selector propiedad mensual */}
           {view==='monthly' && (
-            <select value={selProp} onChange={e=>setSelProp(e.target.value)}
-              className="bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-600">
+            <select value={selProp} onChange={e=>setSelProp(e.target.value)} style={{
+              background:'#0d1117', border:'1px solid #1e293b',
+              color:'#cbd5e1', fontSize:11, borderRadius:6,
+              padding:'5px 10px', outline:'none',
+            }}>
               {properties.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           )}
 
           {/* Navegación período */}
-          <div className="flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-lg p-1">
-            <button onClick={()=>view==='multi'?shiftDays(-7):prevMonth()}
-              className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition text-sm">
-              ‹
-            </button>
-            <span className="px-3 text-xs font-semibold text-slate-300 min-w-36 text-center">
+          <div style={{
+            display:'flex', alignItems:'center', gap:2,
+            background:'#0d1117', border:'1px solid #1e293b',
+            borderRadius:6, padding:2,
+          }}>
+            <button onClick={()=>view==='multi'?shiftDays(-7):prevMonth()} style={{
+              width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',
+              background:'transparent',border:'none',color:'#64748b',
+              cursor:'pointer',borderRadius:4,fontSize:16,fontWeight:300,
+            }}>‹</button>
+            <span style={{
+              padding:'0 12px', fontSize:11, fontWeight:600,
+              color:'#94a3b8', minWidth:160, textAlign:'center',
+              textTransform:'capitalize',
+            }}>
               {view==='multi'
-                ? `${multiDays[0].toLocaleDateString('es',{day:'numeric',month:'short'})} — ${multiDays[VISIBLE_DAYS-1].toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}`
-                : <span className="capitalize">{monthLabel}</span>
+                ? `${multiDays[0].toLocaleDateString('es',{day:'numeric',month:'short'})} — ${multiDays[VISIBLE-1].toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}`
+                : monthLabel
               }
             </span>
-            <button onClick={()=>view==='multi'?shiftDays(7):nextMonth()}
-              className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition text-sm">
-              ›
-            </button>
+            <button onClick={()=>view==='multi'?shiftDays(7):nextMonth()} style={{
+              width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',
+              background:'transparent',border:'none',color:'#64748b',
+              cursor:'pointer',borderRadius:4,fontSize:16,fontWeight:300,
+            }}>›</button>
           </div>
 
           {/* Toggle vista */}
-          <div className="flex bg-slate-900 border border-slate-700 rounded-lg p-1 gap-1">
-            <button onClick={()=>setView('multi')}
-              className={`px-3 py-1 rounded-md text-xs font-semibold transition
-                ${view==='multi' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
-              🏠 Multi
-            </button>
-            <button onClick={()=>setView('monthly')}
-              className={`px-3 py-1 rounded-md text-xs font-semibold transition
-                ${view==='monthly' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
-              📅 Mensual
-            </button>
+          <div style={{display:'flex',background:'#0d1117',border:'1px solid #1e293b',borderRadius:6,padding:2,gap:2}}>
+            {(['multi','monthly'] as const).map(v => (
+              <button key={v} onClick={()=>setView(v)} style={{
+                padding:'4px 12px', fontSize:11, fontWeight:600,
+                background: view===v ? '#10b981' : 'transparent',
+                color: view===v ? '#fff' : '#64748b',
+                border:'none', borderRadius:5, cursor:'pointer',
+                transition:'all 0.15s',
+              }}>
+                {v==='multi' ? '⊞ Multi' : '▦ Mensual'}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* ── Leyenda ── */}
-      <div className="flex items-center gap-4 px-6 py-2 border-b border-slate-800/50">
+      {/* Leyenda */}
+      <div style={{
+        display:'flex', alignItems:'center', gap:16,
+        padding:'8px 24px',
+        borderBottom:'1px solid #1e293b',
+        background:'#0a0e17',
+      }}>
         {[
-          { label: 'Confirmada', color: '#10b981' },
-          { label: 'Pendiente',  color: '#f59e0b' },
-          { label: 'Airbnb',     color: '#FF5A5F' },
-          { label: 'Booking.com',color: '#003580' },
-          { label: 'Cancelada',  color: '#ef4444' },
+          {label:'Confirmada', color:'#059669'},
+          {label:'Pendiente',  color:'#d97706'},
+          {label:'Airbnb',     color:'#e8414a'},
+          {label:'Booking.com',color:'#1a6fc4'},
+          {label:'Cancelada',  color:'#dc2626'},
         ].map(l=>(
-          <div key={l.label} className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-sm" style={{background:l.color}} />
-            <span className="text-xs text-slate-500">{l.label}</span>
+          <div key={l.label} style={{display:'flex',alignItems:'center',gap:5}}>
+            <div style={{width:8,height:8,borderRadius:2,background:l.color}} />
+            <span style={{fontSize:10,color:'#475569'}}>{l.label}</span>
           </div>
         ))}
         {view==='multi' && (
-          <span className="ml-auto text-xs text-slate-600 italic">← arrastra para desplazarte →</span>
+          <span style={{marginLeft:'auto',fontSize:10,color:'#1e293b',fontStyle:'italic'}}>
+            ← arrastra para desplazarte →
+          </span>
         )}
       </div>
 
-      {/* ── Contenido ── */}
-      <div className="flex-1 overflow-auto">
+      {/* Contenido */}
+      <div style={{flex:1, overflow:'auto'}}>
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-slate-500 text-sm">{t('calendar.loading')}</p>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:240}}>
+            <div style={{textAlign:'center'}}>
+              <div style={{
+                width:28,height:28,border:'2px solid #10b981',
+                borderTopColor:'transparent',borderRadius:'50%',
+                animation:'spin 0.8s linear infinite',margin:'0 auto 12px',
+              }} />
+              <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+              <p style={{color:'#475569',fontSize:12}}>{t('calendar.loading')}</p>
             </div>
           </div>
         ) : view==='multi' ? <MultiView /> : <MonthlyView />}
       </div>
 
-      {/* ── Tooltip ── */}
+      {/* Tooltip */}
       {tooltip && (
-        <div className="fixed z-50 pointer-events-none"
-          style={{left: tooltip.x+14, top: tooltip.y-10}}>
-          <div className="bg-slate-800 border border-slate-600 rounded-xl shadow-2xl p-4 min-w-48">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full" style={{background: bookingColor(tooltip.b).pill}} />
-              <span className="font-bold text-white text-sm">
+        <div style={{
+          position:'fixed', zIndex:50, pointerEvents:'none',
+          left: tooltip.x+14, top: tooltip.y-10,
+        }}>
+          <div style={{
+            background:'#0f172a', border:'1px solid #1e293b',
+            borderRadius:10, boxShadow:'0 20px 40px #00000080',
+            padding:'12px 14px', minWidth:190,
+          }}>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+              <div style={{width:7,height:7,borderRadius:'50%',background:bookingColor(tooltip.b).solid}} />
+              <span style={{fontWeight:700,color:'#f1f5f9',fontSize:13}}>
                 {tooltip.b.client.firstName} {tooltip.b.client.lastName}
               </span>
             </div>
-            <div className="text-xs text-slate-400 mb-1">{tooltip.b.property?.name}</div>
-            <div className="text-xs text-slate-500">
+            <div style={{fontSize:11,color:'#475569',marginBottom:3}}>{tooltip.b.property?.name}</div>
+            <div style={{fontSize:11,color:'#334155'}}>
               {new Date(tooltip.b.checkInDate).toLocaleDateString('es',{day:'numeric',month:'short'})}
               {' → '}
               {new Date(tooltip.b.checkOutDate).toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}
             </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-emerald-400 font-bold text-sm">
+            <div style={{marginTop:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span style={{fontWeight:700,fontSize:14,color:'#34d399'}}>
                 {Number(tooltip.b.totalAmount).toLocaleString()}€
               </span>
-              <span className="text-xs px-2 py-0.5 rounded-full capitalize"
-                style={{background: bookingColor(tooltip.b).light, color: bookingColor(tooltip.b).pill}}>
-                {tooltip.b.source !== 'direct' ? tooltip.b.source : tooltip.b.status}
+              <span style={{
+                fontSize:10,padding:'2px 7px',borderRadius:20,
+                background:bookingColor(tooltip.b).bg,
+                color:bookingColor(tooltip.b).text,
+                fontWeight:600, textTransform:'capitalize',
+              }}>
+                {tooltip.b.source!=='direct' ? tooltip.b.source : tooltip.b.status}
               </span>
             </div>
           </div>
