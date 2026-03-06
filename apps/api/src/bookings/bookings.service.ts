@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
+import { CreateBookingGuestSesDto } from './dto/booking-guest-ses.dto';
 
 @Injectable()
 export class BookingsService {
@@ -17,6 +18,7 @@ export class BookingsService {
         client:   { select: { id: true, firstName: true, lastName: true, dniPassport: true } },
         property: { select: { id: true, name: true, city: true } },
         guests:   { include: { client: { select: { id: true, firstName: true, lastName: true } } } },
+        guestsSes: true,
       },
       orderBy: { checkInDate: 'desc' },
     });
@@ -26,11 +28,12 @@ export class BookingsService {
     const booking = await this.prisma.booking.findFirst({
       where: { id, organizationId },
       include: {
-        client:       { select: { id: true, firstName: true, lastName: true, dniPassport: true, nationality: true, birthDate: true } },
-        property:     { select: { id: true, name: true, city: true, address: true } },
-        guests:       { include: { client: true } },
-        policeReports:true,
-        evaluation:   true,
+        client:        { select: { id: true, firstName: true, lastName: true, dniPassport: true, nationality: true, birthDate: true } },
+        property:      { select: { id: true, name: true, city: true, address: true } },
+        guests:        { include: { client: true } },
+        guestsSes:     true,
+        policeReports: true,
+        evaluation:    true,
       },
     });
     if (!booking) throw new NotFoundException('Reserva no encontrada');
@@ -73,6 +76,7 @@ export class BookingsService {
         client:   { select: { id: true, firstName: true, lastName: true } },
         property: { select: { id: true, name: true, city: true } },
         guests:   { include: { client: { select: { id: true, firstName: true, lastName: true } } } },
+        guestsSes: true,
       },
     });
   }
@@ -104,6 +108,38 @@ export class BookingsService {
     return this.prisma.booking.update({
       where: { id },
       data: { status: 'cancelled' },
+    });
+  }
+
+  // ── Huéspedes SES ─────────────────────────────────────────────────────────
+  async getGuestsSes(bookingId: string, organizationId: string) {
+    await this.findOne(bookingId, organizationId);
+    return this.prisma.bookingGuestSes.findMany({
+      where: { bookingId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async addGuestSes(bookingId: string, dto: CreateBookingGuestSesDto, organizationId: string) {
+    await this.findOne(bookingId, organizationId);
+    return this.prisma.bookingGuestSes.create({
+      data: {
+        bookingId,
+        firstName:  dto.firstName,
+        lastName:   dto.lastName,
+        docType:    dto.docType,
+        docNumber:  dto.docNumber,
+        docCountry: dto.docCountry,
+        birthDate:  dto.birthDate ? new Date(dto.birthDate) : undefined,
+        phone:      dto.phone,
+      },
+    });
+  }
+
+  async removeGuestSes(bookingId: string, guestId: string, organizationId: string) {
+    await this.findOne(bookingId, organizationId);
+    return this.prisma.bookingGuestSes.delete({
+      where: { id: guestId },
     });
   }
 }

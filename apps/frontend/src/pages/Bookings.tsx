@@ -4,11 +4,77 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 
+// ── Datos de países ───────────────────────────────────────────────────────
+const COUNTRIES = [
+  { code: 'ES', name: 'España',          phone: '+34'  },
+  { code: 'DE', name: 'Alemania',         phone: '+49'  },
+  { code: 'FR', name: 'Francia',          phone: '+33'  },
+  { code: 'GB', name: 'Reino Unido',      phone: '+44'  },
+  { code: 'IT', name: 'Italia',           phone: '+39'  },
+  { code: 'PT', name: 'Portugal',         phone: '+351' },
+  { code: 'NL', name: 'Países Bajos',     phone: '+31'  },
+  { code: 'BE', name: 'Bélgica',          phone: '+32'  },
+  { code: 'CH', name: 'Suiza',            phone: '+41'  },
+  { code: 'AT', name: 'Austria',          phone: '+43'  },
+  { code: 'SE', name: 'Suecia',           phone: '+46'  },
+  { code: 'NO', name: 'Noruega',          phone: '+47'  },
+  { code: 'DK', name: 'Dinamarca',        phone: '+45'  },
+  { code: 'FI', name: 'Finlandia',        phone: '+358' },
+  { code: 'PL', name: 'Polonia',          phone: '+48'  },
+  { code: 'CZ', name: 'Rep. Checa',       phone: '+420' },
+  { code: 'HU', name: 'Hungría',          phone: '+36'  },
+  { code: 'RO', name: 'Rumanía',          phone: '+40'  },
+  { code: 'GR', name: 'Grecia',           phone: '+30'  },
+  { code: 'US', name: 'Estados Unidos',   phone: '+1'   },
+  { code: 'CA', name: 'Canadá',           phone: '+1'   },
+  { code: 'MX', name: 'México',           phone: '+52'  },
+  { code: 'AR', name: 'Argentina',        phone: '+54'  },
+  { code: 'BR', name: 'Brasil',           phone: '+55'  },
+  { code: 'CO', name: 'Colombia',         phone: '+57'  },
+  { code: 'CL', name: 'Chile',            phone: '+56'  },
+  { code: 'MA', name: 'Marruecos',        phone: '+212' },
+  { code: 'CN', name: 'China',            phone: '+86'  },
+  { code: 'JP', name: 'Japón',            phone: '+81'  },
+  { code: 'AU', name: 'Australia',        phone: '+61'  },
+  { code: 'RU', name: 'Rusia',            phone: '+7'   },
+  { code: 'UA', name: 'Ucrania',          phone: '+380' },
+  { code: 'TR', name: 'Turquía',          phone: '+90'  },
+  { code: 'IN', name: 'India',            phone: '+91'  },
+];
+
+// ── Validación de documentos por país ────────────────────────────────────
+function validateDoc(docType: string, docNumber: string, country: string): string | null {
+  const n = docNumber.toUpperCase().trim();
+  if (!n) return null;
+  if (docType === 'dni' && country === 'ES') {
+    if (!/^\d{8}[A-Z]$/.test(n)) return 'DNI español: 8 dígitos + letra (ej: 12345678A)';
+    const letters = 'TRWAGMYFPDXBNJZSQVHLCKE';
+    if (letters[parseInt(n.slice(0, 8)) % 23] !== n[8]) return 'Letra del DNI incorrecta';
+  }
+  if (docType === 'passport') {
+    if (country === 'ES' && !/^[A-Z]{3}\d{6}$/.test(n)) return 'Pasaporte español: 3 letras + 6 dígitos (ej: AAA123456)';
+    if (country === 'GB' && !/^\d{9}$/.test(n)) return 'Pasaporte UK: 9 dígitos';
+    if (country === 'DE' && !/^[CFGHJKLMNPRTVWXYZ0-9]{9}$/.test(n)) return 'Pasaporte alemán: 9 caracteres alfanuméricos';
+    if (country === 'FR' && !/^\d{9}$/.test(n)) return 'Pasaporte francés: 9 dígitos';
+    if (country === 'US' && !/^[A-Z0-9]{9}$/.test(n)) return 'Pasaporte USA: 9 caracteres alfanuméricos';
+  }
+  if (docType === 'nie' && country === 'ES') {
+    if (!/^[XYZ]\d{7}[A-Z]$/.test(n)) return 'NIE: X/Y/Z + 7 dígitos + letra (ej: X1234567A)';
+  }
+  return null;
+}
+
 const statusColor: Record<string, string> = {
   confirmed: 'bg-emerald-500/10 text-emerald-400',
-  cancelled:  'bg-red-500/10 text-red-400',
-  completed:  'bg-slate-500/10 text-slate-400',
+  cancelled: 'bg-red-500/10 text-red-400',
+  completed: 'bg-slate-500/10 text-slate-400',
+  pending:   'bg-amber-500/10 text-amber-400',
 };
+
+const emptyGuest = () => ({
+  firstName: '', lastName: '', docType: 'passport', docNumber: '',
+  docCountry: 'ES', birthDate: '', phoneCode: '+34', phoneNumber: '',
+});
 
 export default function Bookings() {
   const { t } = useTranslation();
@@ -22,9 +88,12 @@ export default function Bookings() {
     totalAmount: '', source: 'direct', status: 'confirmed', notes: '',
   });
   const [newClient, setNewClient] = useState({
-    firstName: '', lastName: '', dniPassport: '', nationality: '',
-    birthDate: '', email: '', phone: '',
+    firstName: '', lastName: '', docType: 'dni', dniPassport: '',
+    docCountry: 'ES', nationality: '', birthDate: '',
+    phoneCode: '+34', phoneNumber: '', email: '',
   });
+  const [guests, setGuests] = useState<ReturnType<typeof emptyGuest>[]>([]);
+  const [docWarnings, setDocWarnings] = useState<Record<string, string>>({});
   const [errorMsg, setErrorMsg] = useState('');
 
   const { data: bookingsRaw, isLoading } = useQuery({
@@ -51,14 +120,26 @@ export default function Bookings() {
 
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post('/bookings', data),
-    onSuccess: () => {
+    onSuccess: async (res) => {
+      const bookingId = res.data.id;
+      // Crear huéspedes SES
+      for (const g of guests) {
+        if (!g.firstName || !g.lastName || !g.docNumber) continue;
+        await api.post(`/bookings/${bookingId}/guests-ses`, {
+          firstName:  g.firstName,
+          lastName:   g.lastName,
+          docType:    g.docType,
+          docNumber:  g.docNumber,
+          docCountry: g.docCountry,
+          birthDate:  g.birthDate || undefined,
+          phone:      g.phoneNumber ? `${g.phoneCode}${g.phoneNumber}` : undefined,
+        });
+      }
       qc.invalidateQueries({ queryKey: ['bookings'] });
       qc.invalidateQueries({ queryKey: ['clients'] });
       setShowForm(false);
       setErrorMsg('');
-      setForm({ clientId: '', propertyId: '', checkInDate: '', checkOutDate: '', totalAmount: '', source: 'direct', status: 'confirmed', notes: '' });
-      setNewClient({ firstName: '', lastName: '', dniPassport: '', nationality: '', birthDate: '', email: '', phone: '' });
-      setClientMode('existing');
+      resetForm();
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message;
@@ -66,34 +147,66 @@ export default function Bookings() {
     },
   });
 
+  const resetForm = () => {
+    setForm({ clientId: '', propertyId: '', checkInDate: '', checkOutDate: '', totalAmount: '', source: 'direct', status: 'confirmed', notes: '' });
+    setNewClient({ firstName: '', lastName: '', docType: 'dni', dniPassport: '', docCountry: 'ES', nationality: '', birthDate: '', phoneCode: '+34', phoneNumber: '', email: '' });
+    setGuests([]);
+    setDocWarnings({});
+    setClientMode('existing');
+  };
+
   const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [k]: e.target.value });
 
-  const fc = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setNewClient({ ...newClient, [k]: e.target.value });
+  const fc = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const updated = { ...newClient, [k]: e.target.value };
+    setNewClient(updated);
+    if (k === 'dniPassport' || k === 'docType' || k === 'docCountry') {
+      const warn = validateDoc(updated.docType, updated.dniPassport, updated.docCountry);
+      setDocWarnings(w => ({ ...w, main: warn || '' }));
+    }
+  };
 
-  // Al seleccionar cliente existente, rellena sus datos
   const handleClientSelect = (id: string) => {
     const client = clients.find((c: any) => c.id === id);
     if (client) {
       setNewClient({
-        firstName:   client.firstName  || '',
-        lastName:    client.lastName   || '',
-        dniPassport: client.dniPassport|| '',
-        nationality: client.nationality|| '',
+        firstName:   client.firstName   || '',
+        lastName:    client.lastName    || '',
+        docType:     'dni',
+        dniPassport: client.dniPassport || '',
+        docCountry:  'ES',
+        nationality: client.nationality || '',
         birthDate:   client.birthDate ? client.birthDate.substring(0, 10) : '',
-        email:       client.email      || '',
-        phone:       client.phone      || '',
+        phoneCode:   '+34',
+        phoneNumber: client.phone || '',
+        email:       client.email || '',
       });
     }
     setForm({ ...form, clientId: id });
+  };
+
+  const addGuest = () => setGuests(g => [...g, emptyGuest()]);
+
+  const updateGuest = (i: number, k: string, v: string) => {
+    const updated = guests.map((g, idx) => idx === i ? { ...g, [k]: v } : g);
+    setGuests(updated);
+    if (k === 'docNumber' || k === 'docType' || k === 'docCountry') {
+      const g = updated[i];
+      const warn = validateDoc(g.docType, g.docNumber, g.docCountry);
+      setDocWarnings(w => ({ ...w, [`guest_${i}`]: warn || '' }));
+    }
+  };
+
+  const removeGuest = (i: number) => {
+    setGuests(g => g.filter((_, idx) => idx !== i));
+    setDocWarnings(w => { const n = { ...w }; delete n[`guest_${i}`]; return n; });
   };
 
   const handleSubmit = async () => {
     setErrorMsg('');
     try {
       let clientId = form.clientId;
-
       if (clientMode === 'new') {
         if (!newClient.firstName || !newClient.lastName) {
           setErrorMsg('El nombre y apellido del cliente son obligatorios.');
@@ -106,11 +219,10 @@ export default function Bookings() {
           nationality: newClient.nationality || undefined,
           birthDate:   newClient.birthDate   || undefined,
           email:       newClient.email       || undefined,
-          phone:       newClient.phone       || undefined,
+          phone:       newClient.phoneNumber ? `${newClient.phoneCode}${newClient.phoneNumber}` : undefined,
         });
         clientId = created.id;
       }
-
       createMutation.mutate({
         clientId,
         propertyId:   form.propertyId,
@@ -135,6 +247,57 @@ export default function Bookings() {
   const inputCls = "w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
   const labelCls = "block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1";
 
+  // ── Sección datos cliente/huésped ─────────────────────────────────────────
+  const DocFields = ({ prefix, docType, docNumber, docCountry, onDocType, onDocNumber, onDocCountry, readonly }:
+    { prefix: string; docType: string; docNumber: string; docCountry: string;
+      onDocType: any; onDocNumber: any; onDocCountry: any; readonly?: boolean }) => (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelCls}>Tipo doc.</label>
+          <select value={docType} onChange={onDocType} disabled={readonly}
+            className={`${inputCls} ${readonly ? 'opacity-60 cursor-default' : ''}`}>
+            <option value="dni">DNI Nacional</option>
+            <option value="passport">Pasaporte</option>
+            <option value="nie">NIE</option>
+            <option value="other">Otro</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>País expedición</label>
+          <select value={docCountry} onChange={onDocCountry} disabled={readonly}
+            className={`${inputCls} ${readonly ? 'opacity-60 cursor-default' : ''}`}>
+            {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className={labelCls}>Nº documento *</label>
+        <input value={docNumber} onChange={onDocNumber} readOnly={readonly}
+          placeholder={docType === 'dni' ? '12345678A' : docType === 'passport' ? 'AAA123456' : ''}
+          className={`${inputCls} ${readonly ? 'opacity-60 cursor-default' : ''}`} />
+        {docWarnings[prefix] && (
+          <p className="text-amber-400 text-xs mt-1">⚠ {docWarnings[prefix]}</p>
+        )}
+      </div>
+    </div>
+  );
+
+  const PhoneField = ({ phoneCode, phoneNumber, onCode, onNumber, readonly }:
+    { phoneCode: string; phoneNumber: string; onCode: any; onNumber: any; readonly?: boolean }) => (
+    <div>
+      <label className={labelCls}>Teléfono</label>
+      <div className="flex gap-2">
+        <select value={phoneCode} onChange={onCode} disabled={readonly}
+          className={`px-2 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 w-28 ${readonly ? 'opacity-60 cursor-default' : ''}`}>
+          {COUNTRIES.map(c => <option key={c.code} value={c.phone}>{c.phone} {c.code}</option>)}
+        </select>
+        <input value={phoneNumber} onChange={onNumber} readOnly={readonly} placeholder="600000000"
+          className={`flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 ${readonly ? 'opacity-60 cursor-default' : ''}`} />
+      </div>
+    </div>
+  );
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -142,7 +305,7 @@ export default function Bookings() {
           <h1 className="text-2xl font-bold">{t('bookings.title')}</h1>
           <p className="text-slate-400 text-sm mt-1">{bookings.length} {t('bookings.registered')}</p>
         </div>
-        <button onClick={() => { setShowForm(true); setErrorMsg(''); }}
+        <button onClick={() => { setShowForm(true); setErrorMsg(''); resetForm(); }}
           className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
           + {t('bookings.new')}
         </button>
@@ -190,8 +353,8 @@ export default function Bookings() {
 
       {showForm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold mb-5">{t('bookings.new')}</h2>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold mb-5 text-white">{t('bookings.new')}</h2>
 
             {errorMsg && (
               <div className="mb-4 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs">
@@ -199,141 +362,203 @@ export default function Bookings() {
               </div>
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-5">
 
-              {/* Selector cliente existente / nuevo */}
-              <div>
-                <label className={labelCls}>{t('bookings.client')} *</label>
-                <div className="flex gap-2 mb-2">
-                  <button
-                    onClick={() => setClientMode('existing')}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${clientMode === 'existing' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
+              {/* ── Cliente titular ───────────────────────────────── */}
+              <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-4">
+                <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">Cliente titular</p>
+
+                <div className="flex gap-2">
+                  <button onClick={() => setClientMode('existing')}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${clientMode === 'existing' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
                     Cliente existente
                   </button>
-                  <button
-                    onClick={() => { setClientMode('new'); setForm({...form, clientId:''}); setNewClient({ firstName:'', lastName:'', dniPassport:'', nationality:'', birthDate:'', email:'', phone:'' }); }}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${clientMode === 'new' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
+                  <button onClick={() => { setClientMode('new'); setForm({ ...form, clientId: '' }); setNewClient({ firstName: '', lastName: '', docType: 'dni', dniPassport: '', docCountry: 'ES', nationality: '', birthDate: '', phoneCode: '+34', phoneNumber: '', email: '' }); }}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${clientMode === 'new' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
                     + Nuevo cliente
                   </button>
                 </div>
 
-                {clientMode === 'existing' ? (
+                {clientMode === 'existing' && (
                   <select value={form.clientId} onChange={e => handleClientSelect(e.target.value)} className={inputCls}>
                     <option value="">— Seleccionar cliente —</option>
                     {clients.map((c: any) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
                   </select>
-                ) : null}
+                )}
+
+                {(clientMode === 'new' || form.clientId) && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelCls}>Nombre *</label>
+                        <input value={newClient.firstName} onChange={fc('firstName')}
+                          readOnly={clientMode === 'existing'}
+                          className={`${inputCls} text-white ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Apellido *</label>
+                        <input value={newClient.lastName} onChange={fc('lastName')}
+                          readOnly={clientMode === 'existing'}
+                          className={`${inputCls} text-white ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
+                      </div>
+                    </div>
+                    <DocFields
+                      prefix="main"
+                      docType={newClient.docType} docNumber={newClient.dniPassport} docCountry={newClient.docCountry}
+                      onDocType={fc('docType')} onDocNumber={fc('dniPassport')} onDocCountry={fc('docCountry')}
+                      readonly={clientMode === 'existing'}
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelCls}>Nacionalidad</label>
+                        <input value={newClient.nationality} onChange={fc('nationality')}
+                          readOnly={clientMode === 'existing'}
+                          className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Fecha nacimiento</label>
+                        <input type="date" value={newClient.birthDate} onChange={fc('birthDate')}
+                          readOnly={clientMode === 'existing'}
+                          className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelCls}>Email</label>
+                        <input type="email" value={newClient.email} onChange={fc('email')}
+                          readOnly={clientMode === 'existing'}
+                          className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
+                      </div>
+                      <PhoneField
+                        phoneCode={newClient.phoneCode} phoneNumber={newClient.phoneNumber}
+                        onCode={fc('phoneCode')} onNumber={fc('phoneNumber')}
+                        readonly={clientMode === 'existing'}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Datos del cliente (siempre visibles: rellenos si existente, editables si nuevo) */}
-              {(clientMode === 'new' || form.clientId) && (
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-3">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    {clientMode === 'new' ? 'Datos del nuevo cliente' : 'Datos del cliente'}
+              {/* ── Huéspedes adicionales SES ─────────────────────── */}
+              <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Huéspedes adicionales <span className="text-slate-500 normal-case font-normal">(para SES)</span>
                   </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>Nombre *</label>
-                      <input value={newClient.firstName} onChange={fc('firstName')}
-                        readOnly={clientMode === 'existing'}
-                        className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Apellido *</label>
-                      <input value={newClient.lastName} onChange={fc('lastName')}
-                        readOnly={clientMode === 'existing'}
-                        className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>DNI / Pasaporte</label>
-                      <input value={newClient.dniPassport} onChange={fc('dniPassport')}
-                        readOnly={clientMode === 'existing'}
-                        className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Nacionalidad</label>
-                      <input value={newClient.nationality} onChange={fc('nationality')}
-                        readOnly={clientMode === 'existing'}
-                        className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>Email</label>
-                      <input type="email" value={newClient.email} onChange={fc('email')}
-                        readOnly={clientMode === 'existing'}
-                        className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Teléfono</label>
-                      <input value={newClient.phone} onChange={fc('phone')}
-                        readOnly={clientMode === 'existing'}
-                        className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelCls}>Fecha de nacimiento</label>
-                    <input type="date" value={newClient.birthDate} onChange={fc('birthDate')}
-                      readOnly={clientMode === 'existing'}
-                      className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
-                  </div>
+                  {guests.length < 4 && (
+                    <button onClick={addGuest}
+                      className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-semibold rounded-lg transition-colors">
+                      + Añadir huésped
+                    </button>
+                  )}
                 </div>
-              )}
 
-              {/* Propiedad */}
-              <div>
-                <label className={labelCls}>{t('bookings.property')} *</label>
-                <select value={form.propertyId} onChange={f('propertyId')} className={inputCls}>
-                  <option value="">— {t('bookings.property')} —</option>
-                  {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                {guests.length === 0 && (
+                  <p className="text-slate-500 text-xs text-center py-2">No hay huéspedes adicionales</p>
+                )}
+
+                {guests.map((g, i) => (
+                  <div key={i} className="border border-slate-600 rounded-xl p-4 space-y-3 relative">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-slate-400">Huésped {i + 1}</span>
+                      <button onClick={() => removeGuest(i)}
+                        className="text-red-400 hover:text-red-300 text-xs font-semibold">✕ Eliminar</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelCls}>Nombre *</label>
+                        <input value={g.firstName} onChange={e => updateGuest(i, 'firstName', e.target.value)}
+                          className={`${inputCls} text-white`} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Apellido *</label>
+                        <input value={g.lastName} onChange={e => updateGuest(i, 'lastName', e.target.value)}
+                          className={`${inputCls} text-white`} />
+                      </div>
+                    </div>
+                    <DocFields
+                      prefix={`guest_${i}`}
+                      docType={g.docType} docNumber={g.docNumber} docCountry={g.docCountry}
+                      onDocType={e => updateGuest(i, 'docType', e.target.value)}
+                      onDocNumber={e => updateGuest(i, 'docNumber', e.target.value)}
+                      onDocCountry={e => updateGuest(i, 'docCountry', e.target.value)}
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelCls}>Fecha nacimiento</label>
+                        <input type="date" value={g.birthDate} onChange={e => updateGuest(i, 'birthDate', e.target.value)}
+                          className={inputCls} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Teléfono</label>
+                        <div className="flex gap-2">
+                          <select value={g.phoneCode} onChange={e => updateGuest(i, 'phoneCode', e.target.value)}
+                            className="px-2 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 w-28">
+                            {COUNTRIES.map(c => <option key={c.code} value={c.phone}>{c.phone} {c.code}</option>)}
+                          </select>
+                          <input value={g.phoneNumber} onChange={e => updateGuest(i, 'phoneNumber', e.target.value)}
+                            placeholder="600000000"
+                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {/* Fechas */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>{t('bookings.checkIn')} *</label>
-                  <input type="date" value={form.checkInDate} onChange={f('checkInDate')} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>{t('bookings.checkOut')} *</label>
-                  <input type="date" value={form.checkOutDate} onChange={f('checkOutDate')} className={inputCls} />
-                </div>
-              </div>
+              {/* ── Datos de la reserva ───────────────────────────── */}
+              <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-4">
+                <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">Datos de la reserva</p>
 
-              {/* Importe y origen */}
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}>{t('common.total')} (€) *</label>
-                  <input type="number" value={form.totalAmount} onChange={f('totalAmount')} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>{t('bookings.source')}</label>
-                  <select value={form.source} onChange={f('source')} className={inputCls}>
-                    {['direct','airbnb','booking','vrbo','manual_block'].map(s => (
-                      <option key={s} value={s}>{t(`bookings.sources.${s}`)}</option>
-                    ))}
+                  <label className={labelCls}>{t('bookings.property')} *</label>
+                  <select value={form.propertyId} onChange={f('propertyId')} className={inputCls}>
+                    <option value="">— {t('bookings.property')} —</option>
+                    {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>{t('bookings.checkIn')} *</label>
+                    <input type="date" value={form.checkInDate} onChange={f('checkInDate')} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>{t('bookings.checkOut')} *</label>
+                    <input type="date" value={form.checkOutDate} onChange={f('checkOutDate')} className={inputCls} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>{t('common.total')} (€) *</label>
+                    <input type="number" value={form.totalAmount} onChange={f('totalAmount')} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>{t('bookings.source')}</label>
+                    <select value={form.source} onChange={f('source')} className={inputCls}>
+                      {['direct','airbnb','booking','vrbo','manual_block'].map(s => (
+                        <option key={s} value={s}>{t(`bookings.sources.${s}`)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>{t('common.notes')}</label>
+                  <textarea value={form.notes} onChange={f('notes')} rows={2}
+                    className={`${inputCls} resize-none`} />
+                </div>
               </div>
 
-              {/* Notas */}
-              <div>
-                <label className={labelCls}>{t('common.notes')}</label>
-                <textarea value={form.notes} onChange={f('notes')} rows={2}
-                  className={`${inputCls} resize-none`} />
-              </div>
-
-              {/* Botones */}
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => { setShowForm(false); setErrorMsg(''); }}
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+              {/* ── Botones ───────────────────────────────────────── */}
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => { setShowForm(false); setErrorMsg(''); resetForm(); }}
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold text-white transition-colors">
                   {t('common.cancel')}
                 </button>
                 <button onClick={handleSubmit} disabled={isSubmitDisabled}
-                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold text-white transition-colors">
                   {createMutation.isPending || createClientMutation.isPending ? t('common.saving') : t('bookings.new')}
                 </button>
               </div>

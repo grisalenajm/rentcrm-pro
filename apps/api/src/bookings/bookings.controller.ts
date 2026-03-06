@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Requ
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
+import { CreateBookingGuestSesDto } from './dto/booking-guest-ses.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -37,5 +38,23 @@ export class BookingsController {
   @Roles('admin', 'gestor')
   cancel(@Param('id') id: string, @Request() req) {
     return this.bookingsService.cancel(id, req.user.organizationId);
+  }
+
+  // ── Huéspedes SES ─────────────────────────────────────────────────────────
+  @Get(':id/guests-ses')
+  getGuestsSes(@Param('id') id: string, @Request() req) {
+    return this.bookingsService.getGuestsSes(id, req.user.organizationId);
+  }
+
+  @Post(':id/guests-ses')
+  @Roles('admin', 'gestor')
+  addGuestSes(@Param('id') id: string, @Body() dto: CreateBookingGuestSesDto, @Request() req) {
+    return this.bookingsService.addGuestSes(id, dto, req.user.organizationId);
+  }
+
+  @Delete(':id/guests-ses/:guestId')
+  @Roles('admin', 'gestor')
+  removeGuestSes(@Param('id') id: string, @Param('guestId') guestId: string, @Request() req) {
+    return this.bookingsService.removeGuestSes(id, guestId, req.user.organizationId);
   }
 }
