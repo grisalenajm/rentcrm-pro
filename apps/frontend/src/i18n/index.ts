@@ -5,7 +5,7 @@ const es = {
   nav: {
     dashboard: "Dashboard", properties: "Propiedades", clients: "Clientes",
     bookings: "Reservas", financials: "Financiero", contracts: "Contratos",
-    templates: "Templates", ical: "iCal Sync", police: "Partes SES", settings: "Configuración"
+    templates: "Templates", ical: "iCal Sync", calendar: "Calendario", police: "Partes SES", settings: "Configuración"
   },
   common: {
     save: "Guardar cambios", saving: "Guardando...", saved: "✅ Guardado",
@@ -106,6 +106,17 @@ const es = {
     errorRequired: "Propiedad y URL son obligatorios",
     errorSave: "Error al guardar el feed",
     errorSync: "Error al sincronizar"
+  },
+  calendar: {
+    title: "Calendario de ocupacion",
+    subtitle: "Visualiza la ocupacion de tus propiedades",
+    viewMulti: "Multi-propiedad",
+    viewMonthly: "Mensual",
+    property: "Propiedad",
+    confirmed: "Confirmada",
+    pending: "Pendiente",
+    cancelled: "Cancelada",
+    loading: "Cargando calendario..."
   }
 };
 
@@ -113,7 +124,7 @@ const en = {
   nav: {
     dashboard: "Dashboard", properties: "Properties", clients: "Clients",
     bookings: "Bookings", financials: "Financials", contracts: "Contracts",
-    templates: "Templates", ical: "iCal Sync", police: "Guest Reports", settings: "Settings"
+    templates: "Templates", ical: "iCal Sync", calendar: "Calendar", police: "Guest Reports", settings: "Settings"
   },
   common: {
     save: "Save changes", saving: "Saving...", saved: "✅ Saved",
@@ -214,6 +225,17 @@ const en = {
     errorRequired: "Property and URL are required",
     errorSave: "Error saving feed",
     errorSync: "Error syncing feed"
+  },
+  calendar: {
+    title: "Occupancy Calendar",
+    subtitle: "Visualize the occupancy of your properties",
+    viewMulti: "Multi-property",
+    viewMonthly: "Monthly",
+    property: "Property",
+    confirmed: "Confirmed",
+    pending: "Pending",
+    cancelled: "Cancelled",
+    loading: "Loading calendar..."
   }
 };
 

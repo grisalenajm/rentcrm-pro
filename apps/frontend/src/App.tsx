@@ -15,6 +15,7 @@ import ContractTemplates from './pages/ContractTemplates';
 import SignContract from './pages/SignContract';
 import ComingSoon from './pages/ComingSoon';
 import ICalFeeds from './pages/ICalFeeds';
+import OccupancyCalendar from './pages/OccupancyCalendar';
 import Settings from './pages/Settings';
 import { UserPreferencesProvider } from './context/UserPreferencesContext';
 
@@ -46,6 +47,7 @@ export default function App() {
               <Route path="contracts/templates" element={<ContractTemplates />} />
               <Route path="police"              element={<ComingSoon title="Partes SES" />} />
               <Route path="ical"               element={<ICalFeeds />} />
+              <Route path="calendar"           element={<OccupancyCalendar />} />
               <Route path="settings"             element={<Settings />} />
             </Route>
           </Routes>
