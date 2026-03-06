@@ -10,11 +10,11 @@ interface Property {
   city: string;
   province?: string;
   rooms: number;
-  isActive: boolean;
+  status: string;
   sesCodigoEstablecimiento?: string;
 }
 
-const emptyForm = { name:'', address:'', city:'', province:'', rooms:'1', isActive: true, sesCodigoEstablecimiento:'' };
+const emptyForm = { name:'', address:'', city:'', province:'', rooms:'1', status: 'active', sesCodigoEstablecimiento:'' };
 
 export default function Properties() {
   const { t } = useTranslation();
@@ -46,7 +46,7 @@ export default function Properties() {
   const openCreate = () => { setEditing(null); setForm(emptyForm); setShowForm(true); };
   const openEdit = (p: Property) => {
     setEditing(p);
-    setForm({ name: p.name, address: p.address, city: p.city, province: p.province||'', rooms: String(p.rooms), isActive: p.isActive, sesCodigoEstablecimiento: (p as any).sesCodigoEstablecimiento||'' });
+    setForm({ name: p.name, address: p.address, city: p.city, province: p.province||'', rooms: String(p.rooms), status: p.status || 'active', sesCodigoEstablecimiento: (p as any).sesCodigoEstablecimiento||'' });
     setShowForm(true);
   };
 
@@ -100,8 +100,8 @@ export default function Properties() {
                   <td className="px-4 py-3 text-slate-400">{p.province || '—'}</td>
                   <td className="px-4 py-3 text-slate-400">{p.rooms}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                      {p.isActive ? (t('common.status') === 'Status' ? 'Active' : 'Activa') : (t('common.status') === 'Status' ? 'Inactive' : 'Inactiva')}
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : p.status === 'maintenance' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'}`}>
+                      {p.status === 'active' ? 'Activa' : p.status === 'maintenance' ? 'Mantenimiento' : 'Inactiva'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
