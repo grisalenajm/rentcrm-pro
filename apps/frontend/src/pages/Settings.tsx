@@ -16,7 +16,7 @@ export default function Settings() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<'usuario'|'general'|'fiscal'|'email'|'preferences'>('usuario');
+  const [activeTab, setActiveTab] = useState<'usuario'|'general'|'fiscal'|'email'|'ses'|'preferences'>('usuario');
   const [smtpPass, setSmtpPass] = useState('');
   const [testEmail, setTestEmail] = useState('');
   const [testResult, setTestResult] = useState<{ok: boolean; message: string} | null>(null);
@@ -78,6 +78,7 @@ export default function Settings() {
     { id: 'general',     label: t('settings.tabs.general') },
     { id: 'fiscal',      label: t('settings.tabs.fiscal') },
     { id: 'email',       label: t('settings.tabs.email') },
+    { id: 'ses',         label: '🚔 SES Hospedajes' },
     { id: 'preferences', label: t('settings.tabs.preferences') },
   ];
 
@@ -288,7 +289,64 @@ export default function Settings() {
           </>
         )}
 
-        {/* PREFERENCES */}
+
+        {/* SES HOSPEDAJES */}
+        {activeTab === 'ses' && (
+          <>
+            <div className="bg-slate-800 rounded-xl p-4 text-sm text-slate-400 mb-2">
+              <p className="font-semibold text-white mb-1">🚔 SES Hospedajes — Webservice</p>
+              <p>{language === 'es'
+                ? 'Credenciales para el envío automático de partes de viajeros al Ministerio del Interior (Real Decreto 933/2021).'
+                : 'Credentials for automatic traveller report submission to the Spanish Ministry of Interior.'}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Usuario WS</label>
+                <input value={currentValue('sesUsuarioWs')} onChange={f('sesUsuarioWs')}
+                  placeholder="12345678AWS"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                <p className="text-xs text-slate-500 mt-1">Tu NIF/CIF terminado en WS</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Contraseña WS</label>
+                <input type="password" value={currentValue('sesPasswordWs')} onChange={f('sesPasswordWs')}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Código Arrendador</label>
+                <input value={currentValue('sesCodigoArrendador')} onChange={f('sesCodigoArrendador')}
+                  placeholder="0000000001"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                <p className="text-xs text-slate-500 mt-1">Asignado al registrarte en SES</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Código Establecimiento</label>
+                <input value={currentValue('sesCodigoEstablecimiento')} onChange={f('sesCodigoEstablecimiento')}
+                  placeholder="0000000002"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                <p className="text-xs text-slate-500 mt-1">Código del alojamiento en SES</p>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Endpoint</label>
+                <input value={currentValue('sesEndpoint')} onChange={f('sesEndpoint')}
+                  placeholder="https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                <p className="text-xs text-slate-500 mt-1">
+                  Producción: hospedajes.ses.mir.es · Pruebas: hospedajes.pre-ses.mir.es
+                </p>
+              </div>
+            </div>
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-sm text-amber-400">
+              <p className="font-semibold mb-1">⚠️ {language === 'es' ? 'Importante' : 'Important'}</p>
+              <p>{language === 'es'
+                ? 'Las credenciales se guardan cifradas. El código de establecimiento por defecto se puede sobrescribir por propiedad en la configuración de cada alojamiento.'
+                : 'Credentials are stored encrypted. The default establishment code can be overridden per property in each accommodation settings.'}</p>
+            </div>
+          </>
+        )}
+
+        {/* PREFERENCES */
         {activeTab === 'preferences' && (
           <>
             <div className="grid grid-cols-2 gap-4">

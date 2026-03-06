@@ -21,6 +21,11 @@ model Organization {
   smtpFrom  String?  @map("smtp_from") @db.VarChar(255)
   currency  String?  @default("EUR") @db.VarChar(10)
   dateFormat String? @default("dd/MM/yyyy") @map("date_format") @db.VarChar(20)
+  sesUsuarioWs        String?  @map("ses_usuario_ws") @db.VarChar(100)
+  sesPasswordWs       String?  @map("ses_password_ws") @db.VarChar(100)
+  sesCodigoArrendador String?  @map("ses_codigo_arrendador") @db.VarChar(20)
+  sesCodigoEstablecimiento String? @map("ses_codigo_establecimiento") @db.VarChar(20)
+  sesEndpoint         String?  @map("ses_endpoint") @db.VarChar(255)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
