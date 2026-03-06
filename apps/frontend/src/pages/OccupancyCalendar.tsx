@@ -264,7 +264,7 @@ export default function OccupancyCalendar() {
                             <span style={{fontSize:11,fontWeight:700,color:'#ffffff'}}>
                               {bk.client.firstName} {bk.client.lastName[0]}.
                             </span>
-                            <span style={{fontSize:10,color:'#00000099',marginLeft:4}}>
+                            <span style={{fontSize:10,color:'#000000',marginLeft:4}}>
                               {Number(bk.totalAmount).toLocaleString()}€
                             </span>
                           </div>
@@ -404,7 +404,7 @@ export default function OccupancyCalendar() {
                           <span style={{fontSize:11,fontWeight:700,color:'#ffffff'}}>
                             ▶ {bk.client.firstName} {bk.client.lastName[0]}.
                           </span>
-                          <span style={{fontSize:10,color:'#00000099',marginLeft:6}}>
+                          <span style={{fontSize:10,color:'#000000',marginLeft:6}}>
                             {Number(bk.totalAmount).toLocaleString()}€
                           </span>
                         </div>
