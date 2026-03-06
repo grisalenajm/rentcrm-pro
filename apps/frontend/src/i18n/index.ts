@@ -14,7 +14,7 @@ const es = {
     back: "← Volver", actions: "Acciones", new: "Nuevo", view: "Ver",
     send: "Enviar", close: "Cerrar", name: "Nombre", email: "Email",
     phone: "Teléfono", address: "Dirección", city: "Ciudad", date: "Fecha",
-    total: "Total", status: "Estado", notes: "Notas", type: "Tipo"
+    total: "Total", status: "Estado", notes: "Notas", type: "Tipo", confirm_delete: "¿Estás seguro de que quieres eliminar este registro?"
   },
   dashboard: {
     title: "Dashboard", totalRevenue: "Ingresos totales", activeBookings: "Reservas activas",
@@ -32,7 +32,7 @@ const es = {
     nights: "noches", source: "Origen", property: "Propiedad", client: "Cliente",
     guests: "Huéspedes", deposit: "Fianza", registered: "reservas registradas",
     sources: { direct: "Directo", airbnb: "Airbnb", booking: "Booking", vrbo: "Vrbo", manual_block: "Bloqueo" },
-    statuses: { confirmed: "Confirmada", cancelled: "Cancelada", completed: "Completada" },
+    statuses: { pending: "Pendiente", confirmed: "Confirmada", cancelled: "Cancelada", completed: "Completada" },
     rating: "Valoración de la estancia", noRating: "Sin valoración todavía",
     rateStay: "★ Valorar", contract: "Contrato", noContract: "No hay contrato asociado",
     financials: "Registros financieros", noFinancials: "No hay registros financieros para esta reserva",
@@ -133,7 +133,7 @@ const en = {
     back: "← Back", actions: "Actions", new: "New", view: "View",
     send: "Send", close: "Close", name: "Name", email: "Email",
     phone: "Phone", address: "Address", city: "City", date: "Date",
-    total: "Total", status: "Status", notes: "Notes", type: "Type"
+    total: "Total", status: "Status", notes: "Notes", type: "Type", confirm_delete: "Are you sure you want to delete this record?"
   },
   dashboard: {
     title: "Dashboard", totalRevenue: "Total revenue", activeBookings: "Active bookings",
@@ -151,7 +151,7 @@ const en = {
     nights: "nights", source: "Source", property: "Property", client: "Client",
     guests: "Guests", deposit: "Deposit", registered: "bookings registered",
     sources: { direct: "Direct", airbnb: "Airbnb", booking: "Booking", vrbo: "Vrbo", manual_block: "Block" },
-    statuses: { confirmed: "Confirmed", cancelled: "Cancelled", completed: "Completed" },
+    statuses: { pending: "Pending", confirmed: "Confirmed", cancelled: "Cancelled", completed: "Completed" },
     rating: "Stay rating", noRating: "No rating yet",
     rateStay: "★ Rate", contract: "Contract", noContract: "No contract associated",
     financials: "Financial records", noFinancials: "No financial records for this booking",
