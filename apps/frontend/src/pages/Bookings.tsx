@@ -15,22 +15,54 @@ export default function Bookings() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ clientId:'', propertyId:'', checkInDate:'', checkOutDate:'', totalAmount:'', source:'direct', status:'confirmed', notes:'' });
+  const [form, setForm] = useState({
+    clientId: '', propertyId: '',
+    checkIn: '', checkOut: '',
+    totalAmount: '', source: 'direct', status: 'confirmed', notes: '',
+  });
 
-  const { data: bookings = [], isLoading } = useQuery({
+  const { data: bookingsRaw, isLoading } = useQuery({
     queryKey: ['bookings'],
     queryFn: () => api.get('/bookings').then(r => r.data),
   });
-  const { data: clients = [] } = useQuery({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data) });
-  const { data: properties = [] } = useQuery({ queryKey: ['properties'], queryFn: () => api.get('/properties').then(r => r.data) });
+  const bookings = bookingsRaw?.data || bookingsRaw || [];
+
+  const { data: clientsRaw } = useQuery({
+    queryKey: ['clients'],
+    queryFn: () => api.get('/clients').then(r => r.data),
+  });
+  const clients = clientsRaw?.data || clientsRaw || [];
+
+  const { data: propertiesRaw } = useQuery({
+    queryKey: ['properties'],
+    queryFn: () => api.get('/properties').then(r => r.data),
+  });
+  const properties = propertiesRaw?.data || propertiesRaw || [];
 
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post('/bookings', data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bookings'] }); setShowForm(false); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bookings'] });
+      setShowForm(false);
+      setForm({ clientId: '', propertyId: '', checkIn: '', checkOut: '', totalAmount: '', source: 'direct', status: 'confirmed', notes: '' });
+    },
   });
 
   const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [k]: e.target.value });
+
+  const handleSubmit = () => {
+    createMutation.mutate({
+      clientId:    form.clientId,
+      propertyId:  form.propertyId,
+      checkIn:     form.checkIn,
+      checkOut:    form.checkOut,
+      totalAmount: Number(form.totalAmount),
+      source:      form.source,
+      status:      form.status,
+      notes:       form.notes || undefined,
+    });
+  };
 
   return (
     <div className="p-6">
@@ -69,8 +101,8 @@ export default function Bookings() {
                   className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
                   <td className="px-4 py-3 font-medium">{b.client?.firstName} {b.client?.lastName}</td>
                   <td className="px-4 py-3 text-slate-400">{b.property?.name}</td>
-                  <td className="px-4 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
-                  <td className="px-4 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
+                  <td className="px-4 py-3 text-slate-400">{new Date(b.checkIn || b.checkInDate).toLocaleDateString('es-ES')}</td>
+                  <td className="px-4 py-3 text-slate-400">{new Date(b.checkOut || b.checkOutDate).toLocaleDateString('es-ES')}</td>
                   <td className="px-4 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
                   <td className="px-4 py-3 text-slate-400">{t(`bookings.sources.${b.source}`) || b.source}</td>
                   <td className="px-4 py-3">
@@ -89,6 +121,13 @@ export default function Bookings() {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold mb-5">{t('bookings.new')}</h2>
+
+            {createMutation.isError && (
+              <div className="mb-4 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs">
+                Error al crear la reserva. Comprueba los campos e inténtalo de nuevo.
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('bookings.client')} *</label>
@@ -109,12 +148,12 @@ export default function Bookings() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('bookings.checkIn')} *</label>
-                  <input type="date" value={form.checkInDate} onChange={f('checkInDate')}
+                  <input type="date" value={form.checkIn} onChange={f('checkIn')}
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('bookings.checkOut')} *</label>
-                  <input type="date" value={form.checkOutDate} onChange={f('checkOutDate')}
+                  <input type="date" value={form.checkOut} onChange={f('checkOut')}
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
                 </div>
               </div>
@@ -141,9 +180,12 @@ export default function Bookings() {
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowForm(false)}
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">{t('common.cancel')}</button>
-                <button onClick={() => createMutation.mutate({ ...form, totalAmount: Number(form.totalAmount) })}
-                  disabled={!form.clientId || !form.propertyId || !form.checkInDate || !form.checkOutDate || !form.totalAmount}
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={!form.clientId || !form.propertyId || !form.checkIn || !form.checkOut || !form.totalAmount || createMutation.isPending}
                   className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
                   {createMutation.isPending ? t('common.saving') : t('bookings.new')}
                 </button>
