@@ -23,6 +23,8 @@ export default function BookingDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [showRating, setShowRating] = useState(false);
+  const [sesSending, setSesSending] = useState(false);
+  const [sesResult, setSesResult] = useState<{ok: boolean; message: string} | null>(null);
   const [ratingScore, setRatingScore] = useState(5);
   const [ratingNotes, setRatingNotes] = useState('');
 
@@ -70,6 +72,21 @@ export default function BookingDetail() {
     mutationFn: ({ evalId, data }: any) => api.put(`/evaluations/${evalId}`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['evaluation-booking', id] }),
   });
+
+  const sendSes = async () => {
+    setSesSending(true);
+    setSesResult(null);
+    try {
+      const res = await api.post(`/bookings/${id}/ses/send`);
+      setSesResult({ ok: res.data.ok, message: res.data.ok
+        ? `✅ Parte enviado correctamente. Lote: ${res.data.lote}`
+        : `⚠️ Enviado con advertencias. Código: ${res.data.codigo}` });
+    } catch (err: any) {
+      setSesResult({ ok: false, message: `❌ ${err?.response?.data?.message || 'Error al enviar'}` });
+    } finally {
+      setSesSending(false);
+    }
+  };
 
   const viewContract = async (contractId: string) => {
     const token = localStorage.getItem('token');
@@ -244,6 +261,74 @@ export default function BookingDetail() {
             ))}
           </div>
         )}
+      </div>
+
+
+      {/* SES Hospedajes */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider">🚔 SES Hospedajes</h3>
+          <div className="flex items-center gap-2">
+            {booking.sesStatus && (
+              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                booking.sesStatus === 'enviado' ? 'bg-emerald-500/10 text-emerald-400' :
+                booking.sesStatus === 'error'   ? 'bg-red-500/10 text-red-400' :
+                'bg-amber-500/10 text-amber-400'
+              }`}>
+                {booking.sesStatus === 'enviado' ? '✅ Enviado' :
+                 booking.sesStatus === 'error'   ? '❌ Error' : '⏳ Pendiente'}
+              </span>
+            )}
+            <a href={`http://${window.location.hostname}:3001/api/bookings/${id}/ses/pdf`}
+              target="_blank" rel="noopener noreferrer"
+              className="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+              📄 PDF
+            </a>
+            <a href={`http://${window.location.hostname}:3001/api/bookings/${id}/ses/xml`}
+              target="_blank" rel="noopener noreferrer"
+              className="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+              📋 XML
+            </a>
+            <button onClick={sendSes} disabled={sesSending}
+              className="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg transition-colors font-semibold">
+              {sesSending ? '⏳ Enviando...' : '📤 Enviar al SES'}
+            </button>
+          </div>
+        </div>
+
+        {booking.sesSentAt && (
+          <p className="text-xs text-slate-500 mb-2">
+            Último envío: {new Date(booking.sesSentAt).toLocaleString('es-ES')}
+            {booking.sesLote && ` · Lote: ${booking.sesLote}`}
+          </p>
+        )}
+
+        {sesResult && (
+          <div className={`mt-2 p-3 rounded-lg text-sm ${sesResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+            {sesResult.message}
+          </div>
+        )}
+
+        {/* Huéspedes SES */}
+        <div className="mt-3">
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Viajeros del parte</p>
+          <div className="space-y-2">
+            {/* Titular */}
+            <div className="flex items-center gap-3 bg-slate-800 rounded-lg px-3 py-2 text-sm">
+              <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">Titular</span>
+              <span className="font-medium">{booking.client?.firstName} {booking.client?.lastName}</span>
+              {booking.client?.dniPassport && <span className="text-slate-400 font-mono text-xs">{booking.client.dniPassport}</span>}
+            </div>
+            {/* Huéspedes adicionales */}
+            {(booking.guestsSes || []).map((g: any) => (
+              <div key={g.id} className="flex items-center gap-3 bg-slate-800 rounded-lg px-3 py-2 text-sm">
+                <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">Viajero</span>
+                <span className="font-medium">{g.firstName} {g.lastName}</span>
+                <span className="text-slate-400 font-mono text-xs">{g.docType?.toUpperCase()} {g.docNumber}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Modal valoración */}
