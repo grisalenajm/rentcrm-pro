@@ -6,40 +6,40 @@ import { api } from '../lib/api';
 
 // ── Datos de países ───────────────────────────────────────────────────────
 const COUNTRIES = [
-  { code: 'ES', name: 'España',          phone: '+34'  },
-  { code: 'DE', name: 'Alemania',         phone: '+49'  },
-  { code: 'FR', name: 'Francia',          phone: '+33'  },
-  { code: 'GB', name: 'Reino Unido',      phone: '+44'  },
-  { code: 'IT', name: 'Italia',           phone: '+39'  },
-  { code: 'PT', name: 'Portugal',         phone: '+351' },
-  { code: 'NL', name: 'Países Bajos',     phone: '+31'  },
-  { code: 'BE', name: 'Bélgica',          phone: '+32'  },
-  { code: 'CH', name: 'Suiza',            phone: '+41'  },
-  { code: 'AT', name: 'Austria',          phone: '+43'  },
-  { code: 'SE', name: 'Suecia',           phone: '+46'  },
-  { code: 'NO', name: 'Noruega',          phone: '+47'  },
-  { code: 'DK', name: 'Dinamarca',        phone: '+45'  },
-  { code: 'FI', name: 'Finlandia',        phone: '+358' },
-  { code: 'PL', name: 'Polonia',          phone: '+48'  },
-  { code: 'CZ', name: 'Rep. Checa',       phone: '+420' },
-  { code: 'HU', name: 'Hungría',          phone: '+36'  },
-  { code: 'RO', name: 'Rumanía',          phone: '+40'  },
-  { code: 'GR', name: 'Grecia',           phone: '+30'  },
-  { code: 'US', name: 'Estados Unidos',   phone: '+1'   },
-  { code: 'CA', name: 'Canadá',           phone: '+1'   },
-  { code: 'MX', name: 'México',           phone: '+52'  },
-  { code: 'AR', name: 'Argentina',        phone: '+54'  },
-  { code: 'BR', name: 'Brasil',           phone: '+55'  },
-  { code: 'CO', name: 'Colombia',         phone: '+57'  },
-  { code: 'CL', name: 'Chile',            phone: '+56'  },
-  { code: 'MA', name: 'Marruecos',        phone: '+212' },
-  { code: 'CN', name: 'China',            phone: '+86'  },
-  { code: 'JP', name: 'Japón',            phone: '+81'  },
-  { code: 'AU', name: 'Australia',        phone: '+61'  },
-  { code: 'RU', name: 'Rusia',            phone: '+7'   },
-  { code: 'UA', name: 'Ucrania',          phone: '+380' },
-  { code: 'TR', name: 'Turquía',          phone: '+90'  },
-  { code: 'IN', name: 'India',            phone: '+91'  },
+  { code: 'ES', name: 'España',          phone: '+34',  flag: '🇪🇸' },
+  { code: 'DE', name: 'Alemania',        phone: '+49',  flag: '🇩🇪' },
+  { code: 'FR', name: 'Francia',         phone: '+33',  flag: '🇫🇷' },
+  { code: 'GB', name: 'Reino Unido',     phone: '+44',  flag: '🇬🇧' },
+  { code: 'IT', name: 'Italia',          phone: '+39',  flag: '🇮🇹' },
+  { code: 'PT', name: 'Portugal',        phone: '+351', flag: '🇵🇹' },
+  { code: 'NL', name: 'Países Bajos',    phone: '+31',  flag: '🇳🇱' },
+  { code: 'BE', name: 'Bélgica',         phone: '+32',  flag: '🇧🇪' },
+  { code: 'CH', name: 'Suiza',           phone: '+41',  flag: '🇨🇭' },
+  { code: 'AT', name: 'Austria',         phone: '+43',  flag: '🇦🇹' },
+  { code: 'SE', name: 'Suecia',          phone: '+46',  flag: '🇸🇪' },
+  { code: 'NO', name: 'Noruega',         phone: '+47',  flag: '🇳🇴' },
+  { code: 'DK', name: 'Dinamarca',       phone: '+45',  flag: '🇩🇰' },
+  { code: 'FI', name: 'Finlandia',       phone: '+358', flag: '🇫🇮' },
+  { code: 'PL', name: 'Polonia',         phone: '+48',  flag: '🇵🇱' },
+  { code: 'CZ', name: 'Rep. Checa',      phone: '+420', flag: '🇨🇿' },
+  { code: 'HU', name: 'Hungría',         phone: '+36',  flag: '🇭🇺' },
+  { code: 'RO', name: 'Rumanía',         phone: '+40',  flag: '🇷🇴' },
+  { code: 'GR', name: 'Grecia',          phone: '+30',  flag: '🇬🇷' },
+  { code: 'US', name: 'Estados Unidos',  phone: '+1',   flag: '🇺🇸' },
+  { code: 'CA', name: 'Canadá',          phone: '+1',   flag: '🇨🇦' },
+  { code: 'MX', name: 'México',          phone: '+52',  flag: '🇲🇽' },
+  { code: 'AR', name: 'Argentina',       phone: '+54',  flag: '🇦🇷' },
+  { code: 'BR', name: 'Brasil',          phone: '+55',  flag: '🇧🇷' },
+  { code: 'CO', name: 'Colombia',        phone: '+57',  flag: '🇨🇴' },
+  { code: 'CL', name: 'Chile',           phone: '+56',  flag: '🇨🇱' },
+  { code: 'MA', name: 'Marruecos',       phone: '+212', flag: '🇲🇦' },
+  { code: 'CN', name: 'China',           phone: '+86',  flag: '🇨🇳' },
+  { code: 'JP', name: 'Japón',           phone: '+81',  flag: '🇯🇵' },
+  { code: 'AU', name: 'Australia',       phone: '+61',  flag: '🇦🇺' },
+  { code: 'RU', name: 'Rusia',           phone: '+7',   flag: '🇷🇺' },
+  { code: 'UA', name: 'Ucrania',         phone: '+380', flag: '🇺🇦' },
+  { code: 'TR', name: 'Turquía',         phone: '+90',  flag: '🇹🇷' },
+  { code: 'IN', name: 'India',           phone: '+91',  flag: '🇮🇳' },
 ];
 
 // ── Validación de documentos por país ────────────────────────────────────
@@ -302,7 +302,6 @@ export default function Bookings() {
         totalAmount:  Number(form.totalAmount),
         source:       form.source,
         status:       form.status,
-        notes:        form.notes || undefined,
       });
     } catch (err: any) {
       const msg = err?.response?.data?.message;
@@ -430,9 +429,14 @@ export default function Bookings() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className={labelCls}>Nacionalidad</label>
-                        <input value={newClient.nationality} onChange={fc('nationality')}
-                          readOnly={clientMode === 'existing'}
-                          className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
+                        <select value={newClient.nationality} onChange={fc('nationality')}
+                          disabled={clientMode === 'existing'}
+                          className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`}>
+                          <option value="">— Seleccionar —</option>
+                          {COUNTRIES.map(c => (
+                            <option key={c.code} value={c.name}>{c.flag} {c.name}</option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className={labelCls}>Fecha nacimiento</label>
