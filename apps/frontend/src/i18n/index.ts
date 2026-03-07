@@ -5,7 +5,7 @@ const es = {
   nav: {
     dashboard: "Dashboard", properties: "Propiedades", clients: "Clientes",
     bookings: "Reservas", financials: "Financiero", contracts: "Contratos",
-    templates: "Templates", ical: "iCal Sync", calendar: "Calendario", police: "Partes SES", settings: "Configuración"
+    templates: "Templates", ical: "iCal Sync", calendar: "Calendario", police: "Partes SES", users: "Usuarios", settings: "Configuración"
   },
   common: {
     save: "Guardar cambios", saving: "Guardando...", saved: "✅ Guardado",
@@ -117,6 +117,26 @@ const es = {
     pending: "Pendiente",
     cancelled: "Cancelada",
     loading: "Cargando calendario..."
+  },
+  users: {
+    title: "Usuarios",
+    new: "Nuevo usuario",
+    role: "Rol",
+    roles: { admin: "Administrador", gestor: "Gestor", viewer: "Consultor" },
+    active: "Activo",
+    inactive: "Inactivo",
+    activate: "Activar",
+    deactivate: "Desactivar",
+    resetPassword: "Resetear contraseña",
+    resetPasswordConfirm: "¿Resetear la contraseña de este usuario? Se generará una contraseña temporal.",
+    tempPassword: "Contraseña temporal generada",
+    copyPassword: "Copiar",
+    registered: "usuarios registrados",
+    password: "Contraseña (mín. 8 caracteres)",
+    editUser: "Editar usuario",
+    newUser: "Nuevo usuario",
+    confirmDeactivate: "¿Desactivar este usuario?",
+    confirmActivate: "¿Activar este usuario?",
   }
 };
 
@@ -124,7 +144,7 @@ const en = {
   nav: {
     dashboard: "Dashboard", properties: "Properties", clients: "Clients",
     bookings: "Bookings", financials: "Financials", contracts: "Contracts",
-    templates: "Templates", ical: "iCal Sync", calendar: "Calendar", police: "Guest Reports", settings: "Settings"
+    templates: "Templates", ical: "iCal Sync", calendar: "Calendar", police: "Guest Reports", users: "Users", settings: "Settings"
   },
   common: {
     save: "Save changes", saving: "Saving...", saved: "✅ Saved",
@@ -236,6 +256,26 @@ const en = {
     pending: "Pending",
     cancelled: "Cancelled",
     loading: "Loading calendar..."
+  },
+  users: {
+    title: "Users",
+    new: "New user",
+    role: "Role",
+    roles: { admin: "Admin", gestor: "Manager", viewer: "Viewer" },
+    active: "Active",
+    inactive: "Inactive",
+    activate: "Activate",
+    deactivate: "Deactivate",
+    resetPassword: "Reset password",
+    resetPasswordConfirm: "Reset this user's password? A temporary password will be generated.",
+    tempPassword: "Generated temporary password",
+    copyPassword: "Copy",
+    registered: "users registered",
+    password: "Password (min. 8 characters)",
+    editUser: "Edit user",
+    newUser: "New user",
+    confirmDeactivate: "Deactivate this user?",
+    confirmActivate: "Activate this user?",
   }
 };
 

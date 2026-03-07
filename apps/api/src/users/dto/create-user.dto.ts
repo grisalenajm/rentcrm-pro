@@ -11,6 +11,6 @@ export class CreateUserDto {
   @MinLength(8)
   password: string;
 
-  @IsIn(['admin', 'gestor', 'consultor'])
+  @IsIn(['admin', 'gestor', 'viewer'])
   role: string;
 }

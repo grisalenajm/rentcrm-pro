@@ -18,6 +18,7 @@ export default function Layout() {
     { to: '/ical',                icon: '📅', label: t('nav.ical')      },
     { to: '/calendar',            icon: '🗓️', label: t('nav.calendar')  },
     { to: '/police',              icon: '📡', label: t('nav.police')     },
+    ...(user?.role === 'admin' ? [{ to: '/users', icon: '👤', label: t('nav.users') }] : []),
     { to: '/settings',            icon: '⚙️', label: t('nav.settings')  },
   ];
 

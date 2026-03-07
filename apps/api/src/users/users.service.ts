@@ -71,8 +71,20 @@ export class UsersService {
     await this.findOne(id, organizationId);
     return this.prisma.user.update({
       where: { id },
-      data: { deletedAt: new Date() },
-      select: { id: true },
+      data: { isActive: false },
+      select: { id: true, isActive: true },
     });
+  }
+
+  async resetPassword(id: string, organizationId: string): Promise<{ tempPassword: string }> {
+    await this.findOne(id, organizationId);
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+    const tempPassword = Array.from(
+      { length: 12 },
+      () => chars[Math.floor(Math.random() * chars.length)],
+    ).join('');
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    await this.prisma.user.update({ where: { id }, data: { passwordHash } });
+    return { tempPassword };
   }
 }

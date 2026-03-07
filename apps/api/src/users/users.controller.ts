@@ -45,4 +45,10 @@ export class UsersController {
   remove(@Param('id') id: string, @Request() req) {
     return this.usersService.remove(id, req.user.organizationId);
   }
+
+  @Put(':id/reset-password')
+  @Roles('admin')
+  resetPassword(@Param('id') id: string, @Request() req) {
+    return this.usersService.resetPassword(id, req.user.organizationId);
+  }
 }

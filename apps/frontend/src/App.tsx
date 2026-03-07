@@ -17,6 +17,7 @@ import ComingSoon from './pages/ComingSoon';
 import ICalFeeds from './pages/ICalFeeds';
 import OccupancyCalendar from './pages/OccupancyCalendar';
 import Settings from './pages/Settings';
+import UserManagement from './pages/UserManagement';
 import { UserPreferencesProvider } from './context/UserPreferencesContext';
 
 const qc = new QueryClient();
@@ -48,6 +49,7 @@ export default function App() {
               <Route path="police"              element={<ComingSoon title="Partes SES" />} />
               <Route path="ical"               element={<ICalFeeds />} />
               <Route path="calendar"           element={<OccupancyCalendar />} />
+              <Route path="users"               element={<UserManagement />} />
               <Route path="settings"             element={<Settings />} />
             </Route>
           </Routes>
