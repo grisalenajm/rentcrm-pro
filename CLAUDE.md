@@ -354,3 +354,50 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 
 - [ ] Versionado de API: añadir prefijo /api/v1/ a todos los endpoints para permitir evolución sin romper clientes
 
+---
+
+## Próxima sesión — Checkin Online
+
+### Objetivo
+Permitir que el cliente rellene sus datos de checkin desde un enlace seguro sin necesidad de login.
+
+### Fase 1 — Base de datos
+Añadir al modelo Booking en schema.prisma:
+- checkinToken    String?   @unique
+- checkinStatus   String?   // pending | completed
+- checkinSentAt   DateTime?
+- checkinDoneAt   DateTime?
+
+### Fase 2 — API
+Nuevos endpoints:
+- POST /bookings/:id/checkin/send → genera token UUID, guarda en BD, envía email al cliente
+- GET  /checkin/:token → endpoint PÚBLICO (sin JWT) → devuelve datos de la reserva para mostrar el formulario
+- POST /checkin/:token → endpoint PÚBLICO → recibe datos del huésped y actualiza la reserva
+
+El email debe enviarse automáticamente 2 días antes del checkin (scheduler NestJS @Cron).
+También debe poder enviarse manualmente desde BookingDetail.
+
+### Fase 3 — Frontend público
+Nueva página: src/pages/CheckinPage.tsx
+- Ruta pública: /checkin/:token (añadir en App.tsx fuera del Layout autenticado)
+- Sin navbar ni sidebar
+- Formulario con datos del huésped: nombre, apellidos, documento, país, teléfono
+- Branding mínimo: logo RentCRM Pro + nombre de la propiedad
+- Al enviar: mensaje de confirmación "¡Checkin completado!"
+- Si el token es inválido o ya usado: mensaje de error
+
+### Fase 4 — BookingDetail
+- Añadir botón "Enviar checkin" en la ficha de reserva
+- Mostrar estado: pendiente / completado + fecha
+- Si completado: mostrar fecha y hora de cuando el cliente lo rellenó
+
+### Archivos a modificar/crear
+1. apps/api/prisma/schema.prisma — nuevos campos Booking
+2. apps/api/src/bookings/bookings.service.ts — lógica token + scheduler
+3. apps/api/src/bookings/bookings.controller.ts — nuevos endpoints
+4. apps/frontend/src/pages/CheckinPage.tsx — página pública nueva
+5. apps/frontend/src/App.tsx — ruta pública /checkin/:token
+6. apps/frontend/src/pages/BookingDetail.tsx — botón + estado checkin
+
+No toques nada más.
+
