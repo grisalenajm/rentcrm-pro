@@ -102,79 +102,133 @@ export default function Contracts() {
       ) : contracts.length === 0 ? (
         <div className="text-slate-400 text-center py-20">{t('common.noData')}</div>
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-800">
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.client')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('contracts.template')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.deposit')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.status')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('contracts.signed')}</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {contracts.map((c: Contract) => (
-                <tr key={c.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
-                  <td className="px-4 py-3 font-medium">{c.booking.client.firstName} {c.booking.client.lastName}</td>
-                  <td className="px-4 py-3 text-slate-400">{c.booking.property.name}</td>
-                  <td className="px-4 py-3 text-slate-400">{c.template.name}</td>
-                  <td className="px-4 py-3 text-slate-400">{new Date(c.booking.checkInDate).toLocaleDateString('es-ES')}</td>
-                  <td className="px-4 py-3 text-slate-400">{c.depositAmount ? `€${c.depositAmount}` : '—'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[c.status]}`}>
-                      {t(`contracts.statuses.${c.status}`)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">
-                    {c.signedAt ? new Date(c.signedAt).toLocaleDateString('es-ES') : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2 justify-end flex-wrap">
-                      <button onClick={() => viewContract(c.id)}
-                        className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
-                        {t('contracts.viewContract')}
-                      </button>
-                      {c.status === 'draft' && (
-                        <button onClick={() => sendMutation.mutate(c.id)}
-                          className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
-                          {t('common.send')}
-                        </button>
-                      )}
-                      {(c.status === 'draft' || c.status === 'sent') && (
-                        <button onClick={() => setLinkModal(getSignUrl(c.token))}
-                          className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
-                          🔗 {t('contracts.signLink')}
-                        </button>
-                      )}
-                      {c.status === 'signed' && (
-                        <button onClick={() => setSignatureView(c)}
-                          className="px-3 py-1 text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors">
-                          {t('contracts.signed')}
-                        </button>
-                      )}
-                      {c.status !== 'signed' && c.status !== 'cancelled' && (
-                        <button onClick={() => { if(confirm(t('common.confirm_delete'))) cancelMutation.mutate(c.id); }}
-                          className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
-                          {t('common.cancel')}
-                        </button>
-                      )}
-                    </div>
-                  </td>
+        <>
+          {/* Desktop: tabla */}
+          <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800">
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.client')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('contracts.template')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.deposit')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.status')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('contracts.signed')}</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {contracts.map((c: Contract) => (
+                  <tr key={c.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                    <td className="px-4 py-3 font-medium">{c.booking.client.firstName} {c.booking.client.lastName}</td>
+                    <td className="px-4 py-3 text-slate-400">{c.booking.property.name}</td>
+                    <td className="px-4 py-3 text-slate-400">{c.template.name}</td>
+                    <td className="px-4 py-3 text-slate-400">{new Date(c.booking.checkInDate).toLocaleDateString('es-ES')}</td>
+                    <td className="px-4 py-3 text-slate-400">{c.depositAmount ? `€${c.depositAmount}` : '—'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[c.status]}`}>
+                        {t(`contracts.statuses.${c.status}`)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-400 text-xs">
+                      {c.signedAt ? new Date(c.signedAt).toLocaleDateString('es-ES') : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2 justify-end flex-wrap">
+                        <button onClick={() => viewContract(c.id)}
+                          className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                          {t('contracts.viewContract')}
+                        </button>
+                        {c.status === 'draft' && (
+                          <button onClick={() => sendMutation.mutate(c.id)}
+                            className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
+                            {t('common.send')}
+                          </button>
+                        )}
+                        {(c.status === 'draft' || c.status === 'sent') && (
+                          <button onClick={() => setLinkModal(getSignUrl(c.token))}
+                            className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                            🔗 {t('contracts.signLink')}
+                          </button>
+                        )}
+                        {c.status === 'signed' && (
+                          <button onClick={() => setSignatureView(c)}
+                            className="px-3 py-1 text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors">
+                            {t('contracts.signed')}
+                          </button>
+                        )}
+                        {c.status !== 'signed' && c.status !== 'cancelled' && (
+                          <button onClick={() => { if(confirm(t('common.confirm_delete'))) cancelMutation.mutate(c.id); }}
+                            className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                            {t('common.cancel')}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Móvil: tarjetas */}
+          <div className="md:hidden space-y-3">
+            {contracts.map((c: Contract) => (
+              <div key={c.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <div className="font-medium text-white text-sm">{c.booking.client.firstName} {c.booking.client.lastName}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">{c.booking.property.name}</div>
+                  </div>
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[c.status]}`}>
+                    {t(`contracts.statuses.${c.status}`)}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400 mb-3">
+                  {c.template.name} · {new Date(c.booking.checkInDate).toLocaleDateString('es-ES')}
+                  {c.depositAmount && <span> · €{c.depositAmount}</span>}
+                  {c.signedAt && <span> · ✓ {new Date(c.signedAt).toLocaleDateString('es-ES')}</span>}
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={() => viewContract(c.id)}
+                    className="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                    {t('contracts.viewContract')}
+                  </button>
+                  {c.status === 'draft' && (
+                    <button onClick={() => sendMutation.mutate(c.id)}
+                      className="px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
+                      {t('common.send')}
+                    </button>
+                  )}
+                  {(c.status === 'draft' || c.status === 'sent') && (
+                    <button onClick={() => setLinkModal(getSignUrl(c.token))}
+                      className="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                      🔗 {t('contracts.signLink')}
+                    </button>
+                  )}
+                  {c.status === 'signed' && (
+                    <button onClick={() => setSignatureView(c)}
+                      className="px-3 py-1.5 text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors">
+                      {t('contracts.signed')}
+                    </button>
+                  )}
+                  {c.status !== 'signed' && c.status !== 'cancelled' && (
+                    <button onClick={() => { if(confirm(t('common.confirm_delete'))) cancelMutation.mutate(c.id); }}
+                      className="px-3 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                      {t('common.cancel')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Modal link firma */}
       {linkModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg">
+        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg p-6">
             <h2 className="text-lg font-bold mb-2">🔗 {t('contracts.signLink')}</h2>
             <div className="bg-slate-800 rounded-lg p-3 mb-4 break-all text-sm text-emerald-400 font-mono select-all">{linkModal}</div>
             <div className="flex gap-3">
@@ -193,8 +247,8 @@ export default function Contracts() {
 
       {/* Modal crear */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-md max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
             <h2 className="text-lg font-bold mb-5">{t('contracts.new')}</h2>
             <div className="space-y-4">
               <div>

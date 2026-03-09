@@ -57,18 +57,18 @@ export default function Financials() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+      <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4">
           <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('financials.income')}</div>
-          <div className="text-2xl font-bold text-emerald-400">€{totalIncome.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+          <div className="text-base md:text-2xl font-bold tabular-nums text-emerald-400">€{totalIncome.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4">
           <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('financials.expense')}</div>
-          <div className="text-2xl font-bold text-red-400">€{totalExpense.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+          <div className="text-base md:text-2xl font-bold tabular-nums text-red-400">€{totalExpense.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4">
           <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Balance</div>
-          <div className={`text-2xl font-bold ${totalIncome - totalExpense >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+          <div className={`text-base md:text-2xl font-bold tabular-nums ${totalIncome - totalExpense >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             €{(totalIncome - totalExpense).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
           </div>
         </div>
@@ -79,43 +79,69 @@ export default function Financials() {
       ) : financials.length === 0 ? (
         <div className="text-slate-400 text-center py-20">{t('common.noData')}</div>
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-800">
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.type')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('financials.category')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.date')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('financials.description')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('financials.amount')}</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {financials.map((fin: any) => (
-                <tr key={fin.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${fin.type === 'income' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                      {fin.type === 'income' ? t('financials.income') : t('financials.expense')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-400">{fin.category?.name || '—'}</td>
-                  <td className="px-4 py-3 text-slate-400">{new Date(fin.date).toLocaleDateString('es-ES')}</td>
-                  <td className="px-4 py-3 text-slate-400">{fin.description || '—'}</td>
-                  <td className={`px-4 py-3 font-semibold ${fin.type === 'income' ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {fin.type === 'income' ? '+' : '-'}€{Number(fin.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => { if (confirm(t('common.confirm_delete'))) deleteMutation.mutate(fin.id); }}
-                      className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
-                      {t('common.delete')}
-                    </button>
-                  </td>
+        <>
+          {/* Desktop: tabla */}
+          <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800">
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.type')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('financials.category')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.date')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('financials.description')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('financials.amount')}</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {financials.map((fin: any) => (
+                  <tr key={fin.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                    <td className="px-4 py-3">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${fin.type === 'income' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                        {fin.type === 'income' ? t('financials.income') : t('financials.expense')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-400">{fin.category?.name || '—'}</td>
+                    <td className="px-4 py-3 text-slate-400">{new Date(fin.date).toLocaleDateString('es-ES')}</td>
+                    <td className="px-4 py-3 text-slate-400">{fin.description || '—'}</td>
+                    <td className={`px-4 py-3 font-semibold tabular-nums ${fin.type === 'income' ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {fin.type === 'income' ? '+' : '-'}€{Number(fin.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => { if (confirm(t('common.confirm_delete'))) deleteMutation.mutate(fin.id); }}
+                        className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                        {t('common.delete')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Móvil: tarjetas */}
+          <div className="md:hidden space-y-3">
+            {financials.map((fin: any) => (
+              <div key={fin.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${fin.type === 'income' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                    {fin.type === 'income' ? t('financials.income') : t('financials.expense')}
+                  </span>
+                  <span className={`font-bold tabular-nums ${fin.type === 'income' ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {fin.type === 'income' ? '+' : '-'}€{Number(fin.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="text-sm text-white mb-1">{fin.description || '—'}</div>
+                <div className="flex justify-between items-center text-xs text-slate-400">
+                  <span>{fin.category?.name || '—'} · {new Date(fin.date).toLocaleDateString('es-ES')}</span>
+                  <button onClick={() => { if (confirm(t('common.confirm_delete'))) deleteMutation.mutate(fin.id); }}
+                    className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                    {t('common.delete')}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {showForm && (

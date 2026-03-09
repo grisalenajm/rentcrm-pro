@@ -220,13 +220,13 @@ export default function ContractTemplates() {
   const labelClass = "block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1";
 
   return (
-    <div className="flex h-full">
+    <div className="flex flex-col md:flex-row h-full">
       {/* Lista */}
-      <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
-        <div className="p-4 border-b border-slate-800">
-          <h2 className="font-bold text-sm mb-3">{t('templates.title')}</h2>
+      <div className="w-full md:w-64 bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col shrink-0 max-h-52 md:max-h-none">
+        <div className="p-4 border-b border-slate-800 flex items-center gap-3 md:block">
+          <h2 className="font-bold text-sm md:mb-3 flex-1">{t('templates.title')}</h2>
           <button onClick={() => { setShowNew(true); setSelected(null); setForm(emptyForm); }}
-            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-semibold transition-colors">
+            className="md:w-full py-1.5 md:py-2 px-3 md:px-0 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap">
             + {t('templates.new')}
           </button>
         </div>
@@ -252,7 +252,7 @@ export default function ContractTemplates() {
           <div className="flex-1 overflow-y-auto p-6">
             <h2 className="text-xl font-bold mb-6">{t('templates.new')}</h2>
             <div className="max-w-2xl space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className={labelClass}>{t('common.name')} *</label>
                   <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className={inputClass} />
@@ -316,14 +316,14 @@ export default function ContractTemplates() {
           </div>
         ) : selected ? (
           <>
-            <div className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-              <div>
-                <h2 className="font-bold">{selected.name}</h2>
+            <div className="border-b border-slate-800 px-4 md:px-6 py-3 md:py-4 flex flex-wrap items-center gap-2 justify-between">
+              <div className="min-w-0">
+                <h2 className="font-bold truncate">{selected.name}</h2>
                 <p className="text-xs text-slate-400">
                   {selected.type} · {selected.ownerSignature ? `✓ ${isEN ? 'Signature saved' : 'Firma guardada'}` : `⚠️ ${isEN ? 'No landlord signature' : 'Sin firma del arrendador'}`}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap shrink-0">
                 <button onClick={() => setPreview(!preview)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${preview ? 'bg-emerald-600 text-white' : 'bg-slate-800 hover:bg-slate-700'}`}>
                   {preview ? t('templates.edit') : t('templates.preview')}
