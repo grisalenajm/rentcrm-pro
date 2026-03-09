@@ -1,19 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('admin@rentcrm.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberUser, setRememberUser] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const remembered = localStorage.getItem('rememberedEmail');
+    if (remembered) {
+      setEmail(remembered);
+      setRememberUser(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    if (rememberUser) {
+      localStorage.setItem('rememberedEmail', email);
+    } else {
+      localStorage.removeItem('rememberedEmail');
+    }
     try {
       await login(email, password);
       navigate('/');
@@ -67,6 +81,19 @@ export default function Login() {
                 className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
                 required
               />
+            </div>
+
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="checkbox"
+                id="rememberUser"
+                checked={rememberUser}
+                onChange={e => setRememberUser(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-emerald-500 cursor-pointer"
+              />
+              <label htmlFor="rememberUser" className="text-sm text-slate-400 cursor-pointer">
+                Recordar usuario
+              </label>
             </div>
 
             <button
