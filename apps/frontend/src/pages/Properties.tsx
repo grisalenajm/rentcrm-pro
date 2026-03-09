@@ -239,9 +239,9 @@ export default function Properties() {
               </thead>
               <tbody>
                 {properties.map((p: Property) => (
-                  <tr key={p.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
-                    <td className="px-4 py-3 cursor-pointer hover:text-emerald-400 transition-colors" onClick={() => setDetailProperty(p)}>
-                      <span className="font-medium text-white hover:text-emerald-400 transition-colors">
+                  <tr key={p.id} className="border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => setDetailProperty(p)}>
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-white">
                         {p.name}
                       </span>
                     </td>
@@ -256,13 +256,13 @@ export default function Properties() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
-                        <button onClick={() => openIcal(p)}
+                        <button onClick={(e) => { e.stopPropagation(); openIcal(p); }}
                           className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg transition-colors">
                           📅 iCal
                         </button>
-                        <button onClick={() => openEdit(p)}
+                        <button onClick={(e) => { e.stopPropagation(); openEdit(p); }}
                           className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">{t('common.edit')}</button>
-                        <button onClick={() => { if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(p.id); }}
+                        <button onClick={(e) => { e.stopPropagation(); if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(p.id); }}
                           className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">{t('common.delete')}</button>
                       </div>
                     </td>
@@ -327,58 +327,99 @@ export default function Properties() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Photo */}
-              <div>
-                {detailProperty.photo ? (
-                  <img src={detailProperty.photo} alt={detailProperty.name}
-                    className="w-full h-48 object-cover rounded-xl mb-3" />
-                ) : (
-                  <div className="w-full h-48 bg-slate-800 rounded-xl mb-3 flex items-center justify-center text-slate-500 text-sm gap-2">
-                    <span className="text-3xl">🏠</span>
-                    <span>Sin foto</span>
+            <div className="flex-1 overflow-y-auto">
+              {/* Bloque superior: foto + datos */}
+              <div className="flex gap-4 p-6">
+                {/* Foto pequeña izquierda */}
+                <div className="shrink-0 w-32 h-32 rounded-xl overflow-hidden bg-slate-800 flex items-center justify-center">
+                  {detailProperty.photo
+                    ? <img src={detailProperty.photo} alt={detailProperty.name} className="w-full h-full object-cover" />
+                    : <span className="text-3xl">🏠</span>
+                  }
+                </div>
+
+                {/* Datos derecha */}
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div>
+                    <p className="text-xs text-slate-400">Dirección</p>
+                    <p className="text-white text-sm">{detailProperty.address}</p>
                   </div>
-                )}
-                <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
-                  onChange={handlePhotoChange} />
-                <button
-                  onClick={() => photoInputRef.current?.click()}
-                  disabled={photoUploading}
-                  className="text-sm px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50">
-                  {photoUploading ? 'Subiendo...' : 'Cambiar foto'}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-xs text-slate-400">Ciudad</p>
+                      <p className="text-white text-sm">{detailProperty.city}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Provincia</p>
+                      <p className="text-white text-sm">{detailProperty.province || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Habitaciones</p>
+                      <p className="text-white text-sm">{detailProperty.rooms}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Estado</p>
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusClass(detailProperty.status)}`}>
+                        {statusLabel(detailProperty.status)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botón cambiar foto */}
+              <div className="px-6 pb-2">
+                <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                <button onClick={() => photoInputRef.current?.click()} disabled={photoUploading}
+                  className="text-xs text-slate-400 hover:text-emerald-400 transition-colors">
+                  {photoUploading ? 'Subiendo...' : '📷 Cambiar foto'}
                 </button>
               </div>
 
-              {/* Property info */}
-              <div className="bg-slate-800 rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">{t('common.address')}</p>
-                  <p className="text-white">{detailProperty.address}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">{t('common.city')}</p>
-                  <p className="text-white">{detailProperty.city}{detailProperty.province ? `, ${detailProperty.province}` : ''}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">{t('properties.rooms')}</p>
-                  <p className="text-white">{detailProperty.rooms}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">{t('common.status')}</p>
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusClass(detailProperty.status)}`}>
-                    {statusLabel(detailProperty.status)}
-                  </span>
-                </div>
-                {detailProperty.sesCodigoEstablecimiento && (
-                  <div className="col-span-2">
-                    <p className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Código SES</p>
-                    <p className="text-white font-mono">{detailProperty.sesCodigoEstablecimiento}</p>
+              <div className="border-t border-slate-800 mx-6" />
+
+              {/* iCal */}
+              <div className="px-6 py-4">
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">iCal</p>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">URL exportación</p>
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs text-emerald-400 bg-slate-800 px-2 py-1 rounded flex-1 truncate">
+                        {exportUrl(detailProperty.id)}
+                      </code>
+                      <button onClick={() => navigator.clipboard.writeText(exportUrl(detailProperty.id))}
+                        className="text-xs text-slate-400 hover:text-white px-2 py-1 bg-slate-800 rounded transition-colors">
+                        Copiar
+                      </button>
+                    </div>
                   </div>
-                )}
+                </div>
+                <button onClick={() => { setDetailProperty(null); openIcal(detailProperty); }}
+                  className="mt-2 text-xs text-slate-400 hover:text-emerald-400 transition-colors">
+                  ⚙️ Gestionar feeds iCal
+                </button>
               </div>
 
+              <div className="border-t border-slate-800 mx-6" />
+
+              {/* SES */}
+              <div className="px-6 py-4">
+                <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">SES Hospedajes</p>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs text-slate-400">Código establecimiento</p>
+                    <p className="text-white text-sm font-mono">
+                      {detailProperty.sesCodigoEstablecimiento || <span className="text-slate-500">No configurado</span>}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-800 mx-6" />
+
               {/* Financial summary */}
-              <div>
+              <div className="px-6 py-4">
                 <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3">Resumen financiero</h3>
 
                 {allYears.length === 0 ? (
