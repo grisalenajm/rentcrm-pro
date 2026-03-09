@@ -84,6 +84,7 @@ rentcrm-pro/
 │   │       │   └── organization.service.ts    ← incluye campos SES y SMTP
 │   │       ├── contracts/
 │   │       ├── evaluations/
+│   │       ├── expenses/              ← módulo CRUD de gastos
 │   │       ├── financials/
 │   │       ├── ical/
 │   │       └── users/
@@ -141,6 +142,15 @@ Tabla para huéspedes adicionales por reserva:
 - `docType` (dni/passport/nie/other)
 - `docNumber`, `docCountry` (ISO 2 letras)
 - `birthDate` (opcional), `phone` (opcional)
+
+### Expense
+- `propertyId` — FK a Property
+- `date` — fecha del gasto
+- `amount` — importe en euros
+- `type` — tasas | agua | luz | internet | limpieza | otros
+- `notes` — notas opcionales
+
+Endpoints: GET /expenses, POST /expenses, PUT /expenses/:id, DELETE /expenses/:id, GET /expenses/summary
 
 ---
 
@@ -241,75 +251,10 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 
 ## Pendiente / Próximas sesiones
 
-- [ ] Consulta de estado de lote SES (verificar confirmación asíncrona del Ministerio)
-- [ ] Página Partes SES (nav: "Partes SES") — historial de envíos
-- [ ] Notificación por email cuando el SES confirma/rechaza un parte
-- [ ] Tests de envío con entorno de pruebas SES
+- [x] Responsive móvil completo (Layout, Dashboard, Bookings, BookingDetail, Clients, ClientDetail, Properties, Financials, Contracts, ContractTemplates)
+- [x] Login campos en blanco + checkbox recordar usuario
+- [ ] PropertyDetail: foto de propiedad + resumen financiero anual con drill-down
+- [ ] Página Partes SES (historial de envíos)
+- [ ] Consulta estado de lote SES
+- [ ] Notificación email cuando SES confirma/rechaza
 
----
-
-## Tarea pendiente: Responsive móvil
-
-### Objetivo
-Adaptar toda la app para uso completo en móvil (crear, editar, ver).
-
-### Archivos a modificar
-1. `src/components/Layout.tsx` — menú hamburguesa + drawer con overlay
-2. `src/pages/Dashboard.tsx` — tabla → tarjetas, grid responsive
-3. `src/pages/Bookings.tsx` — tabla → tarjetas móvil, modal fullscreen
-4. `src/pages/BookingDetail.tsx` — layout columnas → apilado, modal fullscreen
-5. `src/pages/Clients.tsx` — tabla → tarjetas móvil, modal fullscreen
-6. `src/pages/ClientDetail.tsx` — tabla reservas → tarjetas, modales fullscreen
-7. `src/pages/Properties.tsx` — tabla → tarjetas móvil
-
-### Patrón a aplicar en tablas → tarjetas móvil
-```jsx
-{/* Desktop: tabla */}
-<div className="hidden md:block">
-  <table>...</table>
-</div>
-{/* Móvil: tarjetas */}
-<div className="md:hidden space-y-3">
-  {items.map(item => (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">...</div>
-  ))}
-</div>
-```
-
-### Patrón modales fullscreen en móvil
-```jsx
-<div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-  <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl 
-                  w-full md:max-w-lg max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
-```
-
-### Patrón menú drawer móvil (Layout.tsx)
-- Añadir estado `menuOpen` 
-- Botón hamburguesa en header móvil (≡)
-- Sidebar: `fixed inset-y-0 left-0 z-50 w-64 transform transition-transform`
-  - Cerrado: `-translate-x-full`
-  - Abierto: `translate-x-0`
-- Overlay: `fixed inset-0 bg-black/50 z-40` visible cuando menuOpen
-- Cerrar al hacer click en un enlace
-
-### Breakpoints Tailwind usados
-- `md:` = 768px → desktop
-- Sin prefijo = móvil primero
-
-### Grids responsive
-```jsx
-// Cards métricas Dashboard
-className="grid grid-cols-2 md:grid-cols-4 gap-4"
-
-// Formularios 2 columnas
-className="grid grid-cols-1 md:grid-cols-2 gap-4"
-```
-
-### Modales con tablas internas
-Las tablas dentro de modales (ej: seleccionar cliente en nueva reserva)
-también necesitan scroll horizontal: `overflow-x-auto`
-
-### Estado actual del Layout
-- Sidebar fijo izquierda en desktop
-- Sin adaptación móvil actual
-- Ver Layout.tsx para estructura exacta antes de modificar
