@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import { lookup } from 'dns/promises';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
 
@@ -11,6 +12,18 @@ export class ICalService {
   private readonly logger = new Logger(ICalService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  private async validateExternalUrl(url: string): Promise<void> {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new BadRequestException('Protocolo no permitido');
+    }
+    const { address } = await lookup(parsed.hostname);
+    const privateRanges = [/^127\./, /^10\./, /^192\.168\./, /^172\.(1[6-9]|2\d|3[01])\./];
+    if (privateRanges.some(r => r.test(address))) {
+      throw new BadRequestException('URL no permitida');
+    }
+  }
 
   async findAll(organizationId: string) {
     return this.prisma.availabilitySync.findMany({
@@ -64,6 +77,8 @@ export class ICalService {
   async syncFeed(id: string) {
     const feed = await this.prisma.availabilitySync.findUnique({ where: { id } });
     if (!feed || !feed.icalUrl) throw new NotFoundException('Feed not found or no URL');
+
+    await this.validateExternalUrl(feed.icalUrl);
 
     let icalText: string;
     try {

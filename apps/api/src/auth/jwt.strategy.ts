@@ -20,6 +20,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user || !user.isActive || user.deletedAt) {
       throw new UnauthorizedException();
     }
+    if (user.passwordChangedAt) {
+      const tokenIssuedAt = new Date(payload.iat * 1000);
+      if (user.passwordChangedAt > tokenIssuedAt) {
+        throw new UnauthorizedException('Sesión invalidada — contraseña cambiada');
+      }
+    }
     return user;
   }
 }

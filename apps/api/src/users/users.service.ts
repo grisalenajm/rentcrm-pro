@@ -58,7 +58,7 @@ export class UsersService {
       where: { id },
       data: {
         ...rest,
-        ...(password ? { passwordHash: await bcrypt.hash(password, 10) } : {}),
+        ...(password ? { passwordHash: await bcrypt.hash(password, 10), passwordChangedAt: new Date() } : {}),
       },
       select: {
         id: true, name: true, email: true,
@@ -84,7 +84,7 @@ export class UsersService {
       () => chars[Math.floor(Math.random() * chars.length)],
     ).join('');
     const passwordHash = await bcrypt.hash(tempPassword, 10);
-    await this.prisma.user.update({ where: { id }, data: { passwordHash } });
+    await this.prisma.user.update({ where: { id }, data: { passwordHash, passwordChangedAt: new Date() } });
     return { tempPassword };
   }
 }

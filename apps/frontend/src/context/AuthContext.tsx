@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
-import { api } from '../lib/api';
+import { api, setAuthToken } from '../lib/api';
 
 interface User {
   id: string;
@@ -20,21 +20,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const u = localStorage.getItem('user');
-    return u ? JSON.parse(u) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
 
   const login = async (email: string, password: string) => {
     const { data } = await api.post('/auth/login', { email, password });
-    localStorage.setItem('token', data.accessToken);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    setAuthToken(data.accessToken);
     setUser(data.user);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    setAuthToken(null);
     setUser(null);
   };
 

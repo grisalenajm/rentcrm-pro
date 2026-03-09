@@ -52,6 +52,7 @@ export class AuthService {
         organizationId: true,
         isActive: true,
         deletedAt: true,
+        passwordChangedAt: true,
       },
     });
   }
