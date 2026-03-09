@@ -312,3 +312,5 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
   - Generar informe con vulnerabilidades encontradas y propuesta de correcciones
   - Aplicar correcciones priorizadas por severidad (crítica > alta > media > baja)
 
+- [ ] Versionado de API: añadir prefijo /api/v1/ a todos los endpoints para permitir evolución sin romper clientes
+

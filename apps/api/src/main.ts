@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import * as express from 'express';
@@ -23,8 +23,9 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
+  const logger = new Logger('Bootstrap');
   const port = process.env.API_PORT || 3001;
   await app.listen(port);
-  console.log(`API corriendo en puerto ${port}`);
+  logger.log(`Aplicación iniciada en puerto ${port}`);
 }
 bootstrap();

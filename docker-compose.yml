@@ -3,10 +3,7 @@ services:
     image: postgres:16-alpine
     container_name: rentcrm-postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: rentcrm
-      POSTGRES_USER: rentcrm
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    env_file: .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -36,15 +33,7 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
-      REDIS_PASSWORD: rentcrm_redis_2024
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
-      API_PORT: 3001
-      NODE_ENV: production
-      FRONTEND_URL: ${FRONTEND_URL}
+    env_file: .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,8 +48,7 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
-    environment:
-      VITE_API_URL: http://api:3001
+    env_file: .env
     depends_on:
       - api
 

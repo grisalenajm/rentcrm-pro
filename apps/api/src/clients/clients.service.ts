@@ -43,7 +43,7 @@ export class ClientsService {
 
   async create(dto: CreateClientDto, organizationId: string, userId: string) {
     const { birthDate, ...rest } = dto;
-    return this.prisma.client.create({
+    const client = await this.prisma.client.create({
       data: {
         ...rest,
         organizationId,
@@ -51,25 +51,31 @@ export class ClientsService {
         ...(birthDate ? { birthDate: new Date(birthDate) } : {}),
       },
     });
+    console.log(JSON.stringify({ event: 'client_modified', action: 'create', clientId: client.id, userId, timestamp: new Date().toISOString() }));
+    return client;
   }
 
   async update(id: string, dto: UpdateClientDto, organizationId: string) {
     await this.findOne(id, organizationId);
     const { birthDate, ...rest } = dto;
-    return this.prisma.client.update({
+    const client = await this.prisma.client.update({
       where: { id },
       data: {
         ...rest,
         ...(birthDate ? { birthDate: new Date(birthDate) } : {}),
       },
     });
+    console.log(JSON.stringify({ event: 'client_modified', action: 'update', clientId: id, userId: null, timestamp: new Date().toISOString() }));
+    return client;
   }
 
   async remove(id: string, organizationId: string) {
     await this.findOne(id, organizationId);
-    return this.prisma.client.update({
+    const client = await this.prisma.client.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+    console.log(JSON.stringify({ event: 'client_modified', action: 'delete', clientId: id, userId: null, timestamp: new Date().toISOString() }));
+    return client;
   }
 }

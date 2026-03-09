@@ -131,10 +131,16 @@ export class ContractsService {
 
   async sign(token: string, dto: SignContractDto, ip: string) {
     const contract = await this.findByToken(token);
-    return this.prisma.contract.update({
+    const result = await this.prisma.contract.update({
       where: { id: contract.id },
       data: { status: 'signed', signatureImage: dto.signatureImage, signerName: dto.signerName, signerIp: ip, signedAt: new Date() },
     });
+    console.log(JSON.stringify({
+      event: 'contract_signed',
+      contractId: contract.id,
+      timestamp: new Date().toISOString(),
+    }));
+    return result;
   }
 
   async cancel(id: string, organizationId: string) {

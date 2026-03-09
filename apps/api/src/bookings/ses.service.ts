@@ -257,12 +257,29 @@ export class SesService {
         data: { sesLote: lote, sesStatus: codigo === '0' ? 'enviado' : 'error', sesSentAt: new Date() },
       });
 
-      return { ok: codigo === '0', lote, codigo };
+      const ok = codigo === '0';
+      console.log(JSON.stringify({
+        event: 'ses_send',
+        bookingId,
+        organizationId,
+        status: ok ? 'success' : 'error',
+        lote,
+        timestamp: new Date().toISOString(),
+      }));
+      return { ok, lote, codigo };
     } catch (err: any) {
       await (this.prisma.booking as any).update({
         where: { id: bookingId },
         data: { sesStatus: 'error', sesSentAt: new Date() },
       });
+      console.log(JSON.stringify({
+        event: 'ses_send',
+        bookingId,
+        organizationId,
+        status: 'error',
+        lote: null,
+        timestamp: new Date().toISOString(),
+      }));
       throw new BadRequestException(`Error al enviar al SES: ${err.message}`);
     }
   }
