@@ -218,61 +218,104 @@ export default function Clients() {
       ) : clients.length === 0 ? (
         <div className="text-slate-400 text-center py-20">{t('common.noData')}</div>
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-800">
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.name')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('clients.dni')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.email')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.phone')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('clients.bookings')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('clients.rating')}</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.map((c: Client) => {
-                const s = (summaries as any)[c.id];
-                return (
-                  <tr key={c.id} onClick={() => navigate(`/clients/${c.id}`)}
-                    className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
-                    <td className="px-4 py-3 font-medium">{c.firstName} {c.lastName}</td>
-                    <td className="px-4 py-3 text-slate-400 font-mono text-xs">{c.dniPassport || '—'}</td>
-                    <td className="px-4 py-3 text-slate-400">{c.email || '—'}</td>
-                    <td className="px-4 py-3 text-slate-400">{c.phone || '—'}</td>
-                    <td className="px-4 py-3 text-slate-400">{s ? s.totalBookings : '—'}</td>
-                    <td className="px-4 py-3">
-                      {s?.avgScore ? <Stars score={s.avgScore} /> : <span className="text-slate-600 text-xs">{t('clients.noRating')}</span>}
-                    </td>
-                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                      <div className="flex gap-2 justify-end">
-                        <button onClick={e => openEdit(e, c)}
-                          className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
-                          {t('common.edit')}
-                        </button>
-                        <button onClick={e => { e.stopPropagation(); if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(c.id); }}
-                          className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
-                          {t('common.delete')}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Desktop: tabla */}
+          <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800">
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.name')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('clients.dni')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.email')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.phone')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('clients.bookings')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('clients.rating')}</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {clients.map((c: Client) => {
+                  const s = (summaries as any)[c.id];
+                  return (
+                    <tr key={c.id} onClick={() => navigate(`/clients/${c.id}`)}
+                      className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
+                      <td className="px-4 py-3 font-medium">{c.firstName} {c.lastName}</td>
+                      <td className="px-4 py-3 text-slate-400 font-mono text-xs">{c.dniPassport || '—'}</td>
+                      <td className="px-4 py-3 text-slate-400">{c.email || '—'}</td>
+                      <td className="px-4 py-3 text-slate-400">{c.phone || '—'}</td>
+                      <td className="px-4 py-3 text-slate-400">{s ? s.totalBookings : '—'}</td>
+                      <td className="px-4 py-3">
+                        {s?.avgScore ? <Stars score={s.avgScore} /> : <span className="text-slate-600 text-xs">{t('clients.noRating')}</span>}
+                      </td>
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={e => openEdit(e, c)}
+                            className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
+                            {t('common.edit')}
+                          </button>
+                          <button onClick={e => { e.stopPropagation(); if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(c.id); }}
+                            className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                            {t('common.delete')}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Móvil: tarjetas */}
+          <div className="md:hidden space-y-3">
+            {clients.map((c: Client) => {
+              const s = (summaries as any)[c.id];
+              return (
+                <div key={c.id} onClick={() => navigate(`/clients/${c.id}`)}
+                  className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:bg-slate-800/70 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-medium text-white">{c.firstName} {c.lastName}</span>
+                    {s?.avgScore
+                      ? <Stars score={s.avgScore} />
+                      : <span className="text-xs text-slate-500">{t('clients.noRating')}</span>}
+                  </div>
+                  {c.dniPassport && (
+                    <p className="text-xs text-slate-400 font-mono mb-1">{c.dniPassport}</p>
+                  )}
+                  {c.email && (
+                    <p className="text-xs text-slate-400 mb-1">{c.email}</p>
+                  )}
+                  {c.phone && (
+                    <p className="text-xs text-slate-400 mb-1">{c.phone}</p>
+                  )}
+                  {s && (
+                    <p className="text-xs text-slate-500 mb-3">{s.totalBookings} {t('clients.bookings')}</p>
+                  )}
+                  <div className="flex gap-2 mt-2" onClick={e => e.stopPropagation()}>
+                    <button onClick={e => openEdit(e, c)}
+                      className="flex-1 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors text-white">
+                      {t('common.edit')}
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(c.id); }}
+                      className="flex-1 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                      {t('common.delete')}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
             <h2 className="text-lg font-bold mb-5 text-white">{editing ? t('common.edit') : t('clients.new')}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
 
               {/* Nombre y apellido */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>{t('clients.firstName')} *</label>
                   <input value={form.firstName} onChange={f('firstName')} required className={inputCls} />
@@ -284,7 +327,7 @@ export default function Clients() {
               </div>
 
               {/* Documento */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Tipo documento</label>
                   <select value={form.docType} onChange={f('docType')} className={inputCls}>
@@ -310,7 +353,7 @@ export default function Clients() {
               </div>
 
               {/* Nacionalidad y fecha nacimiento */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>{t('clients.nationality')}</label>
                   <select value={form.nationality} onChange={f('nationality')} className={inputCls}>
