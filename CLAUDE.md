@@ -289,3 +289,26 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 - [ ] Consulta estado de lote SES
 - [ ] Notificación email cuando SES confirma/rechaza
 
+- [ ] CHECKIN ONLINE: Enlace tokenizado para que el cliente rellene su información de checkin
+  - Link seguro con token único por reserva (JWT o UUID en BD)
+  - Envío automático por email 2 días antes de la fecha de entrada
+  - Opción de envío manual desde BookingDetail
+  - Página pública /checkin/:token (sin login) con formulario de datos del huésped
+  - Al completar: actualizar datos de la reserva y marcar checkin como completado
+  - Afecta: BD (token + checkinStatus en Booking), API (endpoint público), Frontend (página pública + botón en BookingDetail), email scheduler
+
+- [ ] DOCUMENTOS Y REGLAS DE LA CASA: Sección de documentos por propiedad
+  - El propietario escribe el texto en español
+  - La app traduce automáticamente al idioma del cliente antes de enviar (usando API de traducción)
+  - Tipos de documento: reglas de la casa, información de llegada, WiFi, recomendaciones locales, otros
+  - Envío por email al cliente (manual o automático junto al checkin)
+  - Afecta: BD (modelo Document por propiedad), API, Frontend (sección en PropertyDetail), integración traducción automática
+
+- [ ] AUDITORÍA DE SEGURIDAD: Revisión completa del código buscando vulnerabilidades
+  - Revisar endpoints API: autenticación, autorización, validación de inputs
+  - Revisar frontend: XSS, datos sensibles expuestos, tokens en localStorage
+  - Revisar Docker: puertos expuestos, variables de entorno, secretos
+  - Revisar Prisma: SQL injection, datos sin sanitizar
+  - Generar informe con vulnerabilidades encontradas y propuesta de correcciones
+  - Aplicar correcciones priorizadas por severidad (crítica > alta > media > baja)
+
