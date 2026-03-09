@@ -61,35 +61,62 @@ export default function Dashboard() {
         {recentBookings.length === 0 ? (
           <div className="text-slate-400 text-center py-10 text-sm">{t('common.noData')}</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-800">
-                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.client')}</th>
-                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
-                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
-                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkOut')}</th>
-                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('common.total')}</th>
-                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('common.status')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Desktop */}
+            <div className="hidden md:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800">
+                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.client')}</th>
+                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
+                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
+                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkOut')}</th>
+                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('common.total')}</th>
+                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('common.status')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentBookings.map((b: any) => (
+                    <tr key={b.id} onClick={() => navigate(`/bookings/${b.id}`)}
+                      className="border-b border-slate-800 hover:bg-slate-800/70 cursor-pointer transition-colors">
+                      <td className="px-5 py-3 font-medium">{b.client?.firstName} {b.client?.lastName}</td>
+                      <td className="px-5 py-3 text-slate-400">{b.property?.name}</td>
+                      <td className="px-5 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
+                      <td className="px-5 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
+                      <td className="px-5 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
+                      <td className="px-5 py-3">
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[b.status] || 'bg-slate-500/10 text-slate-400'}`}>
+                          {t(`bookings.statuses.${b.status}`)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Móvil */}
+            <div className="md:hidden space-y-3 p-4">
               {recentBookings.map((b: any) => (
-                <tr key={b.id} onClick={() => navigate(`/bookings/${b.id}`)}
-                  className="border-b border-slate-800 hover:bg-slate-800/70 cursor-pointer transition-colors">
-                  <td className="px-5 py-3 font-medium">{b.client?.firstName} {b.client?.lastName}</td>
-                  <td className="px-5 py-3 text-slate-400">{b.property?.name}</td>
-                  <td className="px-5 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
-                  <td className="px-5 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
-                  <td className="px-5 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
-                  <td className="px-5 py-3">
+                <div key={b.id} onClick={() => navigate(`/bookings/${b.id}`)}
+                  className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-medium text-white">{b.client?.firstName} {b.client?.lastName}</span>
                     <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[b.status] || 'bg-slate-500/10 text-slate-400'}`}>
                       {t(`bookings.statuses.${b.status}`)}
                     </span>
-                  </td>
-                </tr>
+                  </div>
+                  <div className="text-xs text-slate-400 mb-1">{b.property?.name}</div>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-xs text-slate-400">
+                      {new Date(b.checkInDate).toLocaleDateString('es-ES')} → {new Date(b.checkOutDate).toLocaleDateString('es-ES')}
+                    </span>
+                    <span className="font-semibold text-emerald-400 text-sm">€{b.totalAmount}</span>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
     </div>
