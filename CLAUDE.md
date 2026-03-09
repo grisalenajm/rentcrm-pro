@@ -129,6 +129,7 @@ Campos SES añadidos:
 - `sesEndpoint` — URL endpoint (producción o pruebas)
 
 ### Property
+- `photo` — URL/base64 de la foto de la propiedad (opcional)
 - `sesCodigoEstablecimiento` — código SES específico de esta propiedad (sobreescribe el de Organization)
 
 ### Booking
@@ -150,7 +151,7 @@ Tabla para huéspedes adicionales por reserva:
 - `type` — tasas | agua | luz | internet | limpieza | otros
 - `notes` — notas opcionales
 
-Endpoints: GET /expenses, POST /expenses, PUT /expenses/:id, DELETE /expenses/:id, GET /expenses/summary
+Endpoints: GET /expenses, POST /expenses, PUT /expenses/:id, DELETE /expenses/:id, GET /expenses/summary?propertyId=X
 
 ---
 
@@ -249,11 +250,41 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 
 ---
 
+## Cambios recientes
+
+### Responsive móvil (completo)
+- Layout.tsx: drawer móvil con hamburguesa, overlay y cierre automático
+- Dashboard, Bookings, BookingDetail, Clients, ClientDetail, Properties: tablas → tarjetas móvil
+- Financials, Contracts, ContractTemplates: overflow-x-auto + tarjetas móvil
+- Todos los modales: fullscreen en móvil (rounded-t-2xl, items-end)
+
+### Login
+- Campos en blanco al cargar (sin valores por defecto)
+- Checkbox "Recordar usuario": guarda email en localStorage, nunca el password
+
+### Financials
+- Vista anual con selector de año (← año →)
+- Tarjetas resumen: ingresos, gastos, beneficio neto
+- Tabla de ingresos por propiedad con totales
+- Tabla de gastos del año con CRUD completo
+- Tipos de gasto: tasas, agua, luz, internet, limpieza, otros
+
+### Properties
+- Campo photo en BD y API
+- Panel de detalle rediseñado: foto pequeña + datos a la derecha
+- Secciones iCal y SES en panel de detalle
+- Fila completa clickeable para abrir detalle
+- iCal visible también en formulario de editar
+- Resumen financiero anual por propiedad con drill-down a /financials
+
+---
+
 ## Pendiente / Próximas sesiones
 
 - [x] Responsive móvil completo (Layout, Dashboard, Bookings, BookingDetail, Clients, ClientDetail, Properties, Financials, Contracts, ContractTemplates)
 - [x] Login campos en blanco + checkbox recordar usuario
-- [ ] PropertyDetail: foto de propiedad + resumen financiero anual con drill-down
+- [x] PropertyDetail: foto de propiedad + resumen financiero anual con drill-down
+- [x] Financials: gastos por propiedad + totales anuales
 - [ ] Página Partes SES (historial de envíos)
 - [ ] Consulta estado de lote SES
 - [ ] Notificación email cuando SES confirma/rechaza
