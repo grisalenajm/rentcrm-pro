@@ -12,6 +12,7 @@ import { ContractsModule } from './contracts/contracts.module';
 import { EvaluationsModule } from './evaluations/evaluations.module';
 import { OrganizationModule } from './organization/organization.module';
 import { ICalModule } from './ical/ical.module';
+import { ExpensesModule } from './expenses/expenses.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ICalModule } from './ical/ical.module';
     EvaluationsModule,
     OrganizationModule,
     ICalModule,
+    ExpensesModule,
   ],
 })
 export class AppModule {}
