@@ -96,7 +96,7 @@ export default function ClientDetail() {
         {/* Datos cliente */}
         <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
           <h2 className="font-bold text-lg mb-4">{client?.firstName} {client?.lastName}</h2>
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             {client?.dniPassport && (
               <div>
                 <span className="text-slate-400">{t('clients.dni')}: </span>
@@ -165,58 +165,93 @@ export default function ClientDetail() {
         {bookings.length === 0 ? (
           <div className="text-slate-400 text-center py-10 text-sm">{t('common.noData')}</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-800">
-                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
-                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
-                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkOut')}</th>
-                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('common.total')}</th>
-                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.source')}</th>
-                <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('clients.rating')}</th>
-                <th className="px-5 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Desktop: tabla */}
+            <div className="hidden md:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800">
+                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
+                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
+                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkOut')}</th>
+                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('common.total')}</th>
+                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.source')}</th>
+                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('clients.rating')}</th>
+                    <th className="px-5 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bookings.map((b: any) => (
+                    <tr key={b.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                      <td className="px-5 py-3 font-medium">{b.property?.name || '—'}</td>
+                      <td className="px-5 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
+                      <td className="px-5 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
+                      <td className="px-5 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
+                      <td className="px-5 py-3 text-slate-400">{sourceLabel[b.source] || b.source}</td>
+                      <td className="px-5 py-3">
+                        {b.evaluation ? (
+                          <div className="flex items-center gap-2">
+                            <Stars score={b.evaluation.score} />
+                            <button onClick={() => setEditingEval({ ...b.evaluation })}
+                              className="text-xs text-slate-400 hover:text-white transition-colors">
+                              {t('common.edit')}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-600 text-xs">{t('clients.noRating')}</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        {!b.evaluation && (
+                          <button onClick={() => { setRatingBookingId(b.id); setRatingScore(5); setRatingNotes(''); }}
+                            className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
+                            {t('evaluations.rate')}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Móvil: tarjetas */}
+            <div className="md:hidden space-y-3 p-4">
               {bookings.map((b: any) => (
-                <tr key={b.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
-                  <td className="px-5 py-3 font-medium">{b.property?.name || '—'}</td>
-                  <td className="px-5 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
-                  <td className="px-5 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
-                  <td className="px-5 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
-                  <td className="px-5 py-3 text-slate-400">{sourceLabel[b.source] || b.source}</td>
-                  <td className="px-5 py-3">
-                    {b.evaluation ? (
-                      <div className="flex items-center gap-2">
-                        <Stars score={b.evaluation.score} />
-                        <button onClick={() => setEditingEval({ ...b.evaluation })}
-                          className="text-xs text-slate-400 hover:text-white transition-colors">
-                          {t('common.edit')}
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-slate-600 text-xs">{t('clients.noRating')}</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3">
-                    {!b.evaluation && (
-                      <button onClick={() => { setRatingBookingId(b.id); setRatingScore(5); setRatingNotes(''); }}
-                        className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
-                        {t('evaluations.rate')}
+                <div key={b.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-medium text-white">{b.property?.name || '—'}</span>
+                    <span className="text-xs font-semibold text-emerald-400">€{b.totalAmount}</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mb-1">
+                    {new Date(b.checkInDate).toLocaleDateString('es-ES')} → {new Date(b.checkOutDate).toLocaleDateString('es-ES')}
+                  </p>
+                  <p className="text-xs text-slate-500 mb-2">{sourceLabel[b.source] || b.source}</p>
+                  {b.evaluation ? (
+                    <div className="flex items-center gap-2">
+                      <Stars score={b.evaluation.score} />
+                      <button onClick={() => setEditingEval({ ...b.evaluation })}
+                        className="text-xs text-slate-400 hover:text-white transition-colors">
+                        {t('common.edit')}
                       </button>
-                    )}
-                  </td>
-                </tr>
+                    </div>
+                  ) : (
+                    <button onClick={() => { setRatingBookingId(b.id); setRatingScore(5); setRatingNotes(''); }}
+                      className="mt-1 px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
+                      {t('evaluations.rate')}
+                    </button>
+                  )}
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* Modal crear valoración */}
       {ratingBookingId && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm">
+        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-sm max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
             <h2 className="text-lg font-bold mb-4">{t('evaluations.title')}</h2>
             <div className="mb-4">
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('evaluations.score')}</label>
@@ -245,8 +280,8 @@ export default function ClientDetail() {
 
       {/* Modal editar valoración */}
       {editingEval && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm">
+        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-sm max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
             <h2 className="text-lg font-bold mb-4">{t('evaluations.editTitle')}</h2>
             <div className="mb-4">
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('evaluations.score')}</label>
