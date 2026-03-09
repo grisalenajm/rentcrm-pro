@@ -86,7 +86,7 @@ function DocFields({ prefix, docType, docNumber, docCountry, onDocType, onDocNum
 }) {
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label className={labelCls}>Tipo doc.</label>
           <select value={docType} onChange={onDocType} disabled={readonly}
@@ -316,7 +316,7 @@ export default function Bookings() {
 
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">{t('bookings.title')}</h1>
@@ -333,44 +333,66 @@ export default function Bookings() {
       ) : bookings.length === 0 ? (
         <div className="text-slate-400 text-center py-20">{t('common.noData')}</div>
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-800">
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.client')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.checkOut')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.total')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.source')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.status')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map((b: any) => (
-                <tr key={b.id} onClick={() => navigate(`/bookings/${b.id}`)}
-                  className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
-                  <td className="px-4 py-3 font-medium">{b.client?.firstName} {b.client?.lastName}</td>
-                  <td className="px-4 py-3 text-slate-400">{b.property?.name}</td>
-                  <td className="px-4 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
-                  <td className="px-4 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
-                  <td className="px-4 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
-                  <td className="px-4 py-3 text-slate-400">{t(`bookings.sources.${b.source}`) || b.source}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[b.status] || 'bg-slate-500/10 text-slate-400'}`}>
-                      {t(`bookings.statuses.${b.status}`) || b.status}
-                    </span>
-                  </td>
+        <>
+          {/* Desktop: tabla */}
+          <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800">
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.client')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.checkOut')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.total')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.source')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.status')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {bookings.map((b: any) => (
+                  <tr key={b.id} onClick={() => navigate(`/bookings/${b.id}`)}
+                    className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
+                    <td className="px-4 py-3 font-medium">{b.client?.firstName} {b.client?.lastName}</td>
+                    <td className="px-4 py-3 text-slate-400">{b.property?.name}</td>
+                    <td className="px-4 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
+                    <td className="px-4 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
+                    <td className="px-4 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
+                    <td className="px-4 py-3 text-slate-400">{t(`bookings.sources.${b.source}`) || b.source}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[b.status] || 'bg-slate-500/10 text-slate-400'}`}>
+                        {t(`bookings.statuses.${b.status}`) || b.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Móvil: tarjetas */}
+          <div className="md:hidden space-y-3">
+            {bookings.map((b: any) => (
+              <div key={b.id} onClick={() => navigate(`/bookings/${b.id}`)}
+                className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:bg-slate-800/70">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-medium text-white">{b.client?.firstName} {b.client?.lastName}</span>
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[b.status] || 'bg-slate-500/10 text-slate-400'}`}>
+                    {t(`bookings.statuses.${b.status}`) || b.status}
+                  </span>
+                </div>
+                <p className="text-slate-400 text-sm mb-2">{b.property?.name}</p>
+                <div className="flex justify-between items-center text-xs text-slate-500">
+                  <span>{new Date(b.checkInDate).toLocaleDateString('es-ES')} → {new Date(b.checkOutDate).toLocaleDateString('es-ES')}</span>
+                  <span className="font-semibold text-emerald-400">€{b.totalAmount}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold mb-5 text-white">{t('bookings.new')}</h2>
 
             {errorMsg && (
@@ -405,7 +427,7 @@ export default function Bookings() {
 
                 {(clientMode === 'new' || form.clientId) && (
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label className={labelCls}>Nombre *</label>
                         <input value={newClient.firstName} onChange={fc('firstName')}
@@ -426,7 +448,7 @@ export default function Bookings() {
                       readonly={clientMode === 'existing'}
                       warnings={docWarnings}
                     />
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label className={labelCls}>Nacionalidad</label>
                         <select value={newClient.nationality} onChange={fc('nationality')}
@@ -445,7 +467,7 @@ export default function Bookings() {
                           className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label className={labelCls}>Email</label>
                         <input type="email" value={newClient.email} onChange={fc('email')}
@@ -487,7 +509,7 @@ export default function Bookings() {
                       <button onClick={() => removeGuest(i)}
                         className="text-red-400 hover:text-red-300 text-xs font-semibold">✕ Eliminar</button>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label className={labelCls}>Nombre *</label>
                         <input value={g.firstName} onChange={e => updateGuest(i, 'firstName', e.target.value)}
@@ -507,7 +529,7 @@ export default function Bookings() {
                       onDocCountry={e => updateGuest(i, 'docCountry', e.target.value)}
                       warnings={docWarnings}
                     />
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label className={labelCls}>Fecha nacimiento</label>
                         <input type="date" value={g.birthDate} onChange={e => updateGuest(i, 'birthDate', e.target.value)}
@@ -542,7 +564,7 @@ export default function Bookings() {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className={labelCls}>{t('bookings.checkIn')} *</label>
                     <input type="date" value={form.checkInDate} onChange={f('checkInDate')} className={inputCls} />
@@ -553,7 +575,7 @@ export default function Bookings() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className={labelCls}>{t('common.total')} (€) *</label>
                     <input type="number" value={form.totalAmount} onChange={f('totalAmount')} className={inputCls} />
