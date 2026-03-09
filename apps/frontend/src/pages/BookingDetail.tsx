@@ -104,7 +104,7 @@ export default function BookingDetail() {
   const nights = Math.round((new Date(booking.checkOutDate).getTime() - new Date(booking.checkInDate).getTime()) / 86400000);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => navigate('/bookings')} className="text-slate-400 hover:text-white text-sm transition-colors">
@@ -127,7 +127,7 @@ export default function BookingDetail() {
               {t(`bookings.statuses.${booking.status}`)}
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div>
               <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('bookings.checkIn')}</div>
               <div className="font-semibold">{new Date(booking.checkInDate).toLocaleDateString('es-ES')}</div>
@@ -177,7 +177,7 @@ export default function BookingDetail() {
       {booking.guests?.length > 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
           <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider mb-3">{t('bookings.additionalGuests')}</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {booking.guests.map((g: any) => (
               <div key={g.id} className="bg-slate-800 rounded-lg p-3 text-sm">
                 <div className="font-medium">{g.firstName} {g.lastName}</div>
@@ -221,8 +221,8 @@ export default function BookingDetail() {
         ) : (
           <div className="space-y-2">
             {booking.contracts?.map((c: any) => (
-              <div key={c.id} className="flex items-center justify-between bg-slate-800 rounded-lg px-4 py-3">
-                <div className="flex items-center gap-3">
+              <div key={c.id} className="flex flex-col md:flex-row md:items-center md:justify-between bg-slate-800 rounded-lg px-4 py-3 gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className={`text-xs font-semibold px-2 py-1 rounded-full ${contractStatusColor[c.status]}`}>
                     {t(`contracts.statuses.${c.status}`)}
                   </span>
@@ -230,7 +230,7 @@ export default function BookingDetail() {
                   {c.signedAt && <span className="text-xs text-slate-500">· {t('contracts.signed')}: {new Date(c.signedAt).toLocaleDateString('es-ES')}</span>}
                 </div>
                 <button onClick={() => viewContract(c.id)}
-                  className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
+                  className="self-start md:self-auto px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
                   {t('contracts.viewContract')}
                 </button>
               </div>
@@ -247,14 +247,14 @@ export default function BookingDetail() {
         ) : (
           <div className="space-y-2">
             {booking.financials?.map((f: any) => (
-              <div key={f.id} className="flex items-center justify-between bg-slate-800 rounded-lg px-4 py-3 text-sm">
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${f.type === 'income' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+              <div key={f.id} className="flex items-center justify-between bg-slate-800 rounded-lg px-4 py-3 text-sm gap-2">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
+                  <span className={`shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${f.type === 'income' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
                     {f.type === 'income' ? t('financials.income') : t('financials.expense')}
                   </span>
-                  <span className="text-slate-400">{f.description || f.category?.name || '—'}</span>
+                  <span className="text-slate-400 truncate">{f.description || f.category?.name || '—'}</span>
                 </div>
-                <span className={`font-semibold ${f.type === 'income' ? 'text-emerald-400' : 'text-red-400'}`}>
+                <span className={`shrink-0 font-semibold ${f.type === 'income' ? 'text-emerald-400' : 'text-red-400'}`}>
                   {f.type === 'income' ? '+' : '-'}€{Number(f.amount).toLocaleString('es-ES')}
                 </span>
               </div>
@@ -266,9 +266,9 @@ export default function BookingDetail() {
 
       {/* SES Hospedajes */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-3 gap-2">
           <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider">🚔 SES Hospedajes</h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {booking.sesStatus && (
               <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
                 booking.sesStatus === 'enviado' ? 'bg-emerald-500/10 text-emerald-400' :
@@ -333,8 +333,8 @@ export default function BookingDetail() {
 
       {/* Modal valoración */}
       {showRating && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm">
+        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-sm max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
             <h2 className="text-lg font-bold mb-4">{evaluation ? t('evaluations.editTitle') : t('evaluations.title')}</h2>
             <div className="mb-4">
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('evaluations.score')}</label>
