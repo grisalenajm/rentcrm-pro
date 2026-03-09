@@ -100,7 +100,7 @@ rentcrm-pro/
 │           └── pages/
 │               ├── Login.tsx
 │               ├── Dashboard.tsx
-│               ├── Properties.tsx     ← CRUD + campo SES por propiedad + sección iCal (modal por propiedad)
+│               ├── Properties.tsx     ← incluye campo SES por propiedad
 │               ├── Clients.tsx        ← tipo doc, país, teléfono con prefijo
 │               ├── ClientDetail.tsx
 │               ├── Bookings.tsx       ← huéspedes SES, validación docs, banderas
@@ -110,7 +110,7 @@ rentcrm-pro/
 │               ├── ContractTemplates.tsx
 │               ├── Settings.tsx       ← tabs: Usuario, General, Fiscal, Email, SES, Preferencias
 │               ├── OccupancyCalendar.tsx
-│               ├── UserManagement.tsx ← CRUD usuarios (admin only)
+│               ├── ICalFeeds.tsx
 │               ├── SignContract.tsx
 │               └── ComingSoon.tsx
 ```
@@ -186,12 +186,10 @@ Archivo: `apps/frontend/src/i18n/index.ts`
 - Objeto inline con `es` y `en`
 - **NO hay archivos JSON externos**
 - Para añadir traducciones: editar directamente el objeto en ese archivo
-- Namespaces activos: `nav`, `common`, `dashboard`, `properties` (incluye `properties.ical`), `clients`, `bookings`, `financials`, `contracts`, `templates`, `evaluations`, `settings`, `calendar`, `users`
 - Claves importantes:
   - `bookings.statuses.pending/confirmed/cancelled/completed`
   - `bookings.sources.direct/airbnb/booking/vrbo/manual_block`
   - `common.confirm_delete`
-  - `properties.ical.*` — claves iCal (antes namespace `ical` standalone, eliminado)
 
 ---
 
@@ -244,7 +242,74 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 ## Pendiente / Próximas sesiones
 
 - [ ] Consulta de estado de lote SES (verificar confirmación asíncrona del Ministerio)
-- [ ] Página "Partes SES" — historial de envíos con estado y filtros
+- [ ] Página Partes SES (nav: "Partes SES") — historial de envíos
 - [ ] Notificación por email cuando el SES confirma/rechaza un parte
 - [ ] Tests de envío con entorno de pruebas SES
-- [ ] Dashboard mejorado — gráficos de ingresos, tasa de ocupación
+
+---
+
+## Tarea pendiente: Responsive móvil
+
+### Objetivo
+Adaptar toda la app para uso completo en móvil (crear, editar, ver).
+
+### Archivos a modificar
+1. `src/components/Layout.tsx` — menú hamburguesa + drawer con overlay
+2. `src/pages/Dashboard.tsx` — tabla → tarjetas, grid responsive
+3. `src/pages/Bookings.tsx` — tabla → tarjetas móvil, modal fullscreen
+4. `src/pages/BookingDetail.tsx` — layout columnas → apilado, modal fullscreen
+5. `src/pages/Clients.tsx` — tabla → tarjetas móvil, modal fullscreen
+6. `src/pages/ClientDetail.tsx` — tabla reservas → tarjetas, modales fullscreen
+7. `src/pages/Properties.tsx` — tabla → tarjetas móvil
+
+### Patrón a aplicar en tablas → tarjetas móvil
+```jsx
+{/* Desktop: tabla */}
+<div className="hidden md:block">
+  <table>...</table>
+</div>
+{/* Móvil: tarjetas */}
+<div className="md:hidden space-y-3">
+  {items.map(item => (
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">...</div>
+  ))}
+</div>
+```
+
+### Patrón modales fullscreen en móvil
+```jsx
+<div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+  <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl 
+                  w-full md:max-w-lg max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
+```
+
+### Patrón menú drawer móvil (Layout.tsx)
+- Añadir estado `menuOpen` 
+- Botón hamburguesa en header móvil (≡)
+- Sidebar: `fixed inset-y-0 left-0 z-50 w-64 transform transition-transform`
+  - Cerrado: `-translate-x-full`
+  - Abierto: `translate-x-0`
+- Overlay: `fixed inset-0 bg-black/50 z-40` visible cuando menuOpen
+- Cerrar al hacer click en un enlace
+
+### Breakpoints Tailwind usados
+- `md:` = 768px → desktop
+- Sin prefijo = móvil primero
+
+### Grids responsive
+```jsx
+// Cards métricas Dashboard
+className="grid grid-cols-2 md:grid-cols-4 gap-4"
+
+// Formularios 2 columnas
+className="grid grid-cols-1 md:grid-cols-2 gap-4"
+```
+
+### Modales con tablas internas
+Las tablas dentro de modales (ej: seleccionar cliente en nueva reserva)
+también necesitan scroll horizontal: `overflow-x-auto`
+
+### Estado actual del Layout
+- Sidebar fijo izquierda en desktop
+- Sin adaptación móvil actual
+- Ver Layout.tsx para estructura exacta antes de modificar
