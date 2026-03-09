@@ -1,6 +1,19 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
 import { ExpensesService } from './expenses.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+
+const EXPENSE_TYPES = ['tasas', 'agua', 'luz', 'internet', 'limpieza', 'otros'] as const;
+
+class CreateExpenseDto {
+  @IsString() propertyId: string;
+  @IsString() date: string;
+  @IsNumber() amount: number;
+  @IsEnum(EXPENSE_TYPES, { message: 'Tipo de gasto no válido' }) type: string;
+  @IsOptional() @IsString() notes?: string;
+}
 
 @UseGuards(JwtAuthGuard)
 @Controller('expenses')
@@ -22,16 +35,22 @@ export class ExpensesController {
   }
 
   @Post()
-  create(@Request() req, @Body() body: { propertyId: string; date: string; amount: number; type: string; notes?: string }) {
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'owner')
+  create(@Request() req, @Body() body: CreateExpenseDto) {
     return this.expensesService.create(body, req.user.organizationId);
   }
 
   @Put(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'owner')
   update(@Request() req, @Param('id') id: string, @Body() body: any) {
     return this.expensesService.update(parseInt(id), body, req.user.organizationId);
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'owner')
   remove(@Request() req, @Param('id') id: string) {
     return this.expensesService.remove(parseInt(id), req.user.organizationId);
   }

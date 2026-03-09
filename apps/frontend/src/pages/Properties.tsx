@@ -104,6 +104,14 @@ export default function Properties() {
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !detailProperty) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('La imagen no puede superar 2MB');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      alert('Solo se permiten imágenes');
+      return;
+    }
     setPhotoUploading(true);
     const reader = new FileReader();
     reader.onload = async (ev) => {

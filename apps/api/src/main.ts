@@ -1,9 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import helmet from 'helmet';
+import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use(helmet());
+  app.use(express.json({ limit: '2mb' }));
+  app.use(express.urlencoded({ limit: '2mb', extended: true }));
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
@@ -11,10 +17,9 @@ async function bootstrap() {
     transform: true,
   }));
 
-  app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true,
-  });
+  const frontendUrl = process.env.FRONTEND_URL;
+  if (!frontendUrl) throw new Error('FRONTEND_URL no definida — abortando startup');
+  app.enableCors({ origin: frontendUrl, credentials: true });
 
   app.setGlobalPrefix('api');
 

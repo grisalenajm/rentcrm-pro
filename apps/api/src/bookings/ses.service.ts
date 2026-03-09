@@ -257,7 +257,7 @@ export class SesService {
         data: { sesLote: lote, sesStatus: codigo === '0' ? 'enviado' : 'error', sesSentAt: new Date() },
       });
 
-      return { ok: codigo === '0', lote, codigo, raw: response.data };
+      return { ok: codigo === '0', lote, codigo };
     } catch (err: any) {
       await (this.prisma.booking as any).update({
         where: { id: bookingId },
