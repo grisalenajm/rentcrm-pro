@@ -3,140 +3,413 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 
+const EXPENSE_TYPES = [
+  { value: 'tasas',    label: 'Tasas' },
+  { value: 'agua',     label: 'Agua' },
+  { value: 'luz',      label: 'Luz' },
+  { value: 'internet', label: 'Internet' },
+  { value: 'limpieza', label: 'Limpieza' },
+  { value: 'otros',    label: 'Otros' },
+];
+
+const EMPTY_FORM = { propertyId: '', date: '', amount: '', type: 'otros', notes: '' };
+
 export default function Financials() {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
-    type: 'income', amount: '', date: '', description: '',
-    categoryId: '', propertyId: '', bookingId: ''
+
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<any>(null);
+  const [expenseForm, setExpenseForm] = useState({ ...EMPTY_FORM });
+  const [showPropertyTable, setShowPropertyTable] = useState(true);
+
+  const { data: incomeRecords = [] } = useQuery({
+    queryKey: ['financials-income', selectedYear],
+    queryFn: () =>
+      api
+        .get('/financials', {
+          params: { type: 'income', from: `${selectedYear}-01-01`, to: `${selectedYear}-12-31` },
+        })
+        .then((r) => r.data),
   });
 
-  const { data: financials = [], isLoading } = useQuery({
-    queryKey: ['financials'],
-    queryFn: () => api.get('/financials').then(r => r.data),
-  });
-
-  const { data: categories = [] } = useQuery({
-    queryKey: ['financial-categories'],
-    queryFn: () => api.get('/financials/categories').then(r => r.data),
+  const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
+    queryKey: ['expenses', selectedYear],
+    queryFn: () => api.get('/expenses', { params: { year: selectedYear } }).then((r) => r.data),
   });
 
   const { data: properties = [] } = useQuery({
     queryKey: ['properties'],
-    queryFn: () => api.get('/properties').then(r => r.data),
+    queryFn: () => api.get('/properties').then((r) => r.data),
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data: any) => api.post('/financials', data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['financials'] }); setShowForm(false); },
+  const createExpense = useMutation({
+    mutationFn: (data: any) => api.post('/expenses', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      closeModal();
+    },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/financials/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['financials'] }),
+  const updateExpense = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => api.put(`/expenses/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      closeModal();
+    },
   });
 
-  const totalIncome  = financials.filter((f: any) => f.type === 'income' ).reduce((s: number, f: any) => s + Number(f.amount), 0);
-  const totalExpense = financials.filter((f: any) => f.type === 'expense').reduce((s: number, f: any) => s + Number(f.amount), 0);
+  const deleteExpense = useMutation({
+    mutationFn: (id: number) => api.delete(`/expenses/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }),
+  });
+
+  function openCreate() {
+    setEditingExpense(null);
+    setExpenseForm({ ...EMPTY_FORM });
+    setShowExpenseModal(true);
+  }
+
+  function openEdit(exp: any) {
+    setEditingExpense(exp);
+    setExpenseForm({
+      propertyId: exp.propertyId || '',
+      date: exp.date ? exp.date.slice(0, 10) : '',
+      amount: String(exp.amount),
+      type: exp.type || 'otros',
+      notes: exp.notes || '',
+    });
+    setShowExpenseModal(true);
+  }
+
+  function closeModal() {
+    setShowExpenseModal(false);
+    setEditingExpense(null);
+    setExpenseForm({ ...EMPTY_FORM });
+  }
+
+  function handleSave() {
+    const payload = {
+      propertyId: expenseForm.propertyId || undefined,
+      date: expenseForm.date,
+      amount: parseFloat(expenseForm.amount),
+      type: expenseForm.type,
+      notes: expenseForm.notes || undefined,
+    };
+    if (editingExpense) {
+      updateExpense.mutate({ id: editingExpense.id, data: payload });
+    } else {
+      createExpense.mutate(payload);
+    }
+  }
 
   const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm({ ...form, [k]: e.target.value });
+    setExpenseForm((prev) => ({ ...prev, [k]: e.target.value }));
+
+  // Totals
+  const totalIncome = (incomeRecords as any[]).reduce((s: number, r: any) => s + Number(r.amount), 0);
+  const totalExpenses = (expenses as any[]).reduce((s: number, e: any) => s + Number(e.amount), 0);
+  const netProfit = totalIncome - totalExpenses;
+
+  // Per-property breakdown
+  const propMap: Record<string, { name: string; income: number; expenses: number }> = {};
+
+  for (const r of incomeRecords as any[]) {
+    const pid = r.propertyId || '__none__';
+    const name = r.property?.name || 'Sin propiedad';
+    if (!propMap[pid]) propMap[pid] = { name, income: 0, expenses: 0 };
+    propMap[pid].income += Number(r.amount);
+  }
+
+  for (const e of expenses as any[]) {
+    const pid = e.propertyId || '__none__';
+    const name = e.property?.name || 'Sin propiedad';
+    if (!propMap[pid]) propMap[pid] = { name, income: 0, expenses: 0 };
+    propMap[pid].expenses += Number(e.amount);
+  }
+
+  const propRows = Object.entries(propMap).map(([, v]) => v).sort((a, b) => b.income - a.income);
+
+  const fmt = (n: number) =>
+    n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const expenseTypeLabel = (val: string) => EXPENSE_TYPES.find((t) => t.value === val)?.label ?? val;
+
+  const isPending = createExpense.isPending || updateExpense.isPending;
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold">{t('financials.title')}</h1>
-          <p className="text-slate-400 text-sm mt-1">{financials.length} {t('financials.registered')}</p>
         </div>
-        <button onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
-          + {t('financials.new')}
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Year nav */}
+          <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg px-1">
+            <button
+              onClick={() => setSelectedYear((y) => y - 1)}
+              className="px-2 py-2 text-slate-400 hover:text-white transition-colors"
+            >
+              ‹
+            </button>
+            <span className="px-3 py-2 text-sm font-bold tabular-nums min-w-[4rem] text-center">
+              {selectedYear}
+            </span>
+            <button
+              onClick={() => setSelectedYear((y) => y + 1)}
+              className="px-2 py-2 text-slate-400 hover:text-white transition-colors"
+            >
+              ›
+            </button>
+          </div>
+          <button
+            onClick={openCreate}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
+          >
+            + Añadir gasto
+          </button>
+        </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4">
-          <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('financials.income')}</div>
-          <div className="text-base md:text-2xl font-bold tabular-nums text-emerald-400">€{totalIncome.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Ingresos</div>
+          <div className="text-lg md:text-2xl font-bold tabular-nums text-emerald-400">
+            €{fmt(totalIncome)}
+          </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4">
-          <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('financials.expense')}</div>
-          <div className="text-base md:text-2xl font-bold tabular-nums text-red-400">€{totalExpense.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Gastos</div>
+          <div className="text-lg md:text-2xl font-bold tabular-nums text-red-400">
+            €{fmt(totalExpenses)}
+          </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4">
-          <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Balance</div>
-          <div className={`text-base md:text-2xl font-bold tabular-nums ${totalIncome - totalExpense >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            €{(totalIncome - totalExpense).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 col-span-2 md:col-span-2">
+          <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Beneficio neto</div>
+          <div
+            className={`text-lg md:text-2xl font-bold tabular-nums ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+          >
+            {netProfit >= 0 ? '+' : ''}€{fmt(netProfit)}
           </div>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="text-slate-400 text-center py-20">{t('common.loading')}</div>
-      ) : financials.length === 0 ? (
-        <div className="text-slate-400 text-center py-20">{t('common.noData')}</div>
+      {/* Per-property table */}
+      {propRows.length > 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl mb-6 overflow-hidden">
+          <button
+            onClick={() => setShowPropertyTable((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-800/50 transition-colors"
+          >
+            <span className="text-sm font-semibold text-slate-300">Desglose por propiedad</span>
+            <span className="text-slate-500 text-xs">{showPropertyTable ? '▲' : '▼'}</span>
+          </button>
+          {showPropertyTable && (
+            <>
+              {/* Desktop */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-t border-slate-800">
+                      <th className="text-left px-4 py-3 text-slate-400 font-semibold">Propiedad</th>
+                      <th className="text-right px-4 py-3 text-slate-400 font-semibold">Ingresos</th>
+                      <th className="text-right px-4 py-3 text-slate-400 font-semibold">Gastos</th>
+                      <th className="text-right px-4 py-3 text-slate-400 font-semibold">Neto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {propRows.map((row, i) => {
+                      const net = row.income - row.expenses;
+                      return (
+                        <tr key={i} className="border-t border-slate-800 hover:bg-slate-800/30 transition-colors">
+                          <td className="px-4 py-3 font-medium">{row.name}</td>
+                          <td className="px-4 py-3 text-right tabular-nums text-emerald-400">
+                            €{fmt(row.income)}
+                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums text-red-400">
+                            €{fmt(row.expenses)}
+                          </td>
+                          <td className={`px-4 py-3 text-right tabular-nums font-semibold ${net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {net >= 0 ? '+' : ''}€{fmt(net)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-slate-700 bg-slate-800/40">
+                      <td className="px-4 py-3 font-semibold text-slate-300">Total</td>
+                      <td className="px-4 py-3 text-right tabular-nums font-semibold text-emerald-400">
+                        €{fmt(totalIncome)}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums font-semibold text-red-400">
+                        €{fmt(totalExpenses)}
+                      </td>
+                      <td className={`px-4 py-3 text-right tabular-nums font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {netProfit >= 0 ? '+' : ''}€{fmt(netProfit)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              {/* Mobile */}
+              <div className="md:hidden border-t border-slate-800">
+                {propRows.map((row, i) => {
+                  const net = row.income - row.expenses;
+                  return (
+                    <div key={i} className="px-4 py-3 border-b border-slate-800 last:border-0">
+                      <div className="font-medium mb-2">{row.name}</div>
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div>
+                          <div className="text-xs text-slate-500 mb-0.5">Ingresos</div>
+                          <div className="tabular-nums text-emerald-400">€{fmt(row.income)}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-slate-500 mb-0.5">Gastos</div>
+                          <div className="tabular-nums text-red-400">€{fmt(row.expenses)}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-slate-500 mb-0.5">Neto</div>
+                          <div className={`tabular-nums font-semibold ${net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {net >= 0 ? '+' : ''}€{fmt(net)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="px-4 py-3 bg-slate-800/40">
+                  <div className="font-semibold text-slate-300 mb-2">Total {selectedYear}</div>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <div className="text-xs text-slate-500 mb-0.5">Ingresos</div>
+                      <div className="tabular-nums text-emerald-400 font-semibold">€{fmt(totalIncome)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-500 mb-0.5">Gastos</div>
+                      <div className="tabular-nums text-red-400 font-semibold">€{fmt(totalExpenses)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-500 mb-0.5">Neto</div>
+                      <div className={`tabular-nums font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {netProfit >= 0 ? '+' : ''}€{fmt(netProfit)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Expenses list */}
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+          Gastos {selectedYear} ({(expenses as any[]).length})
+        </h2>
+      </div>
+
+      {loadingExpenses ? (
+        <div className="text-slate-400 text-center py-16">{t('common.loading')}</div>
+      ) : (expenses as any[]).length === 0 ? (
+        <div className="text-slate-500 text-center py-16 text-sm">No hay gastos registrados para {selectedYear}</div>
       ) : (
         <>
-          {/* Desktop: tabla */}
+          {/* Desktop */}
           <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-800">
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.type')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('financials.category')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.date')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('financials.description')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('financials.amount')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">Fecha</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">Tipo</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">Propiedad</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">Notas</th>
+                  <th className="text-right px-4 py-3 text-slate-400 font-semibold">Importe</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {financials.map((fin: any) => (
-                  <tr key={fin.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                {(expenses as any[]).map((exp: any) => (
+                  <tr key={exp.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                    <td className="px-4 py-3 tabular-nums text-slate-300">
+                      {new Date(exp.date).toLocaleDateString('es-ES')}
+                    </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${fin.type === 'income' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                        {fin.type === 'income' ? t('financials.income') : t('financials.expense')}
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-slate-800 text-slate-300">
+                        {expenseTypeLabel(exp.type)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-400">{fin.category?.name || '—'}</td>
-                    <td className="px-4 py-3 text-slate-400">{new Date(fin.date).toLocaleDateString('es-ES')}</td>
-                    <td className="px-4 py-3 text-slate-400">{fin.description || '—'}</td>
-                    <td className={`px-4 py-3 font-semibold tabular-nums ${fin.type === 'income' ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {fin.type === 'income' ? '+' : '-'}€{Number(fin.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                    <td className="px-4 py-3 text-slate-400">{exp.property?.name || '—'}</td>
+                    <td className="px-4 py-3 text-slate-400 max-w-xs truncate">{exp.notes || '—'}</td>
+                    <td className="px-4 py-3 text-right tabular-nums font-semibold text-red-400">
+                      €{fmt(Number(exp.amount))}
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => { if (confirm(t('common.confirm_delete'))) deleteMutation.mutate(fin.id); }}
-                        className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
-                        {t('common.delete')}
-                      </button>
+                      <div className="flex items-center gap-1 justify-end">
+                        <button
+                          onClick={() => openEdit(exp)}
+                          className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(t('common.confirm_delete'))) deleteExpense.mutate(exp.id);
+                          }}
+                          className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                        >
+                          {t('common.delete')}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {/* Móvil: tarjetas */}
+
+          {/* Mobile */}
           <div className="md:hidden space-y-3">
-            {financials.map((fin: any) => (
-              <div key={fin.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+            {(expenses as any[]).map((exp: any) => (
+              <div key={exp.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
                 <div className="flex justify-between items-start mb-2">
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${fin.type === 'income' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                    {fin.type === 'income' ? t('financials.income') : t('financials.expense')}
-                  </span>
-                  <span className={`font-bold tabular-nums ${fin.type === 'income' ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {fin.type === 'income' ? '+' : '-'}€{Number(fin.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                  <div>
+                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-slate-800 text-slate-300">
+                      {expenseTypeLabel(exp.type)}
+                    </span>
+                    {exp.property?.name && (
+                      <span className="text-xs text-slate-500 ml-2">{exp.property.name}</span>
+                    )}
+                  </div>
+                  <span className="font-bold tabular-nums text-red-400">
+                    €{fmt(Number(exp.amount))}
                   </span>
                 </div>
-                <div className="text-sm text-white mb-1">{fin.description || '—'}</div>
-                <div className="flex justify-between items-center text-xs text-slate-400">
-                  <span>{fin.category?.name || '—'} · {new Date(fin.date).toLocaleDateString('es-ES')}</span>
-                  <button onClick={() => { if (confirm(t('common.confirm_delete'))) deleteMutation.mutate(fin.id); }}
-                    className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
-                    {t('common.delete')}
-                  </button>
+                {exp.notes && <div className="text-sm text-white mb-2">{exp.notes}</div>}
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-500">
+                    {new Date(exp.date).toLocaleDateString('es-ES')}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openEdit(exp)}
+                      className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(t('common.confirm_delete'))) deleteExpense.mutate(exp.id);
+                      }}
+                      className="px-2 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                    >
+                      {t('common.delete')}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -144,68 +417,97 @@ export default function Financials() {
         </>
       )}
 
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-lg font-bold mb-5">{t('financials.new')}</h2>
+      {/* Expense modal */}
+      {showExpenseModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-md max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
+            <h2 className="text-lg font-bold mb-5">
+              {editingExpense ? 'Editar gasto' : 'Nuevo gasto'}
+            </h2>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('common.type')}</label>
-                  <select value={form.type} onChange={f('type')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
-                    <option value="income">{t('financials.income')}</option>
-                    <option value="expense">{t('financials.expense')}</option>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    Fecha *
+                  </label>
+                  <input
+                    type="date"
+                    value={expenseForm.date}
+                    onChange={f('date')}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    Importe (€) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={expenseForm.amount}
+                    onChange={f('amount')}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    Tipo *
+                  </label>
+                  <select
+                    value={expenseForm.type}
+                    onChange={f('type')}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    {EXPENSE_TYPES.map((et) => (
+                      <option key={et.value} value={et.value}>
+                        {et.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('financials.amount')} (€) *</label>
-                  <input type="number" value={form.amount} onChange={f('amount')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('common.date')} *</label>
-                  <input type="date" value={form.date} onChange={f('date')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('financials.category')}</label>
-                  <select value={form.categoryId} onChange={f('categoryId')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    Propiedad
+                  </label>
+                  <select
+                    value={expenseForm.propertyId}
+                    onChange={f('propertyId')}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                  >
                     <option value="">—</option>
-                    {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('bookings.property')}</label>
-                  <select value={form.propertyId} onChange={f('propertyId')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
-                    <option value="">—</option>
-                    {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    {(properties as any[]).map((p: any) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('financials.description')}</label>
-                  <input value={form.description} onChange={f('description')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    Notas
+                  </label>
+                  <input
+                    value={expenseForm.notes}
+                    onChange={f('notes')}
+                    placeholder="Descripción opcional"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                  />
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setShowForm(false)}
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                <button
+                  onClick={closeModal}
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors"
+                >
                   {t('common.cancel')}
                 </button>
                 <button
-                  onClick={() => createMutation.mutate({
-                    ...form,
-                    amount: Number(form.amount),
-                    propertyId: form.propertyId || undefined,
-                    bookingId: form.bookingId || undefined,
-                    categoryId: form.categoryId || undefined
-                  })}
-                  disabled={!form.amount || !form.date || createMutation.isPending}
-                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
-                  {createMutation.isPending ? t('common.saving') : t('financials.new')}
+                  onClick={handleSave}
+                  disabled={!expenseForm.date || !expenseForm.amount || isPending}
+                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors"
+                >
+                  {isPending ? t('common.saving') : editingExpense ? 'Guardar cambios' : 'Añadir gasto'}
                 </button>
               </div>
             </div>

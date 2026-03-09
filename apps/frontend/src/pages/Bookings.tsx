@@ -524,9 +524,9 @@ export default function Bookings() {
                     <DocFields
                       prefix={`guest_${i}`}
                       docType={g.docType} docNumber={g.docNumber} docCountry={g.docCountry}
-                      onDocType={e => updateGuest(i, 'docType', e.target.value)}
-                      onDocNumber={e => updateGuest(i, 'docNumber', e.target.value)}
-                      onDocCountry={e => updateGuest(i, 'docCountry', e.target.value)}
+                      onDocType={(e: React.ChangeEvent<HTMLSelectElement>) => updateGuest(i, 'docType', e.target.value)}
+                      onDocNumber={(e: React.ChangeEvent<HTMLInputElement>) => updateGuest(i, 'docNumber', e.target.value)}
+                      onDocCountry={(e: React.ChangeEvent<HTMLSelectElement>) => updateGuest(i, 'docCountry', e.target.value)}
                       warnings={docWarnings}
                     />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -43,7 +43,7 @@ export class OrganizationService {
       port: Number(smtpPort),
       secure: Number(smtpPort) === 465,
       auth: { user: smtpUser, pass: smtpPass },
-      tls: { rejectUnauthorized: false },
+      tls: { rejectUnauthorized: true },
     });
 
     try {

@@ -28,8 +28,8 @@ export class EvaluationsController {
   }
 
   @Get('booking/:bookingId')
-  findByBooking(@Param('bookingId') bookingId: string) {
-    return this.evaluationsService.findByBooking(bookingId);
+  findByBooking(@Param('bookingId') bookingId: string, @Request() req) {
+    return this.evaluationsService.findByBooking(bookingId, req.user.organizationId);
   }
 
   @Get('client/:clientId/summary')

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 
@@ -47,7 +47,9 @@ export class EvaluationsService {
     });
   }
 
-  async findByBooking(bookingId: string) {
+  async findByBooking(bookingId: string, organizationId: string) {
+    const booking = await this.prisma.booking.findFirst({ where: { id: bookingId, organizationId } });
+    if (!booking) throw new NotFoundException('Reserva no encontrada');
     return this.prisma.clientEvaluation.findUnique({
       where: { bookingId },
     });

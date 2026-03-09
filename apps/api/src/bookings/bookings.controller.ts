@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, Res } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { BookingsService } from './bookings.service';
 import { SesService } from './ses.service';
@@ -66,6 +67,7 @@ export class BookingsController {
   // ── SES Envío ──────────────────────────────────────────────────────────────
   @Post(':id/ses/send')
   @Roles('admin', 'gestor')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   sesSend(@Param('id') id: string, @Request() req) {
     return this.sesService.sendToSes(id, req.user.organizationId);
   }

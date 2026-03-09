@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
 
@@ -30,7 +31,7 @@ export class ICalService {
         propertyId: dto.propertyId,
         platform: dto.platform,
         icalUrl: dto.url,
-        exportToken: Math.random().toString(36).substring(2) + Date.now().toString(36),
+        exportToken: randomBytes(32).toString('hex'),
         isActive: true,
         lastSyncStatus: 'pending',
       },

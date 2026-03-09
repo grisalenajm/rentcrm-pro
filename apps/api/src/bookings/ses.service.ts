@@ -244,7 +244,6 @@ export class SesService {
           'Authorization': `Basic ${token}`,
           'SOAPAction': 'comunicacion',
         },
-        httpsAgent: new (require('https').Agent)({ rejectUnauthorized: false }),
         timeout: 30000,
       });
 

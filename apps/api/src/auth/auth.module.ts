@@ -10,9 +10,12 @@ import { RolesGuard } from './roles.guard';
 @Module({
   imports: [
     PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'dev-secret',
-      signOptions: { expiresIn: '15m' },
+    JwtModule.registerAsync({
+      useFactory: () => {
+        const secret = process.env.JWT_SECRET;
+        if (!secret) throw new Error('JWT_SECRET no definido — abortando startup');
+        return { secret, signOptions: { expiresIn: '15m' } };
+      },
     }),
   ],
   providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard],

@@ -1,12 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class ExpensesService {
   constructor(private prisma: PrismaService) {}
 
-  findAll(propertyId?: string, year?: number) {
-    const where: any = {};
+  findAll(organizationId: string, propertyId?: string, year?: number) {
+    const where: any = { property: { organizationId } };
     if (propertyId) where.propertyId = propertyId;
     if (year) {
       where.date = {
@@ -21,7 +21,11 @@ export class ExpensesService {
     });
   }
 
-  create(data: { propertyId: string; date: string; amount: number; type: string; notes?: string }) {
+  async create(data: { propertyId: string; date: string; amount: number; type: string; notes?: string }, organizationId: string) {
+    const property = await this.prisma.property.findFirst({
+      where: { id: data.propertyId, organizationId },
+    });
+    if (!property) throw new NotFoundException('Propiedad no encontrada');
     return this.prisma.expense.create({
       data: {
         propertyId: data.propertyId,
@@ -33,7 +37,11 @@ export class ExpensesService {
     });
   }
 
-  update(id: number, data: { date?: string; amount?: number; type?: string; notes?: string }) {
+  async update(id: number, data: { date?: string; amount?: number; type?: string; notes?: string }, organizationId: string) {
+    const expense = await this.prisma.expense.findFirst({
+      where: { id, property: { organizationId } },
+    });
+    if (!expense) throw new NotFoundException('Gasto no encontrado');
     return this.prisma.expense.update({
       where: { id },
       data: {
@@ -45,12 +53,16 @@ export class ExpensesService {
     });
   }
 
-  remove(id: number) {
+  async remove(id: number, organizationId: string) {
+    const expense = await this.prisma.expense.findFirst({
+      where: { id, property: { organizationId } },
+    });
+    if (!expense) throw new NotFoundException('Gasto no encontrado');
     return this.prisma.expense.delete({ where: { id } });
   }
 
-  async summaryByYear(propertyId?: string) {
-    const expenses = await this.findAll(propertyId);
+  async summaryByYear(organizationId: string, propertyId?: string) {
+    const expenses = await this.findAll(organizationId, propertyId);
     const summary: Record<number, number> = {};
     for (const e of expenses) {
       const year = new Date(e.date).getFullYear();
