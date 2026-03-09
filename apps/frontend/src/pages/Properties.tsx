@@ -165,58 +165,91 @@ export default function Properties() {
       ) : properties.length === 0 ? (
         <div className="text-slate-400 text-center py-20">{t('common.noData')}</div>
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-800">
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.name')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.address')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.city')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('properties.province')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('properties.rooms')}</th>
-                <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.status')}</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {properties.map((p: Property) => (
-                <tr key={p.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
-                  <td className="px-4 py-3 font-medium">{p.name}</td>
-                  <td className="px-4 py-3 text-slate-400">{p.address}</td>
-                  <td className="px-4 py-3 text-slate-400">{p.city}</td>
-                  <td className="px-4 py-3 text-slate-400">{p.province || '—'}</td>
-                  <td className="px-4 py-3 text-slate-400">{p.rooms}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : p.status === 'maintenance' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'}`}>
-                      {p.status === 'active' ? 'Activa' : p.status === 'maintenance' ? 'Mantenimiento' : 'Inactiva'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2 justify-end">
-                      <button onClick={() => openIcal(p)}
-                        className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg transition-colors">
-                        📅 iCal
-                      </button>
-                      <button onClick={() => openEdit(p)}
-                        className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">{t('common.edit')}</button>
-                      <button onClick={() => { if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(p.id); }}
-                        className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">{t('common.delete')}</button>
-                    </div>
-                  </td>
+        <>
+          {/* Desktop: tabla */}
+          <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800">
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.name')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.address')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.city')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('properties.province')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('properties.rooms')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.status')}</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {properties.map((p: Property) => (
+                  <tr key={p.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                    <td className="px-4 py-3 font-medium">{p.name}</td>
+                    <td className="px-4 py-3 text-slate-400">{p.address}</td>
+                    <td className="px-4 py-3 text-slate-400">{p.city}</td>
+                    <td className="px-4 py-3 text-slate-400">{p.province || '—'}</td>
+                    <td className="px-4 py-3 text-slate-400">{p.rooms}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : p.status === 'maintenance' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'}`}>
+                        {p.status === 'active' ? 'Activa' : p.status === 'maintenance' ? 'Mantenimiento' : 'Inactiva'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2 justify-end">
+                        <button onClick={() => openIcal(p)}
+                          className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg transition-colors">
+                          📅 iCal
+                        </button>
+                        <button onClick={() => openEdit(p)}
+                          className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">{t('common.edit')}</button>
+                        <button onClick={() => { if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(p.id); }}
+                          className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">{t('common.delete')}</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Móvil: tarjetas */}
+          <div className="md:hidden space-y-3">
+            {properties.map((p: Property) => (
+              <div key={p.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-medium text-white">{p.name}</span>
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${p.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : p.status === 'maintenance' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400'}`}>
+                    {p.status === 'active' ? 'Activa' : p.status === 'maintenance' ? 'Mantenimiento' : 'Inactiva'}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-400 mb-1">{p.address}</p>
+                <div className="flex items-center gap-3 text-xs text-slate-500 mb-3">
+                  <span>{p.city}{p.province ? `, ${p.province}` : ''}</span>
+                  <span>·</span>
+                  <span>{p.rooms} {t('properties.rooms')}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => openIcal(p)}
+                    className="flex-1 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg transition-colors text-center">
+                    📅 iCal
+                  </button>
+                  <button onClick={() => openEdit(p)}
+                    className="flex-1 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors text-center">{t('common.edit')}</button>
+                  <button onClick={() => { if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(p.id); }}
+                    className="flex-1 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors text-center">{t('common.delete')}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Property create/edit modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-lg">
+        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
             <h2 className="text-lg font-bold mb-5">{editing ? t('common.edit') : t('properties.new')}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('common.name')} *</label>
                   <input value={form.name} onChange={f('name')} required
@@ -265,8 +298,8 @@ export default function Properties() {
 
       {/* iCal sync modal */}
       {icalProperty && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-2xl max-h-[95vh] md:max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
               <div>
                 <h2 className="text-lg font-bold">{t('properties.ical.sectionTitle')}</h2>
