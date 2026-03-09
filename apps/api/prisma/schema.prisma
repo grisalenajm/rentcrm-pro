@@ -92,9 +92,25 @@ model Property {
   financials         Financial[]
   availabilitySyncs  AvailabilitySync[]
   availabilityBlocks AvailabilityBlock[]
+  expenses           Expense[]
 
   @@index([organizationId])
   @@map("properties")
+}
+
+model Expense {
+  id         Int      @id @default(autoincrement())
+  propertyId String   @map("property_id") @db.Uuid
+  property   Property @relation(fields: [propertyId], references: [id])
+  date       DateTime
+  amount     Float
+  type       String
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([propertyId])
+  @@map("expenses")
 }
 
 model Client {
