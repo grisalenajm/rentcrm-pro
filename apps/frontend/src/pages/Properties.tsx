@@ -534,6 +534,27 @@ export default function Properties() {
                   <p className="text-xs text-slate-500 mt-1">Código asignado a esta propiedad en SES Hospedajes</p>
                 </div>
               </div>
+              {editing && (
+                <div className="border-t border-slate-800 pt-4 mt-2">
+                  <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">iCal</p>
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">URL exportación</p>
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs text-emerald-400 bg-slate-800 px-2 py-1 rounded flex-1 truncate">
+                        {exportUrl(editing.id)}
+                      </code>
+                      <button type="button" onClick={() => navigator.clipboard.writeText(exportUrl(editing.id))}
+                        className="text-xs text-slate-400 hover:text-white px-2 py-1 bg-slate-800 rounded transition-colors shrink-0">
+                        Copiar
+                      </button>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => { setShowForm(false); openIcal(editing); }}
+                    className="mt-2 text-xs text-slate-400 hover:text-emerald-400 transition-colors">
+                    ⚙️ Gestionar feeds iCal
+                  </button>
+                </div>
+              )}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)}
                   className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">{t('common.cancel')}</button>
