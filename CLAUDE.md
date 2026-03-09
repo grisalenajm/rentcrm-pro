@@ -250,6 +250,46 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 
 ---
 
+## Auditoría de seguridad (completada)
+
+### 🔴 Críticas resueltas (8/8)
+- [x] SSL habilitado en SES Hospedajes y SMTP (eliminado rejectUnauthorized: false)
+- [x] JWT secret sin fallback hardcodeado — error en startup si no está definido
+- [x] Token iCal generado con crypto.randomBytes(32)
+- [x] Redis con contraseña obligatoria
+- [x] Rate limiting en login (5/min) y SES send (3/min)
+- [x] IDOR gastos — filtro organizationId en todos los endpoints
+- [x] IDOR evaluaciones — filtro organizationId en findByBooking y findByClient
+- [x] .env en .gitignore
+
+### 🟠 Altas resueltas (8/8)
+- [x] JWT movido de localStorage a memoria React
+- [x] Datos de usuario movidos de localStorage a memoria React
+- [x] Rate limiting global con @nestjs/throttler
+- [x] Rate limiting específico en login y SES
+- [x] IDOR evaluaciones por cliente corregido
+- [x] Invalidación de sesión al cambiar contraseña (passwordChangedAt)
+- [x] Requisitos de complejidad de contraseña (8 chars, mayúscula, número, especial)
+- [x] Validación anti-SSRF en URLs iCal externas
+
+### 🟡 Medias resueltas (8/8)
+- [x] CORS usando variable de entorno FRONTEND_URL
+- [x] FRONTEND_URL sin fallback a localhost
+- [x] Validación enum en tipo de gasto
+- [x] RolesGuard en endpoints de escritura de gastos
+- [x] Límite de body 2mb
+- [x] Campo raw eliminado de respuesta SES
+- [x] Helmet instalado — cabeceras de seguridad HTTP
+- [x] Validación tamaño y tipo en subida de fotos
+
+### ⚪ Bajas resueltas (6/6)
+- [x] Imágenes Docker con versiones fijas
+- [x] Variables de entorno movidas a .env
+- [x] .env.example creado
+- [x] Audit logging en SES, contratos y clientes
+- [x] Logger NestJS en startup
+- [x] Versionado de API añadido al backlog
+
 ## Cambios recientes
 
 ### Responsive móvil (completo)
