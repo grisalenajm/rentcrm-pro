@@ -46,4 +46,8 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsString()
   sesCodigoEstablecimiento?: string;
+
+  @IsOptional()
+  @IsString()
+  photo?: string;
 }
