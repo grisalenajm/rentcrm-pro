@@ -1,8 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+
+const LANGUAGES = [
+  { code: 'es', name: 'Español' },
+  { code: 'en', name: 'English' },
+  { code: 'fr', name: 'Français' },
+  { code: 'de', name: 'Deutsch' },
+  { code: 'it', name: 'Italiano' },
+  { code: 'pt', name: 'Português' },
+  { code: 'nl', name: 'Nederlands' },
+  { code: 'da', name: 'Dansk' },
+  { code: 'nb', name: 'Norsk' },
+  { code: 'sv', name: 'Svenska' },
+];
 
 function Stars({ score, onChange }: { score: number; onChange?: (s: number) => void }) {
   return (
@@ -28,6 +41,7 @@ export default function BookingDetail() {
   const [sesResult, setSesResult] = useState<{ok: boolean; message: string} | null>(null);
   const [ratingScore, setRatingScore] = useState(5);
   const [ratingNotes, setRatingNotes] = useState('');
+  const [checkinLang, setCheckinLang] = useState('es');
 
   const statusColor: Record<string, string> = {
     confirmed: 'bg-emerald-500/10 text-emerald-400',
@@ -47,6 +61,10 @@ export default function BookingDetail() {
     queryFn: () => api.get(`/bookings/${id}`).then(r => r.data),
     enabled: !!id,
   });
+
+  useEffect(() => {
+    if (booking?.client?.language) setCheckinLang(booking.client.language);
+  }, [booking?.client?.language]);
 
   const { data: evaluation } = useQuery({
     queryKey: ['evaluation-booking', id],
@@ -77,7 +95,7 @@ export default function BookingDetail() {
   const handleSendCheckin = async () => {
     setSendingCheckin(true);
     try {
-      await api.post(`/bookings/${booking.id}/checkin/send`);
+      await api.post(`/bookings/${booking.id}/checkin/send`, { language: checkinLang });
       qc.invalidateQueries({ queryKey: ['booking', id] });
     } catch (e: any) {
       alert(e.response?.data?.message || 'Error al enviar el checkin');
@@ -376,10 +394,19 @@ export default function BookingDetail() {
         </div>
 
         {booking.checkinStatus !== 'completed' && (
-          <button onClick={handleSendCheckin} disabled={sendingCheckin}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
-            {sendingCheckin ? 'Enviando...' : booking.checkinStatus === 'pending' ? '🔄 Reenviar enlace' : '📧 Enviar checkin al cliente'}
-          </button>
+          <div>
+            <div className="mb-3">
+              <label className="text-xs text-slate-400 mb-1 block">Idioma del email</label>
+              <select value={checkinLang} onChange={e => setCheckinLang(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+              </select>
+            </div>
+            <button onClick={handleSendCheckin} disabled={sendingCheckin}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
+              {sendingCheckin ? 'Enviando...' : booking.checkinStatus === 'pending' ? '🔄 Reenviar enlace' : '📧 Enviar checkin al cliente'}
+            </button>
+          </div>
         )}
       </div>
 

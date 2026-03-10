@@ -4,6 +4,19 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 
+const LANGUAGES = [
+  { code: 'es', name: 'Español' },
+  { code: 'en', name: 'English' },
+  { code: 'fr', name: 'Français' },
+  { code: 'de', name: 'Deutsch' },
+  { code: 'it', name: 'Italiano' },
+  { code: 'pt', name: 'Português' },
+  { code: 'nl', name: 'Nederlands' },
+  { code: 'da', name: 'Dansk' },
+  { code: 'nb', name: 'Norsk' },
+  { code: 'sv', name: 'Svenska' },
+];
+
 function Stars({ score, onChange }: { score: number; onChange?: (s: number) => void }) {
   return (
     <div className="flex gap-1">
@@ -127,6 +140,12 @@ export default function ClientDetail() {
                 <span>{new Date(client.birthDate).toLocaleDateString('es-ES')}</span>
               </div>
             )}
+            <div>
+              <p className="text-xs text-slate-400">Idioma de contacto</p>
+              <p className="text-white text-sm">
+                {LANGUAGES.find(l => l.code === client?.language)?.name || 'Español'}
+              </p>
+            </div>
           </div>
           {client?.notes && (
             <div className="mt-3 text-sm text-slate-400 border-t border-slate-800 pt-3">{client.notes}</div>

@@ -14,7 +14,21 @@ interface Client {
   email?: string;
   phone?: string;
   notes?: string;
+  language?: string;
 }
+
+const LANGUAGES = [
+  { code: 'es', name: 'Español' },
+  { code: 'en', name: 'English' },
+  { code: 'fr', name: 'Français' },
+  { code: 'de', name: 'Deutsch' },
+  { code: 'it', name: 'Italiano' },
+  { code: 'pt', name: 'Português' },
+  { code: 'nl', name: 'Nederlands' },
+  { code: 'da', name: 'Dansk' },
+  { code: 'nb', name: 'Norsk' },
+  { code: 'sv', name: 'Svenska' },
+];
 
 const COUNTRIES = [
   { code: 'ES', name: 'España',         phone: '+34',  flag: '🇪🇸' },
@@ -81,6 +95,7 @@ const emptyForm = {
   birthDate: '',
   phoneCode: '+34', phoneNumber: '',
   email: '', notes: '',
+  language: 'es',
 };
 
 const inputCls = "w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
@@ -161,6 +176,7 @@ export default function Clients() {
       birthDate: '',
       phoneCode, phoneNumber,
       email: c.email || '', notes: c.notes || '',
+      language: c.language || 'es',
     });
     setDocWarning('');
     setShowForm(true);
@@ -190,6 +206,7 @@ export default function Clients() {
       email:       form.email       || undefined,
       phone,
       notes:       form.notes       || undefined,
+      language:    form.language    || 'es',
     };
     if (editing) updateMutation.mutate({ id: editing.id, data });
     else createMutation.mutate(data);
@@ -234,6 +251,7 @@ export default function Clients() {
                   <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.phone')}</th>
                   <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('clients.bookings')}</th>
                   <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('clients.rating')}</th>
+                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">Idioma</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -250,6 +268,9 @@ export default function Clients() {
                       <td className="px-4 py-3 text-slate-400">{s ? s.totalBookings : '—'}</td>
                       <td className="px-4 py-3">
                         {s?.avgScore ? <Stars score={s.avgScore} /> : <span className="text-slate-600 text-xs">{t('clients.noRating')}</span>}
+                      </td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">
+                        {LANGUAGES.find(l => l.code === c.language)?.name || 'Español'}
                       </td>
                       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         <div className="flex gap-2 justify-end">
@@ -293,7 +314,10 @@ export default function Clients() {
                     <p className="text-xs text-slate-400 mb-1">{c.phone}</p>
                   )}
                   {s && (
-                    <p className="text-xs text-slate-500 mb-3">{s.totalBookings} {t('clients.bookings')}</p>
+                    <p className="text-xs text-slate-500 mb-1">{s.totalBookings} {t('clients.bookings')}</p>
+                  )}
+                  {c.language && (
+                    <p className="text-xs text-slate-500 mb-2">{LANGUAGES.find(l => l.code === c.language)?.name || 'Español'}</p>
                   )}
                   <div className="flex gap-2 mt-2" onClick={e => e.stopPropagation()}>
                     <button onClick={e => openEdit(e, c)}
@@ -388,6 +412,14 @@ export default function Clients() {
               <div>
                 <label className={labelCls}>{t('common.email')}</label>
                 <input type="email" value={form.email} onChange={f('email')} className={inputCls} />
+              </div>
+
+              {/* Idioma */}
+              <div>
+                <label className={labelCls}>Idioma de contacto</label>
+                <select value={form.language || 'es'} onChange={f('language')} className={inputCls}>
+                  {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+                </select>
               </div>
 
               {/* Notas */}

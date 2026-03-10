@@ -35,7 +35,7 @@ export class BookingsService {
     const booking = await this.prisma.booking.findFirst({
       where: { id, organizationId },
       include: {
-        client:        { select: { id: true, firstName: true, lastName: true, dniPassport: true, nationality: true, birthDate: true } },
+        client:        { select: { id: true, firstName: true, lastName: true, dniPassport: true, nationality: true, birthDate: true, language: true } },
         property:      { select: { id: true, name: true, city: true, address: true } },
         guests:        { include: { client: true } },
         guestsSes:     true,
@@ -170,7 +170,7 @@ export class BookingsService {
     });
   }
 
-  async sendCheckinLink(bookingId: string, organizationId: string): Promise<void> {
+  async sendCheckinLink(bookingId: string, organizationId: string, language?: string): Promise<void> {
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, organizationId },
       include: { client: true, property: true },
@@ -188,7 +188,7 @@ export class BookingsService {
       },
     });
 
-    const lang = (booking.client as any).language || 'es';
+    const lang = language || (booking.client as any).language || 'es';
     const checkinUrl = `${process.env.FRONTEND_URL}/checkin/${token}`;
 
     const [
