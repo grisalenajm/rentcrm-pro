@@ -4,24 +4,6 @@ import axios from 'axios';
 
 const API = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'http://192.168.1.123:3001/api';
 
-const DOC_TYPES = [
-  { value: 'dni',      label: 'DNI' },
-  { value: 'passport', label: 'Pasaporte' },
-  { value: 'nie',      label: 'NIE' },
-  { value: 'other',    label: 'Otro' },
-];
-
-const COUNTRIES = [
-  { code: 'ES', name: 'España' },
-  { code: 'GB', name: 'Reino Unido' },
-  { code: 'FR', name: 'Francia' },
-  { code: 'DE', name: 'Alemania' },
-  { code: 'IT', name: 'Italia' },
-  { code: 'PT', name: 'Portugal' },
-  { code: 'US', name: 'Estados Unidos' },
-  { code: 'OTHER', name: 'Otro' },
-];
-
 export default function CheckinPage() {
   const { token } = useParams<{ token: string }>();
   const [booking, setBooking] = useState<any>(null);
@@ -51,6 +33,24 @@ export default function CheckinPage() {
       .catch(e => setError(e.response?.data?.message || 'Enlace no válido o expirado'))
       .finally(() => setLoading(false));
   }, [token]);
+
+  const DOC_TYPES = booking ? [
+    { value: 'dni',      label: booking.ui?.docTypeDni      ?? 'DNI' },
+    { value: 'passport', label: booking.ui?.docTypePassport ?? 'Pasaporte' },
+    { value: 'nie',      label: booking.ui?.docTypeNie      ?? 'NIE' },
+    { value: 'other',    label: booking.ui?.docTypeOther    ?? 'Otro' },
+  ] : [];
+
+  const COUNTRIES = booking ? [
+    { code: 'ES',    name: booking.ui?.countryES    ?? 'España' },
+    { code: 'GB',    name: booking.ui?.countryGB    ?? 'Reino Unido' },
+    { code: 'FR',    name: booking.ui?.countryFR    ?? 'Francia' },
+    { code: 'DE',    name: booking.ui?.countryDE    ?? 'Alemania' },
+    { code: 'IT',    name: booking.ui?.countryIT    ?? 'Italia' },
+    { code: 'PT',    name: booking.ui?.countryPT    ?? 'Portugal' },
+    { code: 'US',    name: booking.ui?.countryUS    ?? 'Estados Unidos' },
+    { code: 'OTHER', name: booking.ui?.countryOther ?? 'Otro' },
+  ] : [];
 
   const handleSubmit = async () => {
     if (!form.firstName || !form.lastName || !form.docNumber || !form.docCountry) {
@@ -107,17 +107,17 @@ export default function CheckinPage() {
               <p className="text-slate-400 text-sm">{booking.propertyCity}</p>
               <div className="flex gap-4 mt-2 text-sm">
                 <div>
-                  <span className="text-slate-400">Entrada </span>
+                  <span className="text-slate-400">{booking.ui?.labelCheckin ?? 'Entrada'} </span>
                   <span className="text-white">{new Date(booking.startDate).toLocaleDateString('es-ES')}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400">Salida </span>
+                  <span className="text-slate-400">{booking.ui?.labelCheckout ?? 'Salida'} </span>
                   <span className="text-white">{new Date(booking.endDate).toLocaleDateString('es-ES')}</span>
                 </div>
               </div>
             </div>
 
-            <h3 className="font-semibold mb-4">{booking.ui?.subtitleText ?? 'Tus datos'}</h3>
+            <h3 className="font-semibold mb-4">{booking.ui?.sectionTitle ?? 'Tus datos'}</h3>
 
             {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
 
@@ -166,7 +166,7 @@ export default function CheckinPage() {
 
               <button onClick={handleSubmit} disabled={submitting}
                 className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors mt-2">
-                {submitting ? '...' : (booking.ui?.buttonText ?? 'Completar checkin')}
+                {submitting ? (booking.ui?.sendingText ?? '...') : (booking.ui?.buttonText ?? 'Completar checkin')}
               </button>
             </div>
           </>
