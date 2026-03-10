@@ -1,41 +1,40 @@
-# RentCRM Pro — Guía para Claude
+# RentCRM Pro — Guía para Claude Code
 
-## Stack técnico
-- **Frontend**: React + TypeScript + Vite + TailwindCSS + React Query + i18next
-- **Backend**: NestJS + TypeScript + Prisma ORM
-- **DB**: PostgreSQL
-- **Infraestructura**: Docker Compose
+## Entorno
+- **Repo**: `/home/rentcrm/rentcrm-pro` (monorepo npm workspaces)
+- **Frontend**: `apps/frontend/` → puerto 3000 (Vite dev server, hot reload)
+- **API**: `apps/api/` → puerto 3001 (NestJS, prefijo `/api`)
+- **DB**: PostgreSQL → `postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm`
+- **Redis**: `redis://:rentcrm_redis_pass@localhost:6379`
+- **LibreTranslate**: `http://localhost:5000` (externo) / `http://libretranslate:5000` (interno Docker)
 
-## Acceso y comandos clave
+## Contenedores Docker
+rentcrm-api        → NestJS API (puerto 3001)
+rentcrm-frontend   → Vite React (puerto 3000)
+rentcrm-postgres   → PostgreSQL 15
+rentcrm-redis      → Redis 7
+rentcrm-translate  → LibreTranslate (puerto 5000)
 
-### Base de datos
+## Comandos esenciales
+
+### Deploy API (SIEMPRE así, nunca solo restart)
 ```bash
-DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm"
-
-# Migración
-cd ~/rentcrm-pro/apps/api
-DATABASE_URL="postgresql://..." npx prisma migrate dev --name nombre_migracion
-
-# Regenerar cliente Prisma
-DATABASE_URL="postgresql://..." npx prisma generate
+cd ~/rentcrm-pro
+npm run build --workspace=apps/api
+docker compose build api && docker compose up -d api
+docker logs rentcrm-api --tail=20
 ```
 
-### Build y deploy
+### Migraciones Prisma (SIEMPRE desde el host, nunca desde el contenedor)
 ```bash
-# Build API
-cd ~/rentcrm-pro && npm run build --workspace=apps/api
+cd ~/rentcrm-pro/apps/api
+npx prisma migrate dev --name nombre-migracion
+npx prisma generate
+```
 
-# IMPORTANTE: el contenedor Docker usa su propia imagen
-# Después de cada build hay que reconstruir la imagen:
-docker compose build api && docker compose up -d api
-
-# NO usar docker compose restart api sin rebuild — usa el dist antiguo
-# Copiar dist al contenedor (alternativa más rápida al rebuild):
-docker cp ~/rentcrm-pro/apps/api/dist/src rentcrm-api:/app/dist/src
-docker compose restart api
-
-# Ver logs
-docker compose logs api --tail=30
+### Frontend (hot reload automático, no necesita rebuild)
+```bash
+docker logs rentcrm-frontend --tail=5
 ```
 
 ### Git
@@ -43,472 +42,204 @@ docker compose logs api --tail=30
 cd ~/rentcrm-pro && git add -A && git commit -m "mensaje" && git push origin main
 ```
 
----
-
-## Estructura de archivos
-```
+## Estructura de archivos clave
 rentcrm-pro/
-├── docker-compose.yml
-│   └── servicios: rentcrm-postgres, rentcrm-redis, rentcrm-api, rentcrm-frontend
-│                  rentcrm-translate (libretranslate) — puerto 5000, solo accesible internamente
-├── CLAUDE.md                          ← este archivo
 ├── apps/
-│   ├── api/                           ← Backend NestJS
+│   ├── api/
 │   │   ├── prisma/
-│   │   │   ├── schema.prisma          ← modelos de DB
-│   │   │   └── migrations/            ← historial de migraciones
+│   │   │   ├── schema.prisma          ← MODELOS DE BD
+│   │   │   └── migrations/            ← historial migraciones
 │   │   └── src/
-│   │       ├── main.ts
-│   │       ├── app.module.ts
-│   │       ├── prisma.service.ts
-│   │       ├── auth/                  ← JWT, guards, roles
+│   │       ├── main.ts                ← bootstrap, puerto 3001
+│   │       ├── app.module.ts          ← módulos registrados
+│   │       ├── auth/
+│   │       │   ├── jwt-auth.guard.ts  ← respeta @Public()
+│   │       │   └── public.decorator.ts← @Public() para rutas sin JWT
 │   │       ├── bookings/
-│   │       │   ├── bookings.module.ts
-│   │       │   ├── bookings.controller.ts  ← endpoints REST
+│   │       │   ├── bookings.controller.ts  ← IMPORTANTE: rutas checkin ANTES de :id
 │   │       │   ├── bookings.service.ts
-│   │       │   ├── ses.service.ts     ← ⭐ módulo SES Hospedajes
 │   │       │   └── dto/
 │   │       │       ├── create-booking.dto.ts
-│   │       │       ├── update-booking.dto.ts
-│   │       │       └── booking-guest-ses.dto.ts
+│   │       │       └── update-booking.dto.ts
 │   │       ├── clients/
-│   │       │   ├── clients.controller.ts
-│   │       │   ├── clients.service.ts
-│   │       │   └── dto/
 │   │       ├── properties/
-│   │       │   ├── properties.controller.ts
-│   │       │   ├── properties.service.ts
-│   │       │   └── dto/
-│   │       │       ├── create-property.dto.ts  ← incluye sesCodigoEstablecimiento
-│   │       │       └── update-property.dto.ts
-│   │       ├── organization/
-│   │       │   ├── organization.controller.ts
-│   │       │   └── organization.service.ts    ← incluye campos SES y SMTP
-│   │       ├── contracts/
-│   │       ├── evaluations/
-│   │       ├── expenses/              ← módulo CRUD de gastos
-│   │       ├── excel/                 ← módulo exportar/importar Excel (exceljs)
-│   │       ├── financials/
-│   │       ├── ical/
-│   │       └── users/
-│   └── frontend/                      ← Frontend React
+│   │       ├── expenses/              ← CRUD gastos por propiedad
+│   │       ├── excel/                 ← exportar/importar Excel
+│   │       ├── translation/
+│   │       │   ├── translation.service.ts  ← caché + precalentamiento
+│   │       │   └── translation.module.ts
+│   │       └── prisma/
+│   │           └── prisma.service.ts
+│   └── frontend/
 │       └── src/
 │           ├── main.tsx
-│           ├── App.tsx
-│           ├── lib/
-│           │   └── api.ts             ← axios instance
+│           ├── App.tsx                ← rutas React Router
 │           ├── context/
-│           │   └── UserPreferencesContext.tsx
-│           ├── i18n/
-│           │   └── index.ts           ← traducciones ES/EN (objeto inline)
+│           │   └── AuthContext.tsx    ← JWT en memoria (no localStorage)
 │           ├── components/
-│           │   └── ExcelButtons.tsx   ← componente reutilizable
+│           │   ├── Layout.tsx         ← drawer móvil hamburguesa
+│           │   └── ExcelButtons.tsx   ← exportar/importar reutilizable
 │           └── pages/
-│               ├── Login.tsx
 │               ├── Dashboard.tsx
-│               ├── Properties.tsx     ← incluye campo SES por propiedad
-│               ├── Clients.tsx        ← tipo doc, país, teléfono con prefijo
+│               ├── Bookings.tsx
+│               ├── BookingDetail.tsx  ← editar reserva, checkin, evaluaciones
+│               ├── Clients.tsx
 │               ├── ClientDetail.tsx
-│               ├── Bookings.tsx       ← huéspedes SES, validación docs, banderas
-│               ├── BookingDetail.tsx  ← sección SES: enviar, PDF, XML, estado
-│               ├── Financials.tsx
+│               ├── Properties.tsx
+│               ├── Financials.tsx     ← gastos + totales anuales
+│               ├── Calendar.tsx
 │               ├── Contracts.tsx
-│               ├── ContractTemplates.tsx
-│               ├── Settings.tsx       ← tabs: Usuario, General, Fiscal, Email, SES, Preferencias
-│               ├── OccupancyCalendar.tsx
-│               ├── ICalFeeds.tsx
-│               ├── SignContract.tsx
-│               └── ComingSoon.tsx
+│               ├── Police.tsx         ← partes SES
+│               └── CheckinPage.tsx    ← página PÚBLICA /checkin/:token
+
+## Modelos Prisma principales (schema.prisma)
+```prisma
+model Booking {
+  id             String    @id @default(uuid())
+  propertyId     String
+  clientId       String?
+  startDate      DateTime
+  endDate        DateTime
+  totalPrice     Float?
+  status         String    @default("pending")
+  source         String?
+  notes          String?
+  checkinToken   String?   @unique
+  checkinStatus  String?   @default("pending")
+  checkinSentAt  DateTime?
+  checkinDoneAt  DateTime?
+  property       Property  @relation(...)
+  client         Client?   @relation(...)
+  guests         BookingGuestSes[]
+}
+
+model Client {
+  id          String   @id @default(uuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  nationality String?
+  language    String?  @default("es")
+  docType     String?
+  dniPassport String?
+  docCountry  String?
+  organizationId String
+}
+
+model Property {
+  id      String  @id @default(uuid())
+  name    String
+  address String?
+  city    String?
+  photo   String? // base64
+  icalUrl String?
+  organizationId String
+}
+
+model Expense {
+  id         String   @id @default(uuid())
+  propertyId String
+  date       DateTime
+  amount     Float
+  type       String   // tasas|agua|luz|internet|limpieza|otros
+  notes      String?
+  organizationId String
+}
+
+model BookingGuestSes {
+  id        String   @id @default(uuid())
+  bookingId String
+  firstName String
+  lastName  String
+  docType   String?
+  docNumber String?
+  docCountry String?
+  birthDate DateTime?
+  booking   Booking  @relation(...)
+}
 ```
 
----
+## Variables de entorno clave (.env en apps/api/)
+DATABASE_URL=postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@postgres:5432/rentcrm
+REDIS_URL=redis://:rentcrm_redis_pass@redis:6379
+JWT_SECRET=...
+FRONTEND_URL=http://192.168.1.123:3000
+LIBRETRANSLATE_URL=http://libretranslate:5000
+SMTP_HOST=...
+SMTP_USER=...
+SMTP_PASS=...
 
-## Modelos de base de datos relevantes
+## Patrones importantes
 
-### Organization
-Campos SES añadidos:
-- `sesUsuarioWs` — usuario WS (NIF+WS)
-- `sesPasswordWs` — contraseña WS
-- `sesCodigoArrendador` — código arrendador SES
-- `sesCodigoEstablecimiento` — código establecimiento por defecto
-- `sesEndpoint` — URL endpoint (producción o pruebas)
-
-### Property
-- `photo` — URL/base64 de la foto de la propiedad (opcional)
-- `sesCodigoEstablecimiento` — código SES específico de esta propiedad (sobreescribe el de Organization)
-
-### Booking
-- `sesLote` — número de lote devuelto por SES tras envío
-- `sesStatus` — 'enviado' | 'error' | null
-- `sesSentAt` — fecha/hora del último envío
-
-### BookingGuestSes
-Tabla para huéspedes adicionales por reserva:
-- `bookingId`, `firstName`, `lastName`
-- `docType` (dni/passport/nie/other)
-- `docNumber`, `docCountry` (ISO 2 letras)
-- `birthDate` (opcional), `phone` (opcional)
-
-### Expense
-- `propertyId` — FK a Property
-- `date` — fecha del gasto
-- `amount` — importe en euros
-- `type` — tasas | agua | luz | internet | limpieza | otros
-- `notes` — notas opcionales
-
-Endpoints: GET /expenses, POST /expenses, PUT /expenses/:id, DELETE /expenses/:id, GET /expenses/summary?propertyId=X
-
----
-
-## Módulo SES Hospedajes
-
-### Endpoints API
-```
-POST /bookings/:id/ses/send    → Enviar parte al webservice SES
-GET  /bookings/:id/ses/xml     → Descargar XML del parte
-GET  /bookings/:id/ses/pdf     → Descargar PDF del parte
-```
-
-### Flujo de envío
-1. `SesService.buildXml()` — genera XML según spec v3.1.2 del Ministerio del Interior
-2. Comprime con DEFLATE (zlib.deflateRaw)
-3. Codifica en Base64
-4. Envía por SOAP/HTTP Basic Auth al endpoint SES
-5. Parsea respuesta: `<codigo>0</codigo>` = OK, guarda lote
-6. Actualiza `booking.sesStatus` y `booking.sesLote`
-
-### Credenciales SES
-Se configuran en **Settings → SES Hospedajes**:
-- Usuario WS: NIF/CIF terminado en "WS" (ej: 12345678AWS)
-- Contraseña WS
-- Código arrendador (asignado al registrarse)
-- Código establecimiento (por defecto, se puede sobreescribir por propiedad)
-- Entorno: dropdown Producción / Pruebas
-
-### Especificación técnica
-- Documento: MIR-HOSPE-DSI-WS-Servicio-de-Hospedajes-Comunicaciones-v3.1.2
-- Endpoint producción: `https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion`
-- Endpoint pruebas: `https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/v1/comunicacion`
-- Autenticación: HTTP Basic (usuario:contraseña en Base64)
-- Operación: `comunicacion` (SOAP)
-- Tipo comunicación: `PV` (parte de viajeros)
-- XML comprimido ZIP y codificado Base64
-
----
-
-## Sistema de traducciones (i18n)
-
-Archivo: `apps/frontend/src/i18n/index.ts`
-- Objeto inline con `es` y `en`
-- **NO hay archivos JSON externos**
-- Para añadir traducciones: editar directamente el objeto en ese archivo
-- Claves importantes:
-  - `bookings.statuses.pending/confirmed/cancelled/completed`
-  - `bookings.sources.direct/airbnb/booking/vrbo/manual_block`
-  - `common.confirm_delete`
-
----
-
-## Países (COUNTRIES array)
-
-Definido en `Bookings.tsx` y `Clients.tsx` (duplicado en ambos):
+### Rutas públicas (sin JWT)
 ```typescript
-{ code: 'ES', name: 'España', phone: '+34', flag: '🇪🇸' }
-```
-34 países con: código ISO-2, nombre en español, prefijo telefónico, emoji bandera.
-
-Validación de documentos por país: función `validateDoc(docType, docNumber, country)`
-- DNI España: 8 dígitos + letra con validación mod 23
-- Pasaportes: UK, DE, FR, US con regex específicos
-- NIE España: X/Y/Z + 7 dígitos + letra
-- Debounce de 600ms en inputs
-
----
-
-## Problemas conocidos resueltos
-
-### Re-renders en formularios
-Los componentes `DocFields` y `PhoneField` deben estar **fuera** del componente principal.
-Si se definen dentro, React los trata como nuevos en cada render y los inputs pierden el foco.
-
-### Migración Prisma desde host
-El contenedor API no tiene acceso a internet para descargar schema-engine.
-**Siempre migrar desde el host:**
-```bash
-cd ~/rentcrm-pro/apps/api
-DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" \
-  npx prisma migrate dev --name nombre
+@Public()
+@Get('checkin/:token')
+getCheckin() {}
+// IMPORTANTE: rutas con parámetro fijo ANTES de :id en el controlador
 ```
 
-### Docker rebuild obligatorio
-Después de cambios en el backend, el `docker compose restart` NO recarga el código.
-Hay que hacer `docker compose build api && docker compose up -d api`.
+### Validación DTO con whitelist
+```typescript
+// main.ts tiene: app.useGlobalPipes(new ValidationPipe({ whitelist: true }))
+// Todos los campos en DTOs deben tener decoradores @IsString(), @IsOptional(), etc.
+```
 
-### pdfkit con TypeScript
-Usar `import PDFDocument = require('pdfkit')` en lugar de `import * as PDFDocument from 'pdfkit'`.
+### Prisma snake_case vs camelCase
+```typescript
+// El schema usa camelCase pero algunos campos legacy son snake_case
+// Siempre verificar con: grep "fieldName" apps/api/prisma/schema.prisma
+// Al hacer update: mapear manualmente si hay duda
+prisma.booking.update({ data: { startDate: new Date(data.startDate) } })
+```
 
-### Response de Express con isolatedModules
-Usar `import type { Response } from 'express'` en controllers NestJS.
+### TranslationService
+```typescript
+// Caché en memoria + precalentamiento al arrancar (onModuleInit)
+// 10 idiomas: es, en, fr, de, it, pt, nl, da, nb, sv
+// Fallback: devuelve texto original si LibreTranslate no responde
+await this.translationService.translateMany([...textos], lang);
+```
 
-### notes en CreateBookingDto
-El campo `notes` no existe en el DTO de booking — no incluirlo en el payload del frontend.
+### Frontend — VITE_API_URL
+VITE_API_URL=http://192.168.1.123:3001  ← IP local, accesible desde móvil
+// NO usar http://api:3001 (no accesible desde navegador externo)
 
----
+### Responsive — breakpoints
+Sin prefijo = móvil primero
+md: = 768px = desktop
 
-## Auditoría de seguridad (completada)
+### Patrón tabla→tarjetas móvil
+```jsx
+<div className="hidden md:block"><table>...</table></div>
+<div className="md:hidden space-y-3">{items.map(i => <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">...</div>)}</div>
+```
 
-### 🔴 Críticas resueltas (8/8)
-- [x] SSL habilitado en SES Hospedajes y SMTP (eliminado rejectUnauthorized: false)
-- [x] JWT secret sin fallback hardcodeado — error en startup si no está definido
-- [x] Token iCal generado con crypto.randomBytes(32)
-- [x] Redis con contraseña obligatoria
-- [x] Rate limiting en login (5/min) y SES send (3/min)
-- [x] IDOR gastos — filtro organizationId en todos los endpoints
-- [x] IDOR evaluaciones — filtro organizationId en findByBooking y findByClient
-- [x] .env en .gitignore
+### Patrón modal fullscreen móvil
+```jsx
+<div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+  <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[95vh] overflow-y-auto p-6">
+```
 
-### 🟠 Altas resueltas (8/8)
-- [x] JWT movido de localStorage a memoria React
-- [x] Datos de usuario movidos de localStorage a memoria React
-- [x] Rate limiting global con @nestjs/throttler
-- [x] Rate limiting específico en login y SES
-- [x] IDOR evaluaciones por cliente corregido
-- [x] Invalidación de sesión al cambiar contraseña (passwordChangedAt)
-- [x] Requisitos de complejidad de contraseña (8 chars, mayúscula, número, especial)
-- [x] Validación anti-SSRF en URLs iCal externas
+## Problemas conocidos y soluciones
 
-### 🟡 Medias resueltas (8/8)
-- [x] CORS usando variable de entorno FRONTEND_URL
-- [x] FRONTEND_URL sin fallback a localhost
-- [x] Validación enum en tipo de gasto
-- [x] RolesGuard en endpoints de escritura de gastos
-- [x] Límite de body 2mb
-- [x] Campo raw eliminado de respuesta SES
-- [x] Helmet instalado — cabeceras de seguridad HTTP
-- [x] Validación tamaño y tipo en subida de fotos
+| Problema | Solución |
+|----------|----------|
+| Checkin 401 | Usar `@Public()` decorator, no `@UseGuards()` vacío |
+| Checkin 404 | Rutas fijas ANTES de `:id` en el controlador |
+| Docker no recarga código | Siempre `build + up -d`, nunca solo `restart` |
+| VITE_API_URL móvil | Usar IP real `192.168.1.123`, no `api:3001` |
+| Prisma unknown arg | Verificar nombres exactos en schema.prisma |
+| LibreTranslate `no` | Usar `nb` (noruego bokmål) |
+| ValidationPipe whitelist | Añadir TODOS los campos al DTO con decoradores |
 
-### ⚪ Bajas resueltas (6/6)
-- [x] Imágenes Docker con versiones fijas
-- [x] Variables de entorno movidas a .env
-- [x] .env.example creado
-- [x] Audit logging en SES, contratos y clientes
-- [x] Logger NestJS en startup
-- [x] Versionado de API añadido al backlog
-
-## Cambios recientes
-
-### Responsive móvil (completo)
-- Layout.tsx: drawer móvil con hamburguesa, overlay y cierre automático
-- Dashboard, Bookings, BookingDetail, Clients, ClientDetail, Properties: tablas → tarjetas móvil
-- Financials, Contracts, ContractTemplates: overflow-x-auto + tarjetas móvil
-- Todos los modales: fullscreen en móvil (rounded-t-2xl, items-end)
-
-### Login
-- Campos en blanco al cargar (sin valores por defecto)
-- Checkbox "Recordar usuario": guarda email en localStorage, nunca el password
-
-### Financials
-- Vista anual con selector de año (← año →)
-- Tarjetas resumen: ingresos, gastos, beneficio neto
-- Tabla de ingresos por propiedad con totales
-- Tabla de gastos del año con CRUD completo
-- Tipos de gasto: tasas, agua, luz, internet, limpieza, otros
-
-### Properties
-- Campo photo en BD y API
-- Panel de detalle rediseñado: foto pequeña + datos a la derecha
-- Secciones iCal y SES en panel de detalle
-- Fila completa clickeable para abrir detalle
-- iCal visible también en formulario de editar
-- Resumen financiero anual por propiedad con drill-down a /financials
-
-### Idioma de contacto del cliente
-- Campo language en modelo Client (BD): es, en, fr, de, it, pt, nl, da, nb, sv
-- Selector de idioma en Clients.tsx y ClientDetail.tsx
-- Email de checkin traducido automáticamente al idioma del cliente
-- Selector de idioma manual en BookingDetail antes de enviar el checkin
-- TranslationService usando LibreTranslate self-hosted (rentcrm-translate:5000)
-- Fallback al texto original si LibreTranslate no está disponible
-- LibreTranslate en Docker Compose con 10 idiomas (20 modelos)
-
-### Checkin Online
-- Endpoint público GET/POST /api/bookings/checkin/:token (sin autenticación)
-- Decorador @Public() en jwt-auth.guard para rutas públicas
-- Scheduler @Cron('0 9 * * *') envía enlace automáticamente 2 días antes del checkin
-- Botón envío manual en BookingDetail con estado: no enviado / pendiente / completado
-- Página pública /checkin/:token sin sidebar ni autenticación
-- Token UUID único por reserva, se regenera en cada envío
-
-### Edición de reservas
-- Botón "✏️ Editar reserva" en BookingDetail
-- Modal fullscreen móvil con campos: fechas, total, estado, origen, notas
-- Validación: fecha salida posterior a entrada
-- Fix: mapeo correcto de campos snake_case en Prisma update
-
-### Checkin online — mejoras
-- Pantalla de carga con spinner y texto en idioma del navegador (10 idiomas hardcodeados)
-- Huéspedes adicionales: sección "+14 años" con formulario por huésped
-- Campos huésped: nombre, apellidos, doc, país, fecha nacimiento
-- Guests guardados en BookingGuestSes al completar checkin
-- Todos los textos de huéspedes traducidos al idioma del cliente
-- Email checkin: nombre de propiedad nunca traducido
-- Formulario checkin: todos los textos en idioma del cliente via objeto ui del backend
-- DOC_TYPES y COUNTRIES con useMemo para traducción correcta
-- Caché de traducciones en memoria + precalentamiento al arrancar (todos los idiomas)
-- Idioma del cliente se actualiza automáticamente al reenviar checkin con idioma diferente
-- Países ampliados a 30+ con ordenación alfabética
-
-### Traducciones — LibreTranslate
-- Self-hosted en Docker (rentcrm-translate:5000)
-- 10 idiomas: es, en, fr, de, it, pt, nl, da, nb, sv
-- Caché en memoria con precalentamiento al arrancar
-- Usado en: email checkin, formulario checkin público
-- Pendiente: contratos, reglas de la casa
-
-### Excel — Importar y Exportar
-- Módulo apps/api/src/excel/ con ExcelService y ExcelController
-- Exportar a .xlsx: clientes, reservas, gastos, propiedades
-- Importar desde .xlsx: clientes y gastos (con validación fila a fila)
-- Plantillas descargables para clientes y gastos con ejemplo incluido
-- Resultado de importación: nº de registros importados + errores por fila
-- Componente reutilizable ExcelButtons.tsx usado en Clients, Bookings, Financials, Properties
-- Endpoints: GET /excel/export/:entity, POST /excel/import/:entity, GET /excel/template/:entity
-
-### Excel importar/exportar
-- Exportar: clientes, reservas, gastos, propiedades
-- Importar: clientes y gastos con validación fila a fila
-- Plantillas descargables con ejemplo
-- Componente ExcelButtons.tsx reutilizable
-
----
-
-## Pendiente / Próximas sesiones
-
-- [x] Responsive móvil completo (Layout, Dashboard, Bookings, BookingDetail, Clients, ClientDetail, Properties, Financials, Contracts, ContractTemplates)
-- [x] Login campos en blanco + checkbox recordar usuario
-- [x] PropertyDetail: foto de propiedad + resumen financiero anual con drill-down
-- [x] Financials: gastos por propiedad + totales anuales
-- [ ] Página Partes SES (historial de envíos)
-- [ ] Consulta estado de lote SES
-- [ ] Notificación email cuando SES confirma/rechaza
-
-- [x] CHECKIN ONLINE: Enlace tokenizado para que el cliente rellene su información de checkin
-
-- [x] IMPORTAR/EXPORTAR EXCEL: Gestión masiva de datos via Excel
-
-- [x] MEJORAS FLUJO RESERVA Y CLIENTE (parcial — fechas validadas, edición reserva)
-
-- [x] IDIOMA DE CONTACTO DEL CLIENTE
-  - Añadir campo `language` al modelo Client (BD): dropdown con idiomas disponibles
-  - Idiomas iniciales: es (Español), en (English), fr (Français), de (Deutsch), it (Italiano), pt (Português), nl (Nederlands)
-  - Mostrar selector en ficha de cliente (Clients.tsx y ClientDetail.tsx)
-  - Mostrar selector al crear cliente desde una reserva
-  - Email de checkin: generarse en el idioma del cliente (no siempre en español)
-  - Plantillas de email de checkin en cada idioma disponible dentro del servicio
-  - Opción de cambiar idioma manualmente antes de enviar el checkin desde BookingDetail
-  - Afecta: BD (migración), API (DTO + servicio), Frontend (Clients, ClientDetail, BookingDetail, CheckinPage)
-
-- [ ] WORKFLOW DE ESTADOS DE RESERVA
-  - Definir estados y transiciones permitidas:
-    * pending → confirmed | cancelled
-    * confirmed → completed | cancelled
-    * completed → (sin transición hacia adelante)
-    * cancelled → pending (reactivar)
-    * manual_block → (estado especial, solo cancelar)
-  - En BookingDetail: mostrar botones de transición según estado actual
-    * pending: botones "Confirmar" y "Cancelar"
-    * confirmed: botones "Completar" y "Cancelar"
-    * completed: solo informativo
-    * cancelled: botón "Reactivar" (vuelve a pending)
-  - En Bookings (listado): permitir cambio de estado desde la tarjeta/fila con dropdown o botones rápidos
-  - Añadir campo `statusChangedAt` y `statusChangedBy` en Booking para auditoría
-  - Afecta: BD (migración statusChangedAt/By), API (endpoint PATCH /bookings/:id/status), Frontend (BookingDetail + Bookings)
-
-- [ ] DOCUMENTOS Y REGLAS DE LA CASA: Sección de documentos por propiedad
-  - El propietario escribe el texto en español
-  - La app traduce automáticamente al idioma del cliente antes de enviar (usando API de traducción)
-  - Tipos de documento: reglas de la casa, información de llegada, WiFi, recomendaciones locales, otros
-  - Envío por email al cliente (manual o automático junto al checkin)
-  - Afecta: BD (modelo Document por propiedad), API, Frontend (sección en PropertyDetail), integración traducción automática
-
-- [ ] AUDITORÍA DE SEGURIDAD: Revisión completa del código buscando vulnerabilidades
-  - Revisar endpoints API: autenticación, autorización, validación de inputs
-  - Revisar frontend: XSS, datos sensibles expuestos, tokens en localStorage
-  - Revisar Docker: puertos expuestos, variables de entorno, secretos
-  - Revisar Prisma: SQL injection, datos sin sanitizar
-  - Generar informe con vulnerabilidades encontradas y propuesta de correcciones
-  - Aplicar correcciones priorizadas por severidad (crítica > alta > media > baja)
-
-- [ ] Versionado de API: añadir prefijo /api/v1/ a todos los endpoints para permitir evolución sin romper clientes
-
-- [ ] DEPLOY PRODUCCIÓN: Configurar Nginx como proxy reverso
-  - frontend en miapp.com → contenedor frontend
-  - API en miapp.com/api → contenedor api (elimina CORS y problemas de IP)
-  - VITE_API_URL debe ser relativo (/api) en producción
-  - Todos los parámetros de entorno deben venir de docker-compose o .env:
-    * FRONTEND_URL
-    * VITE_API_URL
-    * DATABASE_URL
-    * JWT_SECRET / JWT_REFRESH_SECRET
-    * REDIS_PASSWORD
-    * SMTP configuración
-  - Crear docker-compose.prod.yml separado del de desarrollo
-  - Documentar proceso de deploy en CLAUDE.md
-
----
-
-## Próxima sesión — Checkin Online
-
-### Objetivo
-Permitir que el cliente rellene sus datos de checkin desde un enlace seguro sin necesidad de login.
-
-### Fase 1 — Base de datos
-Añadir al modelo Booking en schema.prisma:
-- checkinToken    String?   @unique
-- checkinStatus   String?   // pending | completed
-- checkinSentAt   DateTime?
-- checkinDoneAt   DateTime?
-
-### Fase 2 — API
-Nuevos endpoints:
-- POST /bookings/:id/checkin/send → genera token UUID, guarda en BD, envía email al cliente
-- GET  /checkin/:token → endpoint PÚBLICO (sin JWT) → devuelve datos de la reserva para mostrar el formulario
-- POST /checkin/:token → endpoint PÚBLICO → recibe datos del huésped y actualiza la reserva
-
-El email debe enviarse automáticamente 2 días antes del checkin (scheduler NestJS @Cron).
-También debe poder enviarse manualmente desde BookingDetail.
-
-### Fase 3 — Frontend público
-Nueva página: src/pages/CheckinPage.tsx
-- Ruta pública: /checkin/:token (añadir en App.tsx fuera del Layout autenticado)
-- Sin navbar ni sidebar
-- Formulario con datos del huésped: nombre, apellidos, documento, país, teléfono
-- Branding mínimo: logo RentCRM Pro + nombre de la propiedad
-- Al enviar: mensaje de confirmación "¡Checkin completado!"
-- Si el token es inválido o ya usado: mensaje de error
-
-### Fase 4 — BookingDetail
-- Añadir botón "Enviar checkin" en la ficha de reserva
-- Mostrar estado: pendiente / completado + fecha
-- Si completado: mostrar fecha y hora de cuando el cliente lo rellenó
-
-### Archivos a modificar/crear
-1. apps/api/prisma/schema.prisma — nuevos campos Booking
-2. apps/api/src/bookings/bookings.service.ts — lógica token + scheduler
-3. apps/api/src/bookings/bookings.controller.ts — nuevos endpoints
-4. apps/frontend/src/pages/CheckinPage.tsx — página pública nueva
-5. apps/frontend/src/App.tsx — ruta pública /checkin/:token
-6. apps/frontend/src/pages/BookingDetail.tsx — botón + estado checkin
-
-No toques nada más.
-
-
-- [ ] GUESTS EN CHECKIN ONLINE
-  - En CheckinPage añadir sección "Otros huéspedes" después del formulario del titular
-  - Solo huéspedes mayores de 14 años
-  - Botón "+ Añadir huésped" que añade un formulario por huésped
-  - Campos por huésped: nombre, apellidos, tipo doc, nº doc, país doc, fecha nacimiento
-  - Botón eliminar huésped (✕) por cada huésped añadido
-  - Al enviar checkin: incluir array de guests en el POST /checkin/:token
-  - Backend: guardar guests en tabla BookingGuestSes existente
-  - Traducir también los textos de esta sección al idioma del cliente
+## Pendiente (priorizado)
+- [ ] WORKFLOW ESTADOS RESERVA: pending→confirmed→completed→cancelled. Botones en BookingDetail. Campo statusChangedAt en BD.
+- [ ] MEJORAS FLUJO RESERVA: solo nombre al crear reserva, idioma por nacionalidad del cliente
+- [ ] DOCUMENTOS Y REGLAS DE LA CASA: por propiedad, traducción automática al idioma del cliente
+- [ ] PÁGINA PARTES SES: historial de envíos con navegación
+- [ ] CONSULTA ESTADO LOTE SES: confirmación asíncrona Ministerio
+- [ ] NOTIFICACIÓN EMAIL SES: cuando confirma/rechaza
+- [ ] DEPLOY PRODUCCIÓN: Nginx, VITE_API_URL relativo, docker-compose.prod.yml
+- [ ] VERSIONADO API: prefijo /api/v1/
