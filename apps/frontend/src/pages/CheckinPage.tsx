@@ -54,7 +54,7 @@ export default function CheckinPage() {
 
   const handleSubmit = async () => {
     if (!form.firstName || !form.lastName || !form.docNumber || !form.docCountry) {
-      setError('Por favor completa todos los campos obligatorios');
+      setError(booking?.ui?.requiredFieldsError ?? 'Por favor completa todos los campos obligatorios');
       return;
     }
     setSubmitting(true);
@@ -81,22 +81,21 @@ export default function CheckinPage() {
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6">
 
         {loading && (
-          <div className="text-center text-slate-400 py-8">Cargando...</div>
+          <div className="text-center text-slate-400 py-8">...</div>
         )}
 
         {!loading && error && !completed && (
           <div className="text-center py-8">
             <div className="text-4xl mb-4">❌</div>
             <p className="text-red-400 font-medium">{error}</p>
-            <p className="text-slate-400 text-sm mt-2">Si crees que es un error, contacta con tu anfitrión.</p>
           </div>
         )}
 
         {!loading && completed && (
           <div className="text-center py-8">
             <div className="text-5xl mb-4">✅</div>
-            <h2 className="text-xl font-bold text-emerald-400 mb-2">¡Checkin completado!</h2>
-            <p className="text-slate-400 text-sm">Tus datos han sido registrados. ¡Que disfrutes tu estancia!</p>
+            <h2 className="text-xl font-bold text-emerald-400 mb-2">{booking?.ui?.successTitle ?? '¡Checkin completado!'}</h2>
+            <p className="text-slate-400 text-sm">{booking?.ui?.successMessage ?? 'Tus datos han sido registrados. ¡Que disfrutes tu estancia!'}</p>
           </div>
         )}
 
@@ -118,26 +117,26 @@ export default function CheckinPage() {
               </div>
             </div>
 
-            <h3 className="font-semibold mb-4">Tus datos</h3>
+            <h3 className="font-semibold mb-4">{booking.ui?.subtitleText ?? 'Tus datos'}</h3>
 
             {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Nombre *</label>
+                  <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelFirstName ?? 'Nombre'} *</label>
                   <input value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1 block">Apellidos *</label>
+                  <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelLastName ?? 'Apellidos'} *</label>
                   <input value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">Tipo de documento *</label>
+                <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelDocType ?? 'Tipo de documento'} *</label>
                 <select value={form.docType} onChange={e => setForm({...form, docType: e.target.value})}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
                   {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
@@ -145,13 +144,13 @@ export default function CheckinPage() {
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">Número de documento *</label>
+                <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelDocNumber ?? 'Número de documento'} *</label>
                 <input value={form.docNumber} onChange={e => setForm({...form, docNumber: e.target.value})}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">País del documento *</label>
+                <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelDocCountry ?? 'País del documento'} *</label>
                 <select value={form.docCountry} onChange={e => setForm({...form, docCountry: e.target.value})}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
                   {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
@@ -159,7 +158,7 @@ export default function CheckinPage() {
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">Teléfono (opcional)</label>
+                <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelPhone ?? 'Teléfono (opcional)'}</label>
                 <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
                   placeholder="+34 600 000 000"
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
@@ -167,7 +166,7 @@ export default function CheckinPage() {
 
               <button onClick={handleSubmit} disabled={submitting}
                 className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors mt-2">
-                {submitting ? 'Enviando...' : 'Completar checkin'}
+                {submitting ? '...' : (booking.ui?.buttonText ?? 'Completar checkin')}
               </button>
             </div>
           </>

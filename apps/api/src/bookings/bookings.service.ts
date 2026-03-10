@@ -190,20 +190,22 @@ export class BookingsService {
 
     const lang = language || (booking.client as any).language || 'es';
     const checkinUrl = `${process.env.FRONTEND_URL}/checkin/${token}`;
+    const propertyName = booking.property.name;
 
     const [
-      subject,
       greeting,
       bodyText,
       buttonText,
       footerText,
     ] = await this.translationService.translateMany([
-      `Checkin online — ${booking.property.name}`,
       `¡Hola ${booking.client.firstName}!`,
-      `Tu reserva en ${booking.property.name} comienza el ${new Date(booking.checkInDate).toLocaleDateString('es-ES')}. Por favor completa tu checkin online antes de tu llegada:`,
+      `Tu reserva en ${propertyName} comienza el ${new Date(booking.checkInDate).toLocaleDateString('es-ES')}. Por favor completa tu checkin online antes de tu llegada:`,
       'Completar checkin',
       'Este enlace es personal e intransferible.',
     ], lang);
+
+    const subject = `Checkin online — ${propertyName}`;
+    const finalBodyText = bodyText.replace(new RegExp(propertyName, 'gi'), propertyName);
 
     await this.sendEmail(organizationId, {
       to: booking.client.email,
@@ -211,7 +213,7 @@ export class BookingsService {
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>${greeting}</h2>
-          <p>${bodyText}</p>
+          <p>${finalBodyText}</p>
           <a href="${checkinUrl}"
              style="display:inline-block; background:#10b981; color:white; padding:12px 24px;
                     border-radius:8px; text-decoration:none; font-weight:bold; margin:16px 0;">
@@ -229,13 +231,48 @@ export class BookingsService {
       where: { checkinToken: token },
       include: {
         property: { select: { name: true, address: true, city: true } },
-        client:   { select: { firstName: true, lastName: true, email: true } },
+        client:   { select: { firstName: true, lastName: true, email: true, language: true } },
       },
     });
     if (!booking) throw new NotFoundException('Enlace no válido');
     if (booking.checkinStatus === 'completed') {
       throw new BadRequestException('Este checkin ya fue completado');
     }
+
+    const lang = (booking.client as any)?.language || 'es';
+
+    const [
+      titleText,
+      subtitleText,
+      labelFirstName,
+      labelLastName,
+      labelDocType,
+      labelDocNumber,
+      labelDocCountry,
+      labelPhone,
+      buttonText,
+      successTitle,
+      successMessage,
+      errorInvalid,
+      errorCompleted,
+      requiredFieldsError,
+    ] = await this.translationService.translateMany([
+      'Checkin online',
+      'Por favor completa tus datos antes de tu llegada',
+      'Nombre',
+      'Apellidos',
+      'Tipo de documento',
+      'Número de documento',
+      'País del documento',
+      'Teléfono (opcional)',
+      'Completar checkin',
+      '¡Checkin completado!',
+      'Tus datos han sido registrados. ¡Que disfrutes tu estancia!',
+      'Enlace no válido o expirado',
+      'Este checkin ya fue completado',
+      'Por favor completa todos los campos obligatorios',
+    ], lang);
+
     return {
       propertyName:    booking.property.name,
       propertyCity:    booking.property.city,
@@ -244,6 +281,23 @@ export class BookingsService {
       clientFirstName: booking.client?.firstName,
       clientLastName:  booking.client?.lastName,
       clientEmail:     booking.client?.email,
+      language:        lang,
+      ui: {
+        titleText,
+        subtitleText,
+        labelFirstName,
+        labelLastName,
+        labelDocType,
+        labelDocNumber,
+        labelDocCountry,
+        labelPhone,
+        buttonText,
+        successTitle,
+        successMessage,
+        errorInvalid,
+        errorCompleted,
+        requiredFieldsError,
+      },
     };
   }
 
