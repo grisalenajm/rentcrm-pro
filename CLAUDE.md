@@ -339,6 +339,32 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 
 - [x] CHECKIN ONLINE: Enlace tokenizado para que el cliente rellene su información de checkin
 
+- [ ] IDIOMA DE CONTACTO DEL CLIENTE
+  - Añadir campo `language` al modelo Client (BD): dropdown con idiomas disponibles
+  - Idiomas iniciales: es (Español), en (English), fr (Français), de (Deutsch), it (Italiano), pt (Português), nl (Nederlands)
+  - Mostrar selector en ficha de cliente (Clients.tsx y ClientDetail.tsx)
+  - Mostrar selector al crear cliente desde una reserva
+  - Email de checkin: generarse en el idioma del cliente (no siempre en español)
+  - Plantillas de email de checkin en cada idioma disponible dentro del servicio
+  - Opción de cambiar idioma manualmente antes de enviar el checkin desde BookingDetail
+  - Afecta: BD (migración), API (DTO + servicio), Frontend (Clients, ClientDetail, BookingDetail, CheckinPage)
+
+- [ ] WORKFLOW DE ESTADOS DE RESERVA
+  - Definir estados y transiciones permitidas:
+    * pending → confirmed | cancelled
+    * confirmed → completed | cancelled
+    * completed → (sin transición hacia adelante)
+    * cancelled → pending (reactivar)
+    * manual_block → (estado especial, solo cancelar)
+  - En BookingDetail: mostrar botones de transición según estado actual
+    * pending: botones "Confirmar" y "Cancelar"
+    * confirmed: botones "Completar" y "Cancelar"
+    * completed: solo informativo
+    * cancelled: botón "Reactivar" (vuelve a pending)
+  - En Bookings (listado): permitir cambio de estado desde la tarjeta/fila con dropdown o botones rápidos
+  - Añadir campo `statusChangedAt` y `statusChangedBy` en Booking para auditoría
+  - Afecta: BD (migración statusChangedAt/By), API (endpoint PATCH /bookings/:id/status), Frontend (BookingDetail + Bookings)
+
 - [ ] DOCUMENTOS Y REGLAS DE LA CASA: Sección de documentos por propiedad
   - El propietario escribe el texto en español
   - La app traduce automáticamente al idioma del cliente antes de enviar (usando API de traducción)
