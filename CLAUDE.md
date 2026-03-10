@@ -85,6 +85,7 @@ rentcrm-pro/
 │   │       ├── contracts/
 │   │       ├── evaluations/
 │   │       ├── expenses/              ← módulo CRUD de gastos
+│   │       ├── excel/                 ← módulo exportar/importar Excel (exceljs)
 │   │       ├── financials/
 │   │       ├── ical/
 │   │       └── users/
@@ -98,6 +99,8 @@ rentcrm-pro/
 │           │   └── UserPreferencesContext.tsx
 │           ├── i18n/
 │           │   └── index.ts           ← traducciones ES/EN (objeto inline)
+│           ├── components/
+│           │   └── ExcelButtons.tsx   ← componente reutilizable
 │           └── pages/
 │               ├── Login.tsx
 │               ├── Dashboard.tsx
@@ -325,6 +328,15 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 - Página pública /checkin/:token sin sidebar ni autenticación
 - Token UUID único por reserva, se regenera en cada envío
 
+### Excel — Importar y Exportar
+- Módulo apps/api/src/excel/ con ExcelService y ExcelController
+- Exportar a .xlsx: clientes, reservas, gastos, propiedades
+- Importar desde .xlsx: clientes y gastos (con validación fila a fila)
+- Plantillas descargables para clientes y gastos con ejemplo incluido
+- Resultado de importación: nº de registros importados + errores por fila
+- Componente reutilizable ExcelButtons.tsx usado en Clients, Bookings, Financials, Properties
+- Endpoints: GET /excel/export/:entity, POST /excel/import/:entity, GET /excel/template/:entity
+
 ---
 
 ## Pendiente / Próximas sesiones
@@ -338,6 +350,8 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 - [ ] Notificación email cuando SES confirma/rechaza
 
 - [x] CHECKIN ONLINE: Enlace tokenizado para que el cliente rellene su información de checkin
+
+- [x] IMPORTAR/EXPORTAR EXCEL: Gestión masiva de datos via Excel
 
 - [ ] IDIOMA DE CONTACTO DEL CLIENTE
   - Añadir campo `language` al modelo Client (BD): dropdown con idiomas disponibles
