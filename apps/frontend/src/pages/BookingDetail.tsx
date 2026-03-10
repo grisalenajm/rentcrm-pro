@@ -42,6 +42,15 @@ export default function BookingDetail() {
   const [ratingScore, setRatingScore] = useState(5);
   const [ratingNotes, setRatingNotes] = useState('');
   const [checkinLang, setCheckinLang] = useState('es');
+  const [showEdit, setShowEdit] = useState(false);
+  const [editForm, setEditForm] = useState({
+    startDate: '',
+    endDate: '',
+    totalPrice: '',
+    status: '',
+    source: '',
+    notes: '',
+  });
 
   const statusColor: Record<string, string> = {
     confirmed: 'bg-emerald-500/10 text-emerald-400',
@@ -71,6 +80,46 @@ export default function BookingDetail() {
     queryFn: () => api.get(`/evaluations/booking/${id}`).then(r => r.data).catch(() => null),
     enabled: !!id,
   });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: any) => api.put(`/bookings/${id}`, data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['booking', id] });
+      setShowEdit(false);
+    },
+    onError: (e: any) => alert(e.response?.data?.message || 'Error al guardar')
+  });
+
+  const openEdit = () => {
+    setEditForm({
+      startDate: booking.startDate?.slice(0, 10) || '',
+      endDate: booking.endDate?.slice(0, 10) || '',
+      totalPrice: booking.totalPrice?.toString() || '',
+      status: booking.status || '',
+      source: booking.source || '',
+      notes: booking.notes || '',
+    });
+    setShowEdit(true);
+  };
+
+  const handleEditSubmit = () => {
+    if (!editForm.startDate || !editForm.endDate) {
+      alert('Las fechas son obligatorias');
+      return;
+    }
+    if (new Date(editForm.endDate) <= new Date(editForm.startDate)) {
+      alert('La fecha de salida debe ser posterior a la de entrada');
+      return;
+    }
+    updateMutation.mutate({
+      startDate: editForm.startDate,
+      endDate: editForm.endDate,
+      totalPrice: parseFloat(editForm.totalPrice),
+      status: editForm.status,
+      source: editForm.source,
+      notes: editForm.notes,
+    });
+  };
 
   const cancelMutation = useMutation({
     mutationFn: () => api.patch(`/bookings/${id}`, { status: 'cancelled' }),
@@ -141,12 +190,18 @@ export default function BookingDetail() {
         <button onClick={() => navigate('/bookings')} className="text-slate-400 hover:text-white text-sm transition-colors">
           {t('common.back')}
         </button>
-        {booking.status !== 'cancelled' && (
-          <button onClick={() => { if (confirm(t('bookings.cancel'))) cancelMutation.mutate(); }}
-            className="px-3 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
-            {t('bookings.cancel')}
+        <div className="flex items-center gap-2">
+          <button onClick={openEdit}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition-colors">
+            ✏️ Editar reserva
           </button>
-        )}
+          {booking.status !== 'cancelled' && (
+            <button onClick={() => { if (confirm(t('bookings.cancel'))) cancelMutation.mutate(); }}
+              className="px-3 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+              {t('bookings.cancel')}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -409,6 +464,80 @@ export default function BookingDetail() {
           </div>
         )}
       </div>
+
+      {/* Modal edición */}
+      {showEdit && (
+        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[95vh] overflow-y-auto p-6">
+            <h2 className="text-lg font-bold mb-5">Editar reserva</h2>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Entrada *</label>
+                  <input type="date" value={editForm.startDate}
+                    onChange={e => setEditForm({...editForm, startDate: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Salida *</label>
+                  <input type="date" value={editForm.endDate}
+                    onChange={e => setEditForm({...editForm, endDate: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total €</label>
+                <input type="number" step="0.01" value={editForm.totalPrice}
+                  onChange={e => setEditForm({...editForm, totalPrice: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Estado</label>
+                <select value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                  <option value="pending">Pendiente</option>
+                  <option value="confirmed">Confirmada</option>
+                  <option value="completed">Completada</option>
+                  <option value="cancelled">Cancelada</option>
+                  <option value="manual_block">Bloqueo manual</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Origen</label>
+                <select value={editForm.source} onChange={e => setEditForm({...editForm, source: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                  <option value="direct">Directo</option>
+                  <option value="airbnb">Airbnb</option>
+                  <option value="booking">Booking.com</option>
+                  <option value="vrbo">VRBO</option>
+                  <option value="manual_block">Bloqueo manual</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Notas</label>
+                <textarea value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})}
+                  rows={3} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none" />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowEdit(false)}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
+                Cancelar
+              </button>
+              <button onClick={handleEditSubmit} disabled={updateMutation.isPending}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl text-sm font-semibold transition-colors">
+                {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal valoración */}
       {showRating && (
