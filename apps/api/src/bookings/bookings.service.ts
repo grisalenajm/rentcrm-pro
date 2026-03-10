@@ -90,12 +90,15 @@ export class BookingsService {
 
   async update(id: string, dto: UpdateBookingDto, organizationId: string) {
     await this.findOne(id, organizationId);
-    const { guests, ...bookingData } = dto;
+    const { guests, startDate, endDate, totalPrice, notes, checkInDate, checkOutDate, ...rest } = dto as any;
 
-    if (bookingData.checkInDate || bookingData.checkOutDate) {
+    const resolvedCheckIn  = startDate  || checkInDate;
+    const resolvedCheckOut = endDate    || checkOutDate;
+
+    if (resolvedCheckIn || resolvedCheckOut) {
       const current = await this.prisma.booking.findUnique({ where: { id } });
-      const checkIn  = bookingData.checkInDate  || current!.checkInDate.toISOString();
-      const checkOut = bookingData.checkOutDate || current!.checkOutDate.toISOString();
+      const checkIn  = resolvedCheckIn  || current!.checkInDate.toISOString();
+      const checkOut = resolvedCheckOut || current!.checkOutDate.toISOString();
       const available = await this.checkAvailability(current!.propertyId, checkIn, checkOut, id);
       if (!available) throw new BadRequestException('La propiedad no está disponible en esas fechas');
     }
@@ -103,9 +106,10 @@ export class BookingsService {
     return this.prisma.booking.update({
       where: { id },
       data: {
-        ...bookingData,
-        ...(bookingData.checkInDate  ? { checkInDate:  new Date(bookingData.checkInDate)  } : {}),
-        ...(bookingData.checkOutDate ? { checkOutDate: new Date(bookingData.checkOutDate) } : {}),
+        ...rest,
+        ...(resolvedCheckIn  ? { checkInDate:  new Date(resolvedCheckIn)  } : {}),
+        ...(resolvedCheckOut ? { checkOutDate: new Date(resolvedCheckOut) } : {}),
+        ...(totalPrice !== undefined ? { totalAmount: parseFloat(String(totalPrice)) } : {}),
       },
     });
   }
