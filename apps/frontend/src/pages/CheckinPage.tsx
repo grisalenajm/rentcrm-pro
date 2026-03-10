@@ -19,6 +19,23 @@ export default function CheckinPage() {
     docCountry: 'ES',
     phone: ''
   });
+  const [guests, setGuests] = useState<Array<{
+    firstName: string;
+    lastName: string;
+    docType: string;
+    docNumber: string;
+    docCountry: string;
+    birthDate: string;
+  }>>([]);
+
+  const addGuest = () => setGuests([...guests, {
+    firstName: '', lastName: '', docType: 'passport', docNumber: '', docCountry: 'ES', birthDate: ''
+  }]);
+
+  const removeGuest = (i: number) => setGuests(guests.filter((_, idx) => idx !== i));
+
+  const updateGuest = (i: number, field: string, value: string) =>
+    setGuests(guests.map((g, idx) => idx === i ? { ...g, [field]: value } : g));
 
   useEffect(() => {
     axios.get(`${API}/bookings/checkin/${token}`)
@@ -88,7 +105,7 @@ export default function CheckinPage() {
     setSubmitting(true);
     setError('');
     try {
-      await axios.post(`${API}/bookings/checkin/${token}`, form);
+      await axios.post(`${API}/bookings/checkin/${token}`, { ...form, guests });
       setCompleted(true);
     } catch (e: any) {
       setError(e.response?.data?.message || 'Error al completar el checkin');
@@ -190,6 +207,64 @@ export default function CheckinPage() {
                 <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
                   placeholder="+34 600 000 000"
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+
+              <div className="border-t border-slate-700 pt-4 mt-2">
+                <h4 className="font-semibold text-white mb-1">{booking.ui?.guestsTitle ?? 'Otros huéspedes (mayores de 14 años)'}</h4>
+                <p className="text-xs text-slate-400 mb-3">
+                  {booking.ui?.guestsNotice ?? 'Es obligatorio registrar todos los huéspedes mayores de 14 años según la normativa de hospedaje.'}
+                </p>
+
+                {guests.map((g, i) => (
+                  <div key={i} className="bg-slate-800 rounded-xl p-4 mb-3 relative">
+                    <button onClick={() => removeGuest(i)}
+                      className="absolute top-3 right-3 text-slate-400 hover:text-red-400 transition-colors text-lg">✕</button>
+                    <p className="text-xs font-semibold text-emerald-400 mb-3">{booking.ui?.guestLabel ?? 'Huésped'} {i + 1}</p>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelFirstName ?? 'Nombre'} *</label>
+                          <input value={g.firstName} onChange={e => updateGuest(i, 'firstName', e.target.value)}
+                            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelLastName ?? 'Apellidos'} *</label>
+                          <input value={g.lastName} onChange={e => updateGuest(i, 'lastName', e.target.value)}
+                            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelDocType ?? 'Tipo de documento'} *</label>
+                        <select value={g.docType} onChange={e => updateGuest(i, 'docType', e.target.value)}
+                          className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                          {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelDocNumber ?? 'Número de documento'} *</label>
+                        <input value={g.docNumber} onChange={e => updateGuest(i, 'docNumber', e.target.value)}
+                          className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelDocCountry ?? 'País del documento'} *</label>
+                        <select value={g.docCountry} onChange={e => updateGuest(i, 'docCountry', e.target.value)}
+                          className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                          {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelBirthDate ?? 'Fecha de nacimiento'}</label>
+                        <input type="date" value={g.birthDate} onChange={e => updateGuest(i, 'birthDate', e.target.value)}
+                          className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <button onClick={addGuest}
+                  className="w-full py-2.5 border border-dashed border-slate-600 hover:border-emerald-500 text-slate-400 hover:text-emerald-400 rounded-xl text-sm transition-colors">
+                  + {booking.ui?.addGuestButton ?? 'Añadir huésped'}
+                </button>
               </div>
 
               <button onClick={handleSubmit} disabled={submitting}

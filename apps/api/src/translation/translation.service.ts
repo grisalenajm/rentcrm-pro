@@ -79,6 +79,11 @@ export class TranslationService implements OnModuleInit {
       'Turquía',
       'Israel',
       'Emiratos Árabes Unidos',
+      'Otros huéspedes (mayores de 14 años)',
+      'Es obligatorio registrar todos los huéspedes mayores de 14 años según la normativa de hospedaje.',
+      'Añadir huésped',
+      'Huésped',
+      'Fecha de nacimiento',
     ];
 
     const idiomas = ['en', 'fr', 'de', 'it', 'pt', 'nl', 'da', 'nb', 'sv'];

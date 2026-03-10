@@ -300,6 +300,11 @@ export class BookingsService {
       countryTR,
       countryIL,
       countryAE,
+      guestsTitle,
+      guestsNotice,
+      addGuestButton,
+      guestLabel,
+      labelBirthDate,
     ] = await this.translationService.translateMany([
       'Checkin online',
       'Por favor completa tus datos antes de tu llegada',
@@ -359,6 +364,11 @@ export class BookingsService {
       'Turquía',
       'Israel',
       'Emiratos Árabes Unidos',
+      'Otros huéspedes (mayores de 14 años)',
+      'Es obligatorio registrar todos los huéspedes mayores de 14 años según la normativa de hospedaje.',
+      'Añadir huésped',
+      'Huésped',
+      'Fecha de nacimiento',
     ], lang);
 
     return {
@@ -429,6 +439,11 @@ export class BookingsService {
         countryTR,
         countryIL,
         countryAE,
+        guestsTitle,
+        guestsNotice,
+        addGuestButton,
+        guestLabel,
+        labelBirthDate,
       },
     };
   }
@@ -440,6 +455,7 @@ export class BookingsService {
     docNumber: string;
     docCountry: string;
     phone?: string;
+    guests?: Array<{ firstName: string; lastName: string; docType: string; docNumber: string; docCountry: string; birthDate?: string }>;
   }) {
     const booking = await this.prisma.booking.findUnique({
       where: { checkinToken: token },
@@ -469,6 +485,20 @@ export class BookingsService {
         checkinDoneAt: new Date(),
       },
     });
+
+    if (data.guests && data.guests.length > 0) {
+      await this.prisma.bookingGuestSes.createMany({
+        data: data.guests.map((g: any) => ({
+          bookingId: booking.id,
+          firstName: g.firstName,
+          lastName: g.lastName,
+          docType: g.docType,
+          docNumber: g.docNumber,
+          docCountry: g.docCountry,
+          birthDate: g.birthDate ? new Date(g.birthDate) : null,
+        }))
+      });
+    }
 
     return { ok: true, message: '¡Checkin completado con éxito!' };
   }
