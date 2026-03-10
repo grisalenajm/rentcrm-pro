@@ -52,5 +52,18 @@ services:
     depends_on:
       - api
 
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: rentcrm-translate
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - LT_LOAD_ONLY=es,en,fr,de,it,pt,nl,da,no,sv
+      - LT_DISABLE_WEB_UI=true
+    volumes:
+      - libretranslate_data:/home/libretranslate/.local
+
 volumes:
   postgres_data:
+  libretranslate_data:
