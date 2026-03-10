@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 
@@ -34,23 +34,23 @@ export default function CheckinPage() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const DOC_TYPES = booking ? [
-    { value: 'dni',      label: booking.ui?.docTypeDni      ?? 'DNI' },
-    { value: 'passport', label: booking.ui?.docTypePassport ?? 'Pasaporte' },
-    { value: 'nie',      label: booking.ui?.docTypeNie      ?? 'NIE' },
-    { value: 'other',    label: booking.ui?.docTypeOther    ?? 'Otro' },
-  ] : [];
+  const DOC_TYPES = useMemo(() => [
+    { value: 'dni',      label: booking?.ui?.docTypeDni      ?? 'DNI' },
+    { value: 'passport', label: booking?.ui?.docTypePassport ?? 'Pasaporte' },
+    { value: 'nie',      label: booking?.ui?.docTypeNie      ?? 'NIE' },
+    { value: 'other',    label: booking?.ui?.docTypeOther    ?? 'Otro' },
+  ], [booking?.ui]);
 
-  const COUNTRIES = booking ? [
-    { code: 'ES',    name: booking.ui?.countryES    ?? 'España' },
-    { code: 'GB',    name: booking.ui?.countryGB    ?? 'Reino Unido' },
-    { code: 'FR',    name: booking.ui?.countryFR    ?? 'Francia' },
-    { code: 'DE',    name: booking.ui?.countryDE    ?? 'Alemania' },
-    { code: 'IT',    name: booking.ui?.countryIT    ?? 'Italia' },
-    { code: 'PT',    name: booking.ui?.countryPT    ?? 'Portugal' },
-    { code: 'US',    name: booking.ui?.countryUS    ?? 'Estados Unidos' },
-    { code: 'OTHER', name: booking.ui?.countryOther ?? 'Otro' },
-  ] : [];
+  const COUNTRIES = useMemo(() => [
+    { code: 'ES',    name: booking?.ui?.countryES    ?? 'España' },
+    { code: 'GB',    name: booking?.ui?.countryGB    ?? 'Reino Unido' },
+    { code: 'FR',    name: booking?.ui?.countryFR    ?? 'Francia' },
+    { code: 'DE',    name: booking?.ui?.countryDE    ?? 'Alemania' },
+    { code: 'IT',    name: booking?.ui?.countryIT    ?? 'Italia' },
+    { code: 'PT',    name: booking?.ui?.countryPT    ?? 'Portugal' },
+    { code: 'US',    name: booking?.ui?.countryUS    ?? 'Estados Unidos' },
+    { code: 'OTHER', name: booking?.ui?.countryOther ?? 'Otro' },
+  ], [booking?.ui]);
 
   const handleSubmit = async () => {
     if (!form.firstName || !form.lastName || !form.docNumber || !form.docCountry) {
