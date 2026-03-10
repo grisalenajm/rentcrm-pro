@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
+import ExcelButtons from '../components/ExcelButtons';
 
 // ── Datos de países ───────────────────────────────────────────────────────
 const COUNTRIES = [
@@ -322,10 +323,13 @@ export default function Bookings() {
           <h1 className="text-2xl font-bold">{t('bookings.title')}</h1>
           <p className="text-slate-400 text-sm mt-1">{bookings.length} {t('bookings.registered')}</p>
         </div>
-        <button onClick={() => { setShowForm(true); setErrorMsg(''); resetForm(); }}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
-          + {t('bookings.new')}
-        </button>
+        <div className="flex items-center gap-2">
+          <ExcelButtons entity="bookings" showImport={false} />
+          <button onClick={() => { setShowForm(true); setErrorMsg(''); resetForm(); }}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
+            + {t('bookings.new')}
+          </button>
+        </div>
       </div>
 
       {isLoading ? (

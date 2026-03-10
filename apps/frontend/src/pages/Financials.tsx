@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
+import ExcelButtons from '../components/ExcelButtons';
 
 const EXPENSE_TYPES = [
   { value: 'tasas',    label: 'Tasas' },
@@ -164,6 +165,7 @@ export default function Financials() {
               ›
             </button>
           </div>
+          <ExcelButtons entity="expenses" onImportSuccess={() => qc.invalidateQueries({ queryKey: ['expenses'] })} />
           <button
             onClick={openCreate}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"

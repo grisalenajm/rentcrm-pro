@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
+import ExcelButtons from '../components/ExcelButtons';
 
 interface Property {
   id: string;
@@ -219,10 +220,13 @@ export default function Properties() {
           <h1 className="text-2xl font-bold">{t('properties.title')}</h1>
           <p className="text-slate-400 text-sm mt-1">{properties.length} {t('properties.registered')}</p>
         </div>
-        <button onClick={openCreate}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
-          + {t('properties.new')}
-        </button>
+        <div className="flex items-center gap-2">
+          <ExcelButtons entity="properties" showImport={false} />
+          <button onClick={openCreate}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
+            + {t('properties.new')}
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
