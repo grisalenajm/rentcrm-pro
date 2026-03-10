@@ -174,6 +174,10 @@ model Booking {
   sesLote       String?   @map("ses_lote") @db.VarChar(50)
   sesStatus     String?   @map("ses_status") @db.VarChar(20)
   sesSentAt     DateTime? @map("ses_sent_at")
+  checkinToken  String?   @unique @map("checkin_token") @db.VarChar(64)
+  checkinStatus String?   @map("checkin_status") @db.VarChar(20)
+  checkinSentAt DateTime? @map("checkin_sent_at")
+  checkinDoneAt DateTime? @map("checkin_done_at")
 
   @@map("bookings")
 }
