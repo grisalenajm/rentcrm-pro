@@ -49,6 +49,8 @@ cd ~/rentcrm-pro && git add -A && git commit -m "mensaje" && git push origin mai
 ```
 rentcrm-pro/
 ├── docker-compose.yml
+│   └── servicios: rentcrm-postgres, rentcrm-redis, rentcrm-api, rentcrm-frontend
+│                  rentcrm-translate (libretranslate) — puerto 5000, solo accesible internamente
 ├── CLAUDE.md                          ← este archivo
 ├── apps/
 │   ├── api/                           ← Backend NestJS
@@ -320,6 +322,15 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 - iCal visible también en formulario de editar
 - Resumen financiero anual por propiedad con drill-down a /financials
 
+### Idioma de contacto del cliente
+- Campo language en modelo Client (BD): es, en, fr, de, it, pt, nl, da, nb, sv
+- Selector de idioma en Clients.tsx y ClientDetail.tsx
+- Email de checkin traducido automáticamente al idioma del cliente
+- Selector de idioma manual en BookingDetail antes de enviar el checkin
+- TranslationService usando LibreTranslate self-hosted (rentcrm-translate:5000)
+- Fallback al texto original si LibreTranslate no está disponible
+- LibreTranslate en Docker Compose con 10 idiomas (20 modelos)
+
 ### Checkin Online
 - Endpoint público GET/POST /api/bookings/checkin/:token (sin autenticación)
 - Decorador @Public() en jwt-auth.guard para rutas públicas
@@ -353,7 +364,7 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 
 - [x] IMPORTAR/EXPORTAR EXCEL: Gestión masiva de datos via Excel
 
-- [ ] IDIOMA DE CONTACTO DEL CLIENTE
+- [x] IDIOMA DE CONTACTO DEL CLIENTE
   - Añadir campo `language` al modelo Client (BD): dropdown con idiomas disponibles
   - Idiomas iniciales: es (Español), en (English), fr (Français), de (Deutsch), it (Italiano), pt (Português), nl (Nederlands)
   - Mostrar selector en ficha de cliente (Clients.tsx y ClientDetail.tsx)
