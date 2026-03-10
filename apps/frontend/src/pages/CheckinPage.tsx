@@ -1,0 +1,181 @@
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import axios from 'axios';
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+const DOC_TYPES = [
+  { value: 'dni',      label: 'DNI' },
+  { value: 'passport', label: 'Pasaporte' },
+  { value: 'nie',      label: 'NIE' },
+  { value: 'other',    label: 'Otro' },
+];
+
+const COUNTRIES = [
+  { code: 'ES', name: 'España' },
+  { code: 'GB', name: 'Reino Unido' },
+  { code: 'FR', name: 'Francia' },
+  { code: 'DE', name: 'Alemania' },
+  { code: 'IT', name: 'Italia' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'US', name: 'Estados Unidos' },
+  { code: 'OTHER', name: 'Otro' },
+];
+
+export default function CheckinPage() {
+  const { token } = useParams<{ token: string }>();
+  const [booking, setBooking] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [completed, setCompleted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    docType: 'passport',
+    docNumber: '',
+    docCountry: 'ES',
+    phone: ''
+  });
+
+  useEffect(() => {
+    axios.get(`${API}/bookings/checkin/${token}`)
+      .then(r => {
+        setBooking(r.data);
+        setForm(f => ({
+          ...f,
+          firstName: r.data.clientFirstName || '',
+          lastName: r.data.clientLastName || '',
+        }));
+      })
+      .catch(e => setError(e.response?.data?.message || 'Enlace no válido o expirado'))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const handleSubmit = async () => {
+    if (!form.firstName || !form.lastName || !form.docNumber || !form.docCountry) {
+      setError('Por favor completa todos los campos obligatorios');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      await axios.post(`${API}/bookings/checkin/${token}`, form);
+      setCompleted(true);
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Error al completar el checkin');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4">
+
+      {/* Logo */}
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-lg">🏘️</div>
+        <span className="text-xl font-bold">RentCRM Pro</span>
+      </div>
+
+      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6">
+
+        {loading && (
+          <div className="text-center text-slate-400 py-8">Cargando...</div>
+        )}
+
+        {!loading && error && !completed && (
+          <div className="text-center py-8">
+            <div className="text-4xl mb-4">❌</div>
+            <p className="text-red-400 font-medium">{error}</p>
+            <p className="text-slate-400 text-sm mt-2">Si crees que es un error, contacta con tu anfitrión.</p>
+          </div>
+        )}
+
+        {!loading && completed && (
+          <div className="text-center py-8">
+            <div className="text-5xl mb-4">✅</div>
+            <h2 className="text-xl font-bold text-emerald-400 mb-2">¡Checkin completado!</h2>
+            <p className="text-slate-400 text-sm">Tus datos han sido registrados. ¡Que disfrutes tu estancia!</p>
+          </div>
+        )}
+
+        {!loading && !error && !completed && booking && (
+          <>
+            {/* Info reserva */}
+            <div className="mb-6 p-4 bg-slate-800 rounded-xl">
+              <h2 className="font-bold text-lg">{booking.propertyName}</h2>
+              <p className="text-slate-400 text-sm">{booking.propertyCity}</p>
+              <div className="flex gap-4 mt-2 text-sm">
+                <div>
+                  <span className="text-slate-400">Entrada </span>
+                  <span className="text-white">{new Date(booking.startDate).toLocaleDateString('es-ES')}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400">Salida </span>
+                  <span className="text-white">{new Date(booking.endDate).toLocaleDateString('es-ES')}</span>
+                </div>
+              </div>
+            </div>
+
+            <h3 className="font-semibold mb-4">Tus datos</h3>
+
+            {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Nombre *</label>
+                  <input value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Apellidos *</label>
+                  <input value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Tipo de documento *</label>
+                <select value={form.docType} onChange={e => setForm({...form, docType: e.target.value})}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                  {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Número de documento *</label>
+                <input value={form.docNumber} onChange={e => setForm({...form, docNumber: e.target.value})}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">País del documento *</label>
+                <select value={form.docCountry} onChange={e => setForm({...form, docCountry: e.target.value})}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                  {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block">Teléfono (opcional)</label>
+                <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
+                  placeholder="+34 600 000 000"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+
+              <button onClick={handleSubmit} disabled={submitting}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors mt-2">
+                {submitting ? 'Enviando...' : 'Completar checkin'}
+              </button>
+            </div>
+          </>
+        )}
+
+      </div>
+
+      <p className="text-slate-600 text-xs mt-6">Powered by RentCRM Pro</p>
+    </div>
+  );
+}

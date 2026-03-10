@@ -13,6 +13,7 @@ import Financials from './pages/Financials';
 import Contracts from './pages/Contracts';
 import ContractTemplates from './pages/ContractTemplates';
 import SignContract from './pages/SignContract';
+import CheckinPage from './pages/CheckinPage';
 import ComingSoon from './pages/ComingSoon';
 import OccupancyCalendar from './pages/OccupancyCalendar';
 import Settings from './pages/Settings';
@@ -35,6 +36,7 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/sign/:token" element={<SignContract />} />
+            <Route path="/checkin/:token" element={<CheckinPage />} />
             <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="properties"          element={<Properties />} />

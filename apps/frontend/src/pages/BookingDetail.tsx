@@ -23,6 +23,7 @@ export default function BookingDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [showRating, setShowRating] = useState(false);
+  const [sendingCheckin, setSendingCheckin] = useState(false);
   const [sesSending, setSesSending] = useState(false);
   const [sesResult, setSesResult] = useState<{ok: boolean; message: string} | null>(null);
   const [ratingScore, setRatingScore] = useState(5);
@@ -72,6 +73,18 @@ export default function BookingDetail() {
     mutationFn: ({ evalId, data }: any) => api.put(`/evaluations/${evalId}`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['evaluation-booking', id] }),
   });
+
+  const handleSendCheckin = async () => {
+    setSendingCheckin(true);
+    try {
+      await api.post(`/bookings/${booking.id}/checkin/send`);
+      qc.invalidateQueries({ queryKey: ['booking', id] });
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Error al enviar el checkin');
+    } finally {
+      setSendingCheckin(false);
+    }
+  };
 
   const sendSes = async () => {
     setSesSending(true);
@@ -236,6 +249,48 @@ export default function BookingDetail() {
               </div>
             ))}
           </div>
+        )}
+      </div>
+
+      {/* Checkin online */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
+        <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <span>✅</span> Checkin online
+        </h3>
+
+        {/* Estado */}
+        <div className="mb-4">
+          {!booking.checkinStatus && (
+            <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded-full">No enviado</span>
+          )}
+          {booking.checkinStatus === 'pending' && (
+            <div>
+              <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full">Pendiente</span>
+              {booking.checkinSentAt && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Enviado el {new Date(booking.checkinSentAt).toLocaleDateString('es-ES')}
+                </p>
+              )}
+            </div>
+          )}
+          {booking.checkinStatus === 'completed' && (
+            <div>
+              <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">✓ Completado</span>
+              {booking.checkinDoneAt && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Completado el {new Date(booking.checkinDoneAt).toLocaleDateString('es-ES')} a las {new Date(booking.checkinDoneAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Botón enviar */}
+        {booking.checkinStatus !== 'completed' && (
+          <button onClick={handleSendCheckin} disabled={sendingCheckin}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
+            {sendingCheckin ? 'Enviando...' : booking.checkinStatus === 'pending' ? '🔄 Reenviar enlace' : '📧 Enviar checkin al cliente'}
+          </button>
         )}
       </div>
 
