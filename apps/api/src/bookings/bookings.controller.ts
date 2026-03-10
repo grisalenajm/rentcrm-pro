@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, Res } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { BookingsService } from './bookings.service';
 import { SesService } from './ses.service';
@@ -21,6 +21,20 @@ export class BookingsController {
   @Get()
   findAll(@Request() req, @Query('propertyId') propertyId?: string) {
     return this.bookingsService.findAll(req.user.organizationId, propertyId);
+  }
+
+  @SkipThrottle()
+  @UseGuards()
+  @Get('checkin/:token')
+  getCheckin(@Param('token') token: string) {
+    return this.bookingsService.getCheckinByToken(token);
+  }
+
+  @SkipThrottle()
+  @UseGuards()
+  @Post('checkin/:token')
+  completeCheckin(@Param('token') token: string, @Body() body: any) {
+    return this.bookingsService.completeCheckin(token, body);
   }
 
   @Get(':id')
