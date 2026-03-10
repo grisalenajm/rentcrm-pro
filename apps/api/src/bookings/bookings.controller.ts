@@ -64,6 +64,14 @@ export class BookingsController {
     return this.bookingsService.removeGuestSes(id, guestId, req.user.organizationId);
   }
 
+  // ── Checkin Online ─────────────────────────────────────────────────────────
+  @Post(':id/checkin/send')
+  @Roles('admin', 'gestor')
+  async sendCheckin(@Param('id') id: string, @Request() req) {
+    await this.bookingsService.sendCheckinLink(id, req.user.organizationId);
+    return { ok: true };
+  }
+
   // ── SES Envío ──────────────────────────────────────────────────────────────
   @Post(':id/ses/send')
   @Roles('admin', 'gestor')
