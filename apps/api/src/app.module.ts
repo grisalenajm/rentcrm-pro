@@ -15,6 +15,7 @@ import { EvaluationsModule } from './evaluations/evaluations.module';
 import { OrganizationModule } from './organization/organization.module';
 import { ICalModule } from './ical/ical.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { ExcelModule } from './excel/excel.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ExpensesModule } from './expenses/expenses.module';
     OrganizationModule,
     ICalModule,
     ExpensesModule,
+    ExcelModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
