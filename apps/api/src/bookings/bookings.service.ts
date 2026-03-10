@@ -4,12 +4,16 @@ import { PrismaService } from '../prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { CreateBookingGuestSesDto } from './dto/booking-guest-ses.dto';
+import { TranslationService } from '../translation/translation.service';
 import { randomUUID } from 'crypto';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class BookingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private translationService: TranslationService,
+  ) {}
 
   async findAll(organizationId: string, propertyId?: string) {
     return this.prisma.booking.findMany({
@@ -184,24 +188,37 @@ export class BookingsService {
       },
     });
 
+    const lang = (booking.client as any).language || 'es';
     const checkinUrl = `${process.env.FRONTEND_URL}/checkin/${token}`;
+
+    const [
+      subject,
+      greeting,
+      bodyText,
+      buttonText,
+      footerText,
+    ] = await this.translationService.translateMany([
+      `Checkin online — ${booking.property.name}`,
+      `¡Hola ${booking.client.firstName}!`,
+      `Tu reserva en ${booking.property.name} comienza el ${new Date(booking.checkInDate).toLocaleDateString('es-ES')}. Por favor completa tu checkin online antes de tu llegada:`,
+      'Completar checkin',
+      'Este enlace es personal e intransferible.',
+    ], lang);
 
     await this.sendEmail(organizationId, {
       to: booking.client.email,
-      subject: `Checkin online — ${booking.property.name}`,
+      subject,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>¡Hola ${booking.client.firstName}!</h2>
-          <p>Tu reserva en <strong>${booking.property.name}</strong> comienza el
-             <strong>${new Date(booking.checkInDate).toLocaleDateString('es-ES')}</strong>.</p>
-          <p>Por favor completa tu checkin online antes de tu llegada:</p>
+          <h2>${greeting}</h2>
+          <p>${bodyText}</p>
           <a href="${checkinUrl}"
              style="display:inline-block; background:#10b981; color:white; padding:12px 24px;
                     border-radius:8px; text-decoration:none; font-weight:bold; margin:16px 0;">
-            Completar checkin
+            ${buttonText}
           </a>
-          <p style="color:#666; font-size:14px;">O copia este enlace: ${checkinUrl}</p>
-          <p style="color:#666; font-size:14px;">Este enlace es personal e intransferible.</p>
+          <p style="color:#666; font-size:14px;">URL: ${checkinUrl}</p>
+          <p style="color:#666; font-size:14px;">${footerText}</p>
         </div>
       `,
     });
