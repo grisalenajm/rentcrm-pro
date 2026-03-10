@@ -9,6 +9,7 @@ import { CreateBookingGuestSesDto } from './dto/booking-guest-ses.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { Public } from '../auth/public.decorator';
 
 @Controller('bookings')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -23,15 +24,15 @@ export class BookingsController {
     return this.bookingsService.findAll(req.user.organizationId, propertyId);
   }
 
+  @Public()
   @SkipThrottle()
-  @UseGuards()
   @Get('checkin/:token')
   getCheckin(@Param('token') token: string) {
     return this.bookingsService.getCheckinByToken(token);
   }
 
+  @Public()
   @SkipThrottle()
-  @UseGuards()
   @Post('checkin/:token')
   completeCheckin(@Param('token') token: string, @Body() body: any) {
     return this.bookingsService.completeCheckin(token, body);

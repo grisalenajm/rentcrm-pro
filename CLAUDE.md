@@ -354,6 +354,20 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 
 - [ ] Versionado de API: añadir prefijo /api/v1/ a todos los endpoints para permitir evolución sin romper clientes
 
+- [ ] DEPLOY PRODUCCIÓN: Configurar Nginx como proxy reverso
+  - frontend en miapp.com → contenedor frontend
+  - API en miapp.com/api → contenedor api (elimina CORS y problemas de IP)
+  - VITE_API_URL debe ser relativo (/api) en producción
+  - Todos los parámetros de entorno deben venir de docker-compose o .env:
+    * FRONTEND_URL
+    * VITE_API_URL
+    * DATABASE_URL
+    * JWT_SECRET / JWT_REFRESH_SECRET
+    * REDIS_PASSWORD
+    * SMTP configuración
+  - Crear docker-compose.prod.yml separado del de desarrollo
+  - Documentar proceso de deploy en CLAUDE.md
+
 ---
 
 ## Próxima sesión — Checkin Online

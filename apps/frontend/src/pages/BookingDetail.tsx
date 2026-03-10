@@ -252,48 +252,6 @@ export default function BookingDetail() {
         )}
       </div>
 
-      {/* Checkin online */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
-        <h3 className="font-semibold mb-4 flex items-center gap-2">
-          <span>✅</span> Checkin online
-        </h3>
-
-        {/* Estado */}
-        <div className="mb-4">
-          {!booking.checkinStatus && (
-            <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded-full">No enviado</span>
-          )}
-          {booking.checkinStatus === 'pending' && (
-            <div>
-              <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full">Pendiente</span>
-              {booking.checkinSentAt && (
-                <p className="text-xs text-slate-400 mt-1">
-                  Enviado el {new Date(booking.checkinSentAt).toLocaleDateString('es-ES')}
-                </p>
-              )}
-            </div>
-          )}
-          {booking.checkinStatus === 'completed' && (
-            <div>
-              <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">✓ Completado</span>
-              {booking.checkinDoneAt && (
-                <p className="text-xs text-slate-400 mt-1">
-                  Completado el {new Date(booking.checkinDoneAt).toLocaleDateString('es-ES')} a las {new Date(booking.checkinDoneAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Botón enviar */}
-        {booking.checkinStatus !== 'completed' && (
-          <button onClick={handleSendCheckin} disabled={sendingCheckin}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
-            {sendingCheckin ? 'Enviando...' : booking.checkinStatus === 'pending' ? '🔄 Reenviar enlace' : '📧 Enviar checkin al cliente'}
-          </button>
-        )}
-      </div>
-
       {/* Financiero */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
         <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider mb-3">{t('bookings.financials')}</h3>
@@ -384,6 +342,45 @@ export default function BookingDetail() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Checkin online */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
+        <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <span>✅</span> Checkin online
+        </h3>
+        <div className="mb-4">
+          {!booking.checkinStatus && (
+            <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded-full">No enviado</span>
+          )}
+          {booking.checkinStatus === 'pending' && (
+            <div>
+              <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full">Pendiente</span>
+              {booking.checkinSentAt && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Enviado el {new Date(booking.checkinSentAt).toLocaleDateString('es-ES')}
+                </p>
+              )}
+            </div>
+          )}
+          {booking.checkinStatus === 'completed' && (
+            <div>
+              <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">✓ Completado</span>
+              {booking.checkinDoneAt && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Completado el {new Date(booking.checkinDoneAt).toLocaleDateString('es-ES')} a las {new Date(booking.checkinDoneAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {booking.checkinStatus !== 'completed' && (
+          <button onClick={handleSendCheckin} disabled={sendingCheckin}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
+            {sendingCheckin ? 'Enviando...' : booking.checkinStatus === 'pending' ? '🔄 Reenviar enlace' : '📧 Enviar checkin al cliente'}
+          </button>
+        )}
       </div>
 
       {/* Modal valoración */}
