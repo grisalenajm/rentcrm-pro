@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api';
+const API = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'http://192.168.1.123:3001/api';
 
 const DOC_TYPES = [
   { value: 'dni',      label: 'DNI' },
