@@ -4,6 +4,34 @@ import axios from 'axios';
 
 const API = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'http://192.168.1.123:3001/api';
 
+const browserLang = navigator.language?.slice(0, 2) || 'en';
+
+const LOADING_TEXTS: Record<string, string> = {
+  es: 'Cargando...',
+  en: 'Loading...',
+  fr: 'Chargement...',
+  de: 'Laden...',
+  it: 'Caricamento...',
+  pt: 'Carregando...',
+  nl: 'Laden...',
+  da: 'Indlæser...',
+  nb: 'Laster...',
+  sv: 'Laddar...',
+};
+
+const CHECKIN_TEXTS: Record<string, string> = {
+  es: 'Preparando tu checkin',
+  en: 'Preparing your check-in',
+  fr: 'Préparation de votre check-in',
+  de: 'Ihr Check-in wird vorbereitet',
+  it: 'Preparazione del tuo check-in',
+  pt: 'Preparando o seu check-in',
+  nl: 'Uw check-in wordt voorbereid',
+  da: 'Forbereder dit check-in',
+  nb: 'Forbereder din innsjekking',
+  sv: 'Förbereder din incheckning',
+};
+
 export default function CheckinPage() {
   const { token } = useParams<{ token: string }>();
   const [booking, setBooking] = useState<any>(null);
@@ -126,7 +154,11 @@ export default function CheckinPage() {
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6">
 
         {loading && (
-          <div className="text-center text-slate-400 py-8">...</div>
+          <div className="text-center py-12">
+            <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-white font-medium">{CHECKIN_TEXTS[browserLang] || CHECKIN_TEXTS['en']}</p>
+            <p className="text-slate-400 text-sm mt-1">{LOADING_TEXTS[browserLang] || LOADING_TEXTS['en']}</p>
+          </div>
         )}
 
         {!loading && error && !completed && (
