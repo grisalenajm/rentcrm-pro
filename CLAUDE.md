@@ -317,6 +317,14 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 - iCal visible también en formulario de editar
 - Resumen financiero anual por propiedad con drill-down a /financials
 
+### Checkin Online
+- Endpoint público GET/POST /api/bookings/checkin/:token (sin autenticación)
+- Decorador @Public() en jwt-auth.guard para rutas públicas
+- Scheduler @Cron('0 9 * * *') envía enlace automáticamente 2 días antes del checkin
+- Botón envío manual en BookingDetail con estado: no enviado / pendiente / completado
+- Página pública /checkin/:token sin sidebar ni autenticación
+- Token UUID único por reserva, se regenera en cada envío
+
 ---
 
 ## Pendiente / Próximas sesiones
@@ -329,13 +337,7 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 - [ ] Consulta estado de lote SES
 - [ ] Notificación email cuando SES confirma/rechaza
 
-- [ ] CHECKIN ONLINE: Enlace tokenizado para que el cliente rellene su información de checkin
-  - Link seguro con token único por reserva (JWT o UUID en BD)
-  - Envío automático por email 2 días antes de la fecha de entrada
-  - Opción de envío manual desde BookingDetail
-  - Página pública /checkin/:token (sin login) con formulario de datos del huésped
-  - Al completar: actualizar datos de la reserva y marcar checkin como completado
-  - Afecta: BD (token + checkinStatus en Booking), API (endpoint público), Frontend (página pública + botón en BookingDetail), email scheduler
+- [x] CHECKIN ONLINE: Enlace tokenizado para que el cliente rellene su información de checkin
 
 - [ ] DOCUMENTOS Y REGLAS DE LA CASA: Sección de documentos por propiedad
   - El propietario escribe el texto en español
