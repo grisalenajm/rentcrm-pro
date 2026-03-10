@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import axios from 'axios';
 
 export const SUPPORTED_LANGUAGES = [
@@ -15,9 +15,53 @@ export const SUPPORTED_LANGUAGES = [
 ];
 
 @Injectable()
-export class TranslationService {
+export class TranslationService implements OnModuleInit {
   private readonly logger = new Logger(TranslationService.name);
   private readonly baseUrl = process.env.LIBRETRANSLATE_URL || 'http://libretranslate:5000';
+
+  async onModuleInit() {
+    this.logger.log('Pre-calentando caché de traducciones...');
+    const textos = [
+      'Checkin online',
+      'Por favor completa tus datos antes de tu llegada',
+      'Nombre',
+      'Apellidos',
+      'Tipo de documento',
+      'Número de documento',
+      'País del documento',
+      'Teléfono (opcional)',
+      'Completar checkin',
+      '¡Checkin completado!',
+      'Tus datos han sido registrados. ¡Que disfrutes tu estancia!',
+      'Enlace no válido o expirado',
+      'Este checkin ya fue completado',
+      'Por favor completa todos los campos obligatorios',
+      'Entrada',
+      'Salida',
+      'ID nacional',
+      'Pasaporte',
+      'NIE / ID extranjero',
+      'Otro',
+      'España',
+      'Reino Unido',
+      'Francia',
+      'Alemania',
+      'Italia',
+      'Portugal',
+      'Estados Unidos',
+      'Tus datos',
+      'Enviando...',
+    ];
+
+    const idiomas = ['en', 'fr', 'de', 'it', 'pt', 'nl', 'da', 'nb', 'sv'];
+
+    for (const lang of idiomas) {
+      await Promise.all(textos.map(t => this.translate(t, lang, 'es')));
+      this.logger.log(`Caché calentada para idioma: ${lang}`);
+    }
+
+    this.logger.log('Caché de traducciones lista.');
+  }
 
   async translate(text: string, targetLang: string, sourceLang = 'es'): Promise<string> {
     if (!text || targetLang === sourceLang) return text;
