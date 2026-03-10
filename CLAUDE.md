@@ -468,3 +468,13 @@ Nueva página: src/pages/CheckinPage.tsx
 
 No toques nada más.
 
+
+- [ ] GUESTS EN CHECKIN ONLINE
+  - En CheckinPage añadir sección "Otros huéspedes" después del formulario del titular
+  - Solo huéspedes mayores de 14 años
+  - Botón "+ Añadir huésped" que añade un formulario por huésped
+  - Campos por huésped: nombre, apellidos, tipo doc, nº doc, país doc, fecha nacimiento
+  - Botón eliminar huésped (✕) por cada huésped añadido
+  - Al enviar checkin: incluir array de guests en el POST /checkin/:token
+  - Backend: guardar guests en tabla BookingGuestSes existente
+  - Traducir también los textos de esta sección al idioma del cliente
