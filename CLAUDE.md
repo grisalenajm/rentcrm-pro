@@ -339,6 +339,32 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 - Página pública /checkin/:token sin sidebar ni autenticación
 - Token UUID único por reserva, se regenera en cada envío
 
+### Edición de reservas
+- Botón "✏️ Editar reserva" en BookingDetail
+- Modal fullscreen móvil con campos: fechas, total, estado, origen, notas
+- Validación: fecha salida posterior a entrada
+- Fix: mapeo correcto de campos snake_case en Prisma update
+
+### Checkin online — mejoras
+- Pantalla de carga con spinner y texto en idioma del navegador (10 idiomas hardcodeados)
+- Huéspedes adicionales: sección "+14 años" con formulario por huésped
+- Campos huésped: nombre, apellidos, doc, país, fecha nacimiento
+- Guests guardados en BookingGuestSes al completar checkin
+- Todos los textos de huéspedes traducidos al idioma del cliente
+- Email checkin: nombre de propiedad nunca traducido
+- Formulario checkin: todos los textos en idioma del cliente via objeto ui del backend
+- DOC_TYPES y COUNTRIES con useMemo para traducción correcta
+- Caché de traducciones en memoria + precalentamiento al arrancar (todos los idiomas)
+- Idioma del cliente se actualiza automáticamente al reenviar checkin con idioma diferente
+- Países ampliados a 30+ con ordenación alfabética
+
+### Traducciones — LibreTranslate
+- Self-hosted en Docker (rentcrm-translate:5000)
+- 10 idiomas: es, en, fr, de, it, pt, nl, da, nb, sv
+- Caché en memoria con precalentamiento al arrancar
+- Usado en: email checkin, formulario checkin público
+- Pendiente: contratos, reglas de la casa
+
 ### Excel — Importar y Exportar
 - Módulo apps/api/src/excel/ con ExcelService y ExcelController
 - Exportar a .xlsx: clientes, reservas, gastos, propiedades
@@ -347,6 +373,12 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 - Resultado de importación: nº de registros importados + errores por fila
 - Componente reutilizable ExcelButtons.tsx usado en Clients, Bookings, Financials, Properties
 - Endpoints: GET /excel/export/:entity, POST /excel/import/:entity, GET /excel/template/:entity
+
+### Excel importar/exportar
+- Exportar: clientes, reservas, gastos, propiedades
+- Importar: clientes y gastos con validación fila a fila
+- Plantillas descargables con ejemplo
+- Componente ExcelButtons.tsx reutilizable
 
 ---
 
@@ -363,6 +395,8 @@ El campo `notes` no existe en el DTO de booking — no incluirlo en el payload d
 - [x] CHECKIN ONLINE: Enlace tokenizado para que el cliente rellene su información de checkin
 
 - [x] IMPORTAR/EXPORTAR EXCEL: Gestión masiva de datos via Excel
+
+- [x] MEJORAS FLUJO RESERVA Y CLIENTE (parcial — fechas validadas, edición reserva)
 
 - [x] IDIOMA DE CONTACTO DEL CLIENTE
   - Añadir campo `language` al modelo Client (BD): dropdown con idiomas disponibles
