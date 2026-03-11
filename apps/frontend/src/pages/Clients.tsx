@@ -38,6 +38,17 @@ const LANGUAGES = [
   { code: 'sv', name: 'Svenska' },
 ];
 
+const NATIONALITY_LANG: Record<string, string> = {
+  ES: 'es', FR: 'fr', DE: 'de', IT: 'it', PT: 'pt',
+  NL: 'nl', DK: 'da', NO: 'nb', SE: 'sv',
+};
+
+function langFromNationality(nationalityName: string): string {
+  const country = WORLD_COUNTRIES.find(c => c.name === nationalityName);
+  if (!country) return 'en';
+  return NATIONALITY_LANG[country.code] || 'en';
+}
+
 
 function validateDoc(docType: string, docNumber: string, country: string): string | null {
   const n = docNumber.toUpperCase().trim();
@@ -95,6 +106,7 @@ export default function Clients() {
   const [form, setForm] = useState(emptyForm);
   const [docWarning, setDocWarning] = useState('');
   const validationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const languageManuallySet = useRef(false);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['clients', search],
@@ -134,7 +146,7 @@ export default function Clients() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),
   });
 
-  const openCreate = () => { setEditing(null); setForm(emptyForm); setDocWarning(''); setShowForm(true); };
+  const openCreate = () => { setEditing(null); setForm(emptyForm); setDocWarning(''); languageManuallySet.current = false; setShowForm(true); };
 
   const openEdit = (e: React.MouseEvent, c: Client) => {
     e.stopPropagation();
@@ -156,11 +168,15 @@ export default function Clients() {
       province: c.province || '', country: c.country || '',
     });
     setDocWarning('');
+    languageManuallySet.current = false;
     setShowForm(true);
   };
 
   const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const updated = { ...form, [k]: e.target.value };
+    if (k === 'nationality' && !languageManuallySet.current) {
+      updated.language = langFromNationality(e.target.value);
+    }
     setForm(updated);
     if (k === 'dniPassport' || k === 'docType' || k === 'docCountry') {
       if (validationTimer.current) clearTimeout(validationTimer.current);
@@ -399,9 +415,15 @@ export default function Clients() {
               {/* Idioma */}
               <div>
                 <label className={labelCls}>Idioma de contacto</label>
-                <select value={form.language || 'es'} onChange={f('language')} className={inputCls}>
+                <select
+                  value={form.language || 'es'}
+                  onChange={e => { languageManuallySet.current = true; f('language')(e); }}
+                  className={inputCls}>
                   {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
                 </select>
+                {!languageManuallySet.current && form.nationality && (
+                  <p className="text-xs text-sky-400 mt-1">🌐 Asignado automáticamente por nacionalidad</p>
+                )}
               </div>
 
               {/* Dirección */}

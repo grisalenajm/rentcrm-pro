@@ -65,6 +65,12 @@ function validateDoc(docType: string, docNumber: string, country: string): strin
   return null;
 }
 
+const LANGUAGE_NAMES: Record<string, string> = {
+  es: 'Español', en: 'English', fr: 'Français', de: 'Deutsch',
+  it: 'Italiano', pt: 'Português', nl: 'Nederlands', da: 'Dansk',
+  nb: 'Norsk', sv: 'Svenska',
+};
+
 const statusColor: Record<string, string> = {
   created:    'bg-amber-500/10 text-amber-400',
   registered: 'bg-blue-500/10 text-blue-400',
@@ -403,10 +409,15 @@ export default function Bookings() {
                   <div className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5">
                     <div>
                       <p className="text-sm font-medium text-white">{selectedClient.firstName} {selectedClient.lastName}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {selectedClient.dniPassport && <span className="mr-2">{selectedClient.dniPassport}</span>}
-                        {selectedClient.nationality && <span>{selectedClient.nationality}</span>}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                        {selectedClient.dniPassport && <span className="text-xs text-slate-400">{selectedClient.dniPassport}</span>}
+                        {selectedClient.nationality && <span className="text-xs text-slate-400">{selectedClient.nationality}</span>}
+                        {selectedClient.language && (
+                          <span className="text-xs text-sky-400 font-medium">
+                            🌐 {LANGUAGE_NAMES[selectedClient.language] || selectedClient.language}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <button
                       onClick={() => { setSelectedClient(null); setForm({ ...form, clientId: '' }); setClientSearch(''); setCreatingNewClient(false); }}
