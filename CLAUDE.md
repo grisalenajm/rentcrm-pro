@@ -34,8 +34,9 @@ DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:54
 DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma db push
 ```
 
-### Frontend (hot reload automático, no necesita rebuild)
+### Frontend (requiere rebuild — NO hay hot reload real en el contenedor)
 ```bash
+docker compose build frontend && docker compose up -d frontend
 docker logs rentcrm-frontend --tail=5
 ```
 
