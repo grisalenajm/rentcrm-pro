@@ -125,6 +125,11 @@ model Client {
   birthDate      DateTime? @map("birth_date") @db.Date
   email          String?   @db.VarChar(255)
   phone          String?   @db.VarChar(20)
+  street         String?   @db.VarChar(255)
+  city           String?   @db.VarChar(100)
+  postalCode     String?   @map("postal_code") @db.VarChar(10)
+  province       String?   @db.VarChar(100)
+  country        String?   @db.VarChar(5)
   notes          String?   @db.Text
   language       String?   @default("es") @db.VarChar(10)
   createdBy      String?   @map("created_by") @db.Uuid
@@ -418,6 +423,11 @@ model BookingGuestSes {
   docCountry      String   @map("doc_country") @db.VarChar(5)
   birthDate       DateTime? @map("birth_date") @db.Date
   phone           String?  @db.VarChar(30)
+  street          String?  @db.VarChar(255)
+  city            String?  @db.VarChar(100)
+  postalCode      String?  @map("postal_code") @db.VarChar(10)
+  province        String?  @db.VarChar(100)
+  country         String?  @db.VarChar(5)
   createdAt       DateTime @default(now()) @map("created_at")
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)

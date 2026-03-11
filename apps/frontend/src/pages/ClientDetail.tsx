@@ -147,8 +147,17 @@ export default function ClientDetail() {
               </p>
             </div>
           </div>
+          {(client?.street || client?.city || client?.postalCode) && (
+            <div className="md:col-span-2 mt-1">
+              <span className="text-slate-400">Dirección: </span>
+              <span>
+                {[client.street, client.postalCode && client.city ? `${client.postalCode} ${client.city}` : (client.city || client.postalCode), client.province, client.country]
+                  .filter(Boolean).join(', ')}
+              </span>
+            </div>
+          )}
           {client?.notes && (
-            <div className="mt-3 text-sm text-slate-400 border-t border-slate-800 pt-3">{client.notes}</div>
+            <div className="mt-3 text-sm text-slate-400 border-t border-slate-800 pt-3 md:col-span-2">{client.notes}</div>
           )}
         </div>
 

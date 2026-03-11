@@ -15,6 +15,11 @@ interface Client {
   phone?: string;
   notes?: string;
   language?: string;
+  street?: string;
+  city?: string;
+  postalCode?: string;
+  province?: string;
+  country?: string;
 }
 
 const LANGUAGES = [
@@ -88,6 +93,13 @@ function validateDoc(docType: string, docNumber: string, country: string): strin
   return null;
 }
 
+const ADDRESS_COUNTRIES = [
+  { code: 'ES', name: 'España' }, { code: 'FR', name: 'Francia' }, { code: 'DE', name: 'Alemania' },
+  { code: 'IT', name: 'Italia' }, { code: 'PT', name: 'Portugal' }, { code: 'GB', name: 'Reino Unido' },
+  { code: 'NL', name: 'Países Bajos' }, { code: 'DK', name: 'Dinamarca' }, { code: 'NO', name: 'Noruega' },
+  { code: 'SE', name: 'Suecia' }, { code: 'US', name: 'Estados Unidos' }, { code: 'OTHER', name: 'Otro' },
+];
+
 const emptyForm = {
   firstName: '', lastName: '',
   docType: 'dni', dniPassport: '', docCountry: 'ES',
@@ -96,6 +108,7 @@ const emptyForm = {
   phoneCode: '+34', phoneNumber: '',
   email: '', notes: '',
   language: 'es',
+  street: '', city: '', postalCode: '', province: '', country: '',
 };
 
 const inputCls = "w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
@@ -177,6 +190,8 @@ export default function Clients() {
       phoneCode, phoneNumber,
       email: c.email || '', notes: c.notes || '',
       language: c.language || 'es',
+      street: c.street || '', city: c.city || '', postalCode: c.postalCode || '',
+      province: c.province || '', country: c.country || '',
     });
     setDocWarning('');
     setShowForm(true);
@@ -207,6 +222,11 @@ export default function Clients() {
       phone,
       notes:       form.notes       || undefined,
       language:    form.language    || 'es',
+      street:      form.street      || undefined,
+      city:        form.city        || undefined,
+      postalCode:  form.postalCode  || undefined,
+      province:    form.province    || undefined,
+      country:     form.country     || undefined,
     };
     if (editing) updateMutation.mutate({ id: editing.id, data });
     else createMutation.mutate(data);
@@ -420,6 +440,40 @@ export default function Clients() {
                 <select value={form.language || 'es'} onChange={f('language')} className={inputCls}>
                   {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
                 </select>
+              </div>
+
+              {/* Dirección */}
+              <div className="border-t border-slate-700 pt-4">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Dirección</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className={labelCls}>Calle y número</label>
+                    <input value={form.street} onChange={f('street')} placeholder="Calle Mayor 1, 2º A" className={inputCls} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>Código postal</label>
+                      <input value={form.postalCode} onChange={f('postalCode')} placeholder="28001" className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Ciudad</label>
+                      <input value={form.city} onChange={f('city')} placeholder="Madrid" className={inputCls} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>Provincia</label>
+                      <input value={form.province} onChange={f('province')} placeholder="Madrid" className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>País</label>
+                      <select value={form.country} onChange={f('country')} className={inputCls}>
+                        <option value="">— País —</option>
+                        {ADDRESS_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Notas */}

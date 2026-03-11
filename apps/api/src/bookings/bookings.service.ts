@@ -281,7 +281,7 @@ export class BookingsService {
       where: { checkinToken: token },
       include: {
         property: { select: { name: true, address: true, city: true } },
-        client:   { select: { firstName: true, lastName: true, email: true, language: true } },
+        client:   { select: { firstName: true, lastName: true, email: true, language: true, street: true, city: true, postalCode: true, province: true, country: true } },
       },
     });
     if (!booking) throw new NotFoundException('Enlace no válido');
@@ -355,6 +355,13 @@ export class BookingsService {
       addGuestButton,
       guestLabel,
       labelBirthDate,
+      labelAddress,
+      labelStreet,
+      labelCity,
+      labelPostalCode,
+      labelProvince,
+      labelCountryRes,
+      labelSameAddress,
     ] = await this.translationService.translateMany([
       'Checkin online',
       'Por favor completa tus datos antes de tu llegada',
@@ -419,6 +426,13 @@ export class BookingsService {
       'Añadir huésped',
       'Huésped',
       'Fecha de nacimiento',
+      'Dirección',
+      'Calle y número',
+      'Ciudad',
+      'Código postal',
+      'Provincia',
+      'País de residencia',
+      'Misma dirección que el titular',
     ], lang);
 
     return {
@@ -429,6 +443,11 @@ export class BookingsService {
       clientFirstName: booking.client?.firstName,
       clientLastName:  booking.client?.lastName,
       clientEmail:     booking.client?.email,
+      clientStreet:    (booking.client as any)?.street,
+      clientCity:      (booking.client as any)?.city,
+      clientPostalCode:(booking.client as any)?.postalCode,
+      clientProvince:  (booking.client as any)?.province,
+      clientCountry:   (booking.client as any)?.country,
       language:        lang,
       ui: {
         titleText,
@@ -494,6 +513,13 @@ export class BookingsService {
         addGuestButton,
         guestLabel,
         labelBirthDate,
+        labelAddress,
+        labelStreet,
+        labelCity,
+        labelPostalCode,
+        labelProvince,
+        labelCountryRes,
+        labelSameAddress,
       },
     };
   }
@@ -505,7 +531,12 @@ export class BookingsService {
     docNumber: string;
     docCountry: string;
     phone?: string;
-    guests?: Array<{ firstName: string; lastName: string; docType: string; docNumber: string; docCountry: string; birthDate?: string }>;
+    street?: string;
+    city?: string;
+    postalCode?: string;
+    province?: string;
+    country?: string;
+    guests?: Array<{ firstName: string; lastName: string; docType: string; docNumber: string; docCountry: string; birthDate?: string; street?: string; city?: string; postalCode?: string; province?: string; country?: string }>;
   }) {
     const booking = await this.prisma.booking.findUnique({
       where: { checkinToken: token },
@@ -523,7 +554,12 @@ export class BookingsService {
           firstName:  data.firstName,
           lastName:   data.lastName,
           dniPassport: data.docNumber,
-          ...(data.phone && { phone: data.phone }),
+          ...(data.phone      && { phone:      data.phone }),
+          ...(data.street     && { street:     data.street }),
+          ...(data.city       && { city:       data.city }),
+          ...(data.postalCode && { postalCode: data.postalCode }),
+          ...(data.province   && { province:   data.province }),
+          ...(data.country    && { country:    data.country }),
         },
       });
     }
@@ -546,13 +582,18 @@ export class BookingsService {
     if (data.guests && data.guests.length > 0) {
       await this.prisma.bookingGuestSes.createMany({
         data: data.guests.map((g: any) => ({
-          bookingId: booking.id,
-          firstName: g.firstName,
-          lastName: g.lastName,
-          docType: g.docType,
-          docNumber: g.docNumber,
+          bookingId:  booking.id,
+          firstName:  g.firstName,
+          lastName:   g.lastName,
+          docType:    g.docType,
+          docNumber:  g.docNumber,
           docCountry: g.docCountry,
-          birthDate: g.birthDate ? new Date(g.birthDate) : null,
+          birthDate:  g.birthDate ? new Date(g.birthDate) : null,
+          street:     g.street     || null,
+          city:       g.city       || null,
+          postalCode: g.postalCode || null,
+          province:   g.province   || null,
+          country:    g.country    || null,
         }))
       });
     }

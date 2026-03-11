@@ -45,7 +45,12 @@ export default function CheckinPage() {
     docType: 'passport',
     docNumber: '',
     docCountry: 'ES',
-    phone: ''
+    phone: '',
+    street: '',
+    city: '',
+    postalCode: '',
+    province: '',
+    country: 'ES',
   });
   const [guests, setGuests] = useState<Array<{
     firstName: string;
@@ -54,16 +59,33 @@ export default function CheckinPage() {
     docNumber: string;
     docCountry: string;
     birthDate: string;
+    street: string;
+    city: string;
+    postalCode: string;
+    province: string;
+    country: string;
+    sameAddress: boolean;
   }>>([]);
 
   const addGuest = () => setGuests([...guests, {
-    firstName: '', lastName: '', docType: 'passport', docNumber: '', docCountry: 'ES', birthDate: ''
+    firstName: '', lastName: '', docType: 'passport', docNumber: '', docCountry: 'ES', birthDate: '',
+    street: '', city: '', postalCode: '', province: '', country: 'ES', sameAddress: false,
   }]);
 
   const removeGuest = (i: number) => setGuests(guests.filter((_, idx) => idx !== i));
 
-  const updateGuest = (i: number, field: string, value: string) =>
-    setGuests(guests.map((g, idx) => idx === i ? { ...g, [field]: value } : g));
+  const updateGuest = (i: number, field: string, value: string | boolean) => {
+    if (field === 'sameAddress') {
+      const checked = value as boolean;
+      setGuests(guests.map((g, idx) => idx === i ? {
+        ...g,
+        sameAddress: checked,
+        ...(checked ? { street: form.street, city: form.city, postalCode: form.postalCode, province: form.province, country: form.country } : {}),
+      } : g));
+    } else {
+      setGuests(guests.map((g, idx) => idx === i ? { ...g, [field]: value } : g));
+    }
+  };
 
   useEffect(() => {
     axios.get(`${API}/bookings/checkin/${token}`)
@@ -71,8 +93,13 @@ export default function CheckinPage() {
         setBooking(r.data);
         setForm(f => ({
           ...f,
-          firstName: r.data.clientFirstName || '',
-          lastName: r.data.clientLastName || '',
+          firstName:  r.data.clientFirstName  || '',
+          lastName:   r.data.clientLastName   || '',
+          street:     r.data.clientStreet     || '',
+          city:       r.data.clientCity       || '',
+          postalCode: r.data.clientPostalCode || '',
+          province:   r.data.clientProvince   || '',
+          country:    r.data.clientCountry    || 'ES',
         }));
       })
       .catch(e => setError(e.response?.data?.message || 'Enlace no válido o expirado'))
@@ -133,7 +160,8 @@ export default function CheckinPage() {
     setSubmitting(true);
     setError('');
     try {
-      await axios.post(`${API}/bookings/checkin/${token}`, { ...form, guests });
+      const guestsPayload = guests.map(({ sameAddress, ...g }) => g);
+      await axios.post(`${API}/bookings/checkin/${token}`, { ...form, guests: guestsPayload });
       setCompleted(true);
     } catch (e: any) {
       setError(e.response?.data?.message || 'Error al completar el checkin');
@@ -241,6 +269,48 @@ export default function CheckinPage() {
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
               </div>
 
+              {/* Dirección titular */}
+              <div className="border-t border-slate-700 pt-4">
+                <p className="text-xs font-semibold text-slate-300 mb-3">{booking.ui?.labelAddress ?? 'Dirección'}</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelStreet ?? 'Calle y número'}</label>
+                    <input value={form.street} onChange={e => setForm({...form, street: e.target.value})}
+                      placeholder="Calle Mayor 1, 2º A"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelPostalCode ?? 'Código postal'}</label>
+                      <input value={form.postalCode} onChange={e => setForm({...form, postalCode: e.target.value})}
+                        placeholder="28001"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelCity ?? 'Ciudad'}</label>
+                      <input value={form.city} onChange={e => setForm({...form, city: e.target.value})}
+                        placeholder="Madrid"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelProvince ?? 'Provincia'}</label>
+                      <input value={form.province} onChange={e => setForm({...form, province: e.target.value})}
+                        placeholder="Madrid"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelCountryRes ?? 'País de residencia'}</label>
+                      <select value={form.country} onChange={e => setForm({...form, country: e.target.value})}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                        {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="border-t border-slate-700 pt-4 mt-2">
                 <h4 className="font-semibold text-white mb-1">{booking.ui?.guestsTitle ?? 'Otros huéspedes (mayores de 14 años)'}</h4>
                 <p className="text-xs text-slate-400 mb-3">
@@ -288,6 +358,53 @@ export default function CheckinPage() {
                         <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelBirthDate ?? 'Fecha de nacimiento'}</label>
                         <input type="date" value={g.birthDate} onChange={e => updateGuest(i, 'birthDate', e.target.value)}
                           className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                      </div>
+                      {/* Dirección huésped */}
+                      <div className="pt-2">
+                        <label className="flex items-center gap-2 cursor-pointer mb-3">
+                          <input type="checkbox" checked={g.sameAddress} onChange={e => updateGuest(i, 'sameAddress', e.target.checked)}
+                            className="w-4 h-4 accent-emerald-500" />
+                          <span className="text-xs text-slate-300">{booking.ui?.labelSameAddress ?? 'Misma dirección que el titular'}</span>
+                        </label>
+                        {!g.sameAddress && (
+                          <div className="space-y-2">
+                            <div>
+                              <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelStreet ?? 'Calle y número'}</label>
+                              <input value={g.street} onChange={e => updateGuest(i, 'street', e.target.value)}
+                                placeholder="Calle Mayor 1"
+                                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelPostalCode ?? 'CP'}</label>
+                                <input value={g.postalCode} onChange={e => updateGuest(i, 'postalCode', e.target.value)}
+                                  placeholder="28001"
+                                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                              </div>
+                              <div>
+                                <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelCity ?? 'Ciudad'}</label>
+                                <input value={g.city} onChange={e => updateGuest(i, 'city', e.target.value)}
+                                  placeholder="Madrid"
+                                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelProvince ?? 'Provincia'}</label>
+                                <input value={g.province} onChange={e => updateGuest(i, 'province', e.target.value)}
+                                  placeholder="Madrid"
+                                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" />
+                              </div>
+                              <div>
+                                <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelCountryRes ?? 'País'}</label>
+                                <select value={g.country} onChange={e => updateGuest(i, 'country', e.target.value)}
+                                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                                  {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
