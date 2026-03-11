@@ -15,6 +15,7 @@ import ContractTemplates from './pages/ContractTemplates';
 import SignContract from './pages/SignContract';
 import CheckinPage from './pages/CheckinPage';
 import ComingSoon from './pages/ComingSoon';
+import Police from './pages/Police';
 import OccupancyCalendar from './pages/OccupancyCalendar';
 import Settings from './pages/Settings';
 import UserManagement from './pages/UserManagement';
@@ -47,7 +48,7 @@ export default function App() {
               <Route path="financials"          element={<Financials />} />
               <Route path="contracts"           element={<Contracts />} />
               <Route path="contracts/templates" element={<ContractTemplates />} />
-              <Route path="police"              element={<ComingSoon title="Partes SES" />} />
+              <Route path="police"              element={<Police />} />
               <Route path="calendar"           element={<OccupancyCalendar />} />
               <Route path="users"               element={<UserManagement />} />
               <Route path="settings"             element={<Settings />} />

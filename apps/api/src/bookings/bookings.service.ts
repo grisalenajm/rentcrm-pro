@@ -220,6 +220,76 @@ export class BookingsService {
     });
   }
 
+  async sendSesErrorEmail(
+    bookingId: string,
+    organizationId: string,
+    recipientEmail: string,
+    errorMessage: string,
+    lote?: string | null,
+  ): Promise<void> {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, organizationId },
+      include: { property: true },
+    });
+    if (!booking) return;
+
+    const property = booking.property as any;
+    const checkIn  = new Date(booking.checkInDate).toLocaleDateString('es-ES');
+    const checkOut = new Date(booking.checkOutDate).toLocaleDateString('es-ES');
+    const policeUrl = `${process.env.FRONTEND_URL}/police`;
+
+    const subject = `❌ Error en parte SES — ${property.name} ${checkIn}`;
+
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
+        <div style="background: #ef4444; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+          <h2 style="color: white; margin: 0;">❌ Error en el envío del parte SES</h2>
+        </div>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: none;
+                    border-radius: 0 0 8px 8px; padding: 24px;">
+
+          <h3 style="color: #475569; margin-top: 0;">Datos de la reserva</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr>
+              <td style="padding: 8px 0; color: #64748b; width: 140px;">Propiedad</td>
+              <td style="padding: 8px 0; font-weight: bold;">${property.name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #64748b;">Check-in</td>
+              <td style="padding: 8px 0;">${checkIn}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #64748b;">Check-out</td>
+              <td style="padding: 8px 0;">${checkOut}</td>
+            </tr>
+            ${lote ? `<tr>
+              <td style="padding: 8px 0; color: #64748b;">Nº Lote SES</td>
+              <td style="padding: 8px 0; font-family: monospace;">${lote}</td>
+            </tr>` : ''}
+          </table>
+
+          <h3 style="color: #475569;">Error recibido del Ministerio</h3>
+          <div style="background: #fee2e2; border: 1px solid #fca5a5; border-radius: 6px;
+                      padding: 12px 16px; margin-bottom: 24px;">
+            <p style="margin: 0; color: #b91c1c;">${errorMessage}</p>
+          </div>
+
+          <a href="${policeUrl}"
+             style="display: inline-block; background: #10b981; color: white; padding: 12px 24px;
+                    border-radius: 8px; text-decoration: none; font-weight: bold; margin-bottom: 20px;">
+            Gestionar reenvío en Partes SES →
+          </a>
+
+          <p style="color: #94a3b8; font-size: 13px; margin: 0;">
+            RentCRM Pro · ${new Date().toLocaleString('es-ES')}
+          </p>
+        </div>
+      </div>
+    `;
+
+    await this.sendEmail(organizationId, { to: recipientEmail, subject, html });
+  }
+
   async sendCheckinLink(bookingId: string, organizationId: string, language?: string): Promise<void> {
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, organizationId },

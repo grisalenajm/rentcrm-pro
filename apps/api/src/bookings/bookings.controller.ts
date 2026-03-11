@@ -98,12 +98,27 @@ export class BookingsController {
   @Roles('admin', 'gestor')
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   async sesSend(@Param('id') id: string, @Request() req) {
+    const { organizationId, email: userEmail } = req.user;
     try {
-      const result = await this.sesService.sendToSes(id, req.user.organizationId);
-      await this.bookingsService.updateStatusOnSesSent(id, req.user.organizationId, true);
+      const result = await this.sesService.sendToSes(id, organizationId);
+      if (result.ok) {
+        await this.bookingsService.updateStatusOnSesSent(id, organizationId, true);
+      } else {
+        await this.bookingsService.updateStatusOnSesSent(id, organizationId, false);
+        this.bookingsService.sendSesErrorEmail(
+          id, organizationId, userEmail,
+          `El Ministerio rechazó el parte SES (código de respuesta: ${result.codigo})`,
+          result.lote,
+        ).catch(e => console.log(JSON.stringify({ event: 'ses_error_email_failed', error: e.message })));
+      }
       return result;
     } catch (err) {
-      await this.bookingsService.updateStatusOnSesSent(id, req.user.organizationId, false);
+      await this.bookingsService.updateStatusOnSesSent(id, organizationId, false);
+      this.bookingsService.sendSesErrorEmail(
+        id, organizationId, userEmail,
+        err.message || 'Error de conexión con el servicio SES del Ministerio',
+        null,
+      ).catch(e => console.log(JSON.stringify({ event: 'ses_error_email_failed', error: e.message })));
       throw err;
     }
   }
