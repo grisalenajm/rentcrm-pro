@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import BookingStatusWorkflow from '../components/BookingStatusWorkflow';
 
 const LANGUAGES = [
   { code: 'es', name: 'Español' },
@@ -47,16 +48,9 @@ export default function BookingDetail() {
     startDate: '',
     endDate: '',
     totalPrice: '',
-    status: '',
     source: '',
     notes: '',
   });
-
-  const statusColor: Record<string, string> = {
-    confirmed: 'bg-emerald-500/10 text-emerald-400',
-    cancelled:  'bg-red-500/10 text-red-400',
-    completed:  'bg-slate-500/10 text-slate-400',
-  };
 
   const contractStatusColor: Record<string, string> = {
     draft:     'bg-slate-500/10 text-slate-400',
@@ -91,13 +85,14 @@ export default function BookingDetail() {
   });
 
   const openEdit = () => {
+    if (!booking) return;
+    console.log('BOOKING DATA:', JSON.stringify({checkInDate: booking.checkInDate, checkOutDate: booking.checkOutDate, totalAmount: booking.totalAmount}));
     setEditForm({
-      startDate: booking.startDate?.slice(0, 10) || '',
-      endDate: booking.endDate?.slice(0, 10) || '',
-      totalPrice: booking.totalPrice?.toString() || '',
-      status: booking.status || '',
-      source: booking.source || '',
-      notes: booking.notes || '',
+      startDate:  booking.checkInDate  ? String(booking.checkInDate).slice(0, 10)  : '',
+      endDate:    booking.checkOutDate ? String(booking.checkOutDate).slice(0, 10) : '',
+      totalPrice: booking.totalAmount != null ? String(booking.totalAmount) : '',
+      source:     booking.source || '',
+      notes:      booking.notes  || '',
     });
     setShowEdit(true);
   };
@@ -114,17 +109,11 @@ export default function BookingDetail() {
     updateMutation.mutate({
       startDate: editForm.startDate,
       endDate: editForm.endDate,
-      totalPrice: parseFloat(editForm.totalPrice),
-      status: editForm.status,
+      totalAmount: parseFloat(editForm.totalPrice),
       source: editForm.source,
       notes: editForm.notes,
     });
   };
-
-  const cancelMutation = useMutation({
-    mutationFn: () => api.patch(`/bookings/${id}`, { status: 'cancelled' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['booking', id] }),
-  });
 
   const createEvalMutation = useMutation({
     mutationFn: (data: any) => api.post('/evaluations', data),
@@ -195,12 +184,7 @@ export default function BookingDetail() {
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition-colors">
             ✏️ Editar reserva
           </button>
-          {booking.status !== 'cancelled' && (
-            <button onClick={() => { if (confirm(t('bookings.cancel'))) cancelMutation.mutate(); }}
-              className="px-3 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
-              {t('bookings.cancel')}
-            </button>
-          )}
+          <BookingStatusWorkflow booking={booking} onUpdate={() => qc.invalidateQueries({ queryKey: ['booking', id] })} />
         </div>
       </div>
 
@@ -209,9 +193,6 @@ export default function BookingDetail() {
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
           <div className="flex items-start justify-between mb-4">
             <h2 className="font-bold text-lg">{booking.property?.name}</h2>
-            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[booking.status]}`}>
-              {t(`bookings.statuses.${booking.status}`)}
-            </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             <div>
@@ -492,18 +473,6 @@ export default function BookingDetail() {
                 <input type="number" step="0.01" value={editForm.totalPrice}
                   onChange={e => setEditForm({...editForm, totalPrice: e.target.value})}
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Estado</label>
-                <select value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
-                  <option value="pending">Pendiente</option>
-                  <option value="confirmed">Confirmada</option>
-                  <option value="completed">Completada</option>
-                  <option value="cancelled">Cancelada</option>
-                  <option value="manual_block">Bloqueo manual</option>
-                </select>
               </div>
 
               <div>

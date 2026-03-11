@@ -179,6 +179,8 @@ model Booking {
   checkinStatus String?   @map("checkin_status") @db.VarChar(20)
   checkinSentAt DateTime? @map("checkin_sent_at")
   checkinDoneAt DateTime? @map("checkin_done_at")
+  statusChangedAt  DateTime?
+  statusHistory    BookingStatusHistory[]
 
   @@map("bookings")
 }
@@ -422,4 +424,17 @@ model BookingGuestSes {
 
   @@index([bookingId])
   @@map("booking_guests_ses")
+}
+
+model BookingStatusHistory {
+  id         String   @id @default(uuid()) @db.Uuid
+  bookingId  String   @db.Uuid
+  fromStatus String?
+  toStatus   String
+  changedBy  String
+  reason     String?
+  createdAt  DateTime @default(now())
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, Res } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Request, Res } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { BookingsService } from './bookings.service';
@@ -36,6 +36,12 @@ export class BookingsController {
   @Post('checkin/:token')
   completeCheckin(@Param('token') token: string, @Body() body: any) {
     return this.bookingsService.completeCheckin(token, body);
+  }
+
+  @Patch(':id/status')
+  @Roles('admin', 'gestor')
+  updateStatus(@Param('id') id: string, @Body() body: { status: string }, @Request() req) {
+    return this.bookingsService.updateStatus(id, body.status, req.user.organizationId);
   }
 
   @Get(':id')
@@ -91,8 +97,15 @@ export class BookingsController {
   @Post(':id/ses/send')
   @Roles('admin', 'gestor')
   @Throttle({ default: { limit: 3, ttl: 60000 } })
-  sesSend(@Param('id') id: string, @Request() req) {
-    return this.sesService.sendToSes(id, req.user.organizationId);
+  async sesSend(@Param('id') id: string, @Request() req) {
+    try {
+      const result = await this.sesService.sendToSes(id, req.user.organizationId);
+      await this.bookingsService.updateStatusOnSesSent(id, req.user.organizationId, true);
+      return result;
+    } catch (err) {
+      await this.bookingsService.updateStatusOnSesSent(id, req.user.organizationId, false);
+      throw err;
+    }
   }
 
   @Get(':id/ses/xml')

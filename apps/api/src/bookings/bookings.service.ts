@@ -122,6 +122,52 @@ export class BookingsService {
     });
   }
 
+  async updateStatus(id: string, newStatus: string, organizationId: string) {
+    const booking = await this.findOne(id, organizationId);
+    const transitions: Record<string, string[]> = {
+      created:    ['registered', 'cancelled'],
+      registered: ['processed', 'error', 'cancelled'],
+      processed:  [],
+      error:      ['registered', 'processed', 'cancelled'],
+      cancelled:  [],
+    };
+    const allowed = transitions[booking.status] ?? [];
+    if (!allowed.includes(newStatus)) {
+      throw new BadRequestException(`Transición no válida: ${booking.status} → ${newStatus}`);
+    }
+    return this.prisma.booking.update({
+      where: { id },
+      data: { status: newStatus },
+    });
+  }
+
+  async updateStatusOnCheckinComplete(bookingId: string, organizationId: string) {
+    const booking = await this.prisma.booking.findFirst({ where: { id: bookingId } });
+    if (!booking) return;
+    if (booking.status === 'created' || booking.status === 'error') {
+      await this.prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: 'registered' },
+      });
+    }
+  }
+
+  async updateStatusOnSesSent(bookingId: string, organizationId: string, success: boolean) {
+    const booking = await this.prisma.booking.findFirst({ where: { id: bookingId } });
+    if (!booking) return;
+    if (success && (booking.status === 'registered' || booking.status === 'error')) {
+      await this.prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: 'processed' },
+      });
+    } else if (!success) {
+      await this.prisma.booking.update({
+        where: { id: bookingId },
+        data: { status: 'error' },
+      });
+    }
+  }
+
   // ── Huéspedes SES ─────────────────────────────────────────────────────────
   async getGuestsSes(bookingId: string, organizationId: string) {
     await this.findOne(bookingId, organizationId);
@@ -489,6 +535,13 @@ export class BookingsService {
         checkinDoneAt: new Date(),
       },
     });
+
+    if (booking.status === 'created' || booking.status === 'error') {
+      await this.prisma.booking.update({
+        where: { id: booking.id },
+        data: { status: 'registered' },
+      });
+    }
 
     if (data.guests && data.guests.length > 0) {
       await this.prisma.bookingGuestSes.createMany({

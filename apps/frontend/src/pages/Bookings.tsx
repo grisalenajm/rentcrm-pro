@@ -66,10 +66,14 @@ function validateDoc(docType: string, docNumber: string, country: string): strin
 }
 
 const statusColor: Record<string, string> = {
-  confirmed: 'bg-emerald-500/10 text-emerald-400',
-  cancelled: 'bg-red-500/10 text-red-400',
-  completed: 'bg-slate-500/10 text-slate-400',
-  pending:   'bg-amber-500/10 text-amber-400',
+  created:    'bg-amber-500/10 text-amber-400',
+  registered: 'bg-blue-500/10 text-blue-400',
+  processed:  'bg-emerald-500/10 text-emerald-400',
+  error:      'bg-red-500/10 text-red-400',
+  cancelled:  'bg-slate-500/10 text-slate-400',
+  confirmed:  'bg-emerald-500/10 text-emerald-400',
+  pending:    'bg-amber-500/10 text-amber-400',
+  completed:  'bg-slate-500/10 text-slate-400',
 };
 
 const emptyGuest = () => ({
