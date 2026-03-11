@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -146,32 +146,47 @@ export default function Bookings() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
-  const [clientMode, setClientMode] = useState<'existing' | 'new'>('existing');
+  // Estado búsqueda cliente
+  const [clientSearch, setClientSearch] = useState('');
+  const [clientResults, setClientResults] = useState<any[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [creatingNewClient, setCreatingNewClient] = useState(false);
+  const [newClientName, setNewClientName] = useState({ firstName: '', lastName: '' });
   const [form, setForm] = useState({
     clientId: '', propertyId: '',
     checkInDate: '', checkOutDate: '',
     totalAmount: '', source: 'direct', status: 'confirmed', notes: '',
   });
-  const [newClient, setNewClient] = useState({
-    firstName: '', lastName: '', docType: 'dni', dniPassport: '',
-    docCountry: 'ES', nationality: '', birthDate: '',
-    phoneCode: '+34', phoneNumber: '', email: '',
-  });
   const [guests, setGuests] = useState<ReturnType<typeof emptyGuest>[]>([]);
   const [docWarnings, setDocWarnings] = useState<Record<string, string>>({});
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Búsqueda con debounce 300ms
+  useEffect(() => {
+    if (!clientSearch.trim()) {
+      setClientResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get('/clients', { params: { search: clientSearch } });
+        const data = res.data?.data || res.data || [];
+        setClientResults(Array.isArray(data) ? data : []);
+        setShowDropdown(true);
+      } catch {
+        setClientResults([]);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [clientSearch]);
 
   const { data: bookingsRaw, isLoading } = useQuery({
     queryKey: ['bookings'],
     queryFn: () => api.get('/bookings').then(r => r.data),
   });
   const bookings = bookingsRaw?.data || bookingsRaw || [];
-
-  const { data: clientsRaw } = useQuery({
-    queryKey: ['clients'],
-    queryFn: () => api.get('/clients').then(r => r.data),
-  });
-  const clients = clientsRaw?.data || clientsRaw || [];
 
   const { data: propertiesRaw } = useQuery({
     queryKey: ['properties'],
@@ -187,7 +202,6 @@ export default function Bookings() {
     mutationFn: (data: any) => api.post('/bookings', data),
     onSuccess: async (res) => {
       const bookingId = res.data.id;
-      // Crear huéspedes SES
       for (const g of guests) {
         if (!g.firstName || !g.lastName || !g.docNumber) continue;
         await api.post(`/bookings/${bookingId}/guests-ses`, {
@@ -214,10 +228,14 @@ export default function Bookings() {
 
   const resetForm = () => {
     setForm({ clientId: '', propertyId: '', checkInDate: '', checkOutDate: '', totalAmount: '', source: 'direct', status: 'confirmed', notes: '' });
-    setNewClient({ firstName: '', lastName: '', docType: 'dni', dniPassport: '', docCountry: 'ES', nationality: '', birthDate: '', phoneCode: '+34', phoneNumber: '', email: '' });
+    setClientSearch('');
+    setClientResults([]);
+    setShowDropdown(false);
+    setSelectedClient(null);
+    setCreatingNewClient(false);
+    setNewClientName({ firstName: '', lastName: '' });
     setGuests([]);
     setDocWarnings({});
-    setClientMode('existing');
   };
 
   const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -228,36 +246,6 @@ export default function Bookings() {
   const scheduleValidation = (key: string, fn: () => void) => {
     if (validationTimers.current[key]) clearTimeout(validationTimers.current[key]);
     validationTimers.current[key] = setTimeout(fn, 600);
-  };
-
-  const fc = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const updated = { ...newClient, [k]: e.target.value };
-    setNewClient(updated);
-    if (k === 'dniPassport' || k === 'docType' || k === 'docCountry') {
-      scheduleValidation('main', () => {
-        const warn = validateDoc(updated.docType, updated.dniPassport, updated.docCountry);
-        setDocWarnings(w => ({ ...w, main: warn || '' }));
-      });
-    }
-  };
-
-  const handleClientSelect = (id: string) => {
-    const client = clients.find((c: any) => c.id === id);
-    if (client) {
-      setNewClient({
-        firstName:   client.firstName   || '',
-        lastName:    client.lastName    || '',
-        docType:     'dni',
-        dniPassport: client.dniPassport || '',
-        docCountry:  'ES',
-        nationality: client.nationality || '',
-        birthDate:   client.birthDate ? client.birthDate.substring(0, 10) : '',
-        phoneCode:   '+34',
-        phoneNumber: client.phone || '',
-        email:       client.email || '',
-      });
-    }
-    setForm({ ...form, clientId: id });
   };
 
   const addGuest = () => setGuests(g => [...g, emptyGuest()]);
@@ -283,19 +271,14 @@ export default function Bookings() {
     setErrorMsg('');
     try {
       let clientId = form.clientId;
-      if (clientMode === 'new') {
-        if (!newClient.firstName || !newClient.lastName) {
+      if (creatingNewClient) {
+        if (!newClientName.firstName || !newClientName.lastName) {
           setErrorMsg('El nombre y apellido del cliente son obligatorios.');
           return;
         }
         const created = await createClientMutation.mutateAsync({
-          firstName:   newClient.firstName,
-          lastName:    newClient.lastName,
-          dniPassport: newClient.dniPassport || undefined,
-          nationality: newClient.nationality || undefined,
-          birthDate:   newClient.birthDate   || undefined,
-          email:       newClient.email       || undefined,
-          phone:       newClient.phoneNumber ? `${newClient.phoneCode}${newClient.phoneNumber}` : undefined,
+          firstName: newClientName.firstName,
+          lastName:  newClientName.lastName,
         });
         clientId = created.id;
       }
@@ -316,7 +299,7 @@ export default function Bookings() {
 
   const isSubmitDisabled =
     !form.propertyId || !form.checkInDate || !form.checkOutDate || !form.totalAmount ||
-    (clientMode === 'existing' ? !form.clientId : !newClient.firstName || !newClient.lastName) ||
+    (!form.clientId && (!creatingNewClient || !newClientName.firstName || !newClientName.lastName)) ||
     createMutation.isPending || createClientMutation.isPending;
 
 
@@ -415,79 +398,88 @@ export default function Bookings() {
               <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-4">
                 <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">Cliente titular</p>
 
-                <div className="flex gap-2">
-                  <button onClick={() => setClientMode('existing')}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${clientMode === 'existing' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
-                    Cliente existente
-                  </button>
-                  <button onClick={() => { setClientMode('new'); setForm({ ...form, clientId: '' }); setNewClient({ firstName: '', lastName: '', docType: 'dni', dniPassport: '', docCountry: 'ES', nationality: '', birthDate: '', phoneCode: '+34', phoneNumber: '', email: '' }); }}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${clientMode === 'new' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
-                    + Nuevo cliente
-                  </button>
-                </div>
-
-                {clientMode === 'existing' && (
-                  <select value={form.clientId} onChange={e => handleClientSelect(e.target.value)} className={inputCls}>
-                    <option value="">— Seleccionar cliente —</option>
-                    {clients.map((c: any) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
-                  </select>
-                )}
-
-                {(clientMode === 'new' || form.clientId) && (
+                {selectedClient ? (
+                  /* Cliente seleccionado */
+                  <div className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5">
+                    <div>
+                      <p className="text-sm font-medium text-white">{selectedClient.firstName} {selectedClient.lastName}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {selectedClient.dniPassport && <span className="mr-2">{selectedClient.dniPassport}</span>}
+                        {selectedClient.nationality && <span>{selectedClient.nationality}</span>}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setSelectedClient(null); setForm({ ...form, clientId: '' }); setClientSearch(''); setCreatingNewClient(false); }}
+                      className="text-slate-400 hover:text-white text-lg leading-none ml-3">✕</button>
+                  </div>
+                ) : creatingNewClient ? (
+                  /* Formulario nuevo cliente (solo nombre) */
                   <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-emerald-400">Nuevo cliente</p>
+                      <button
+                        onClick={() => { setCreatingNewClient(false); setClientSearch(''); setNewClientName({ firstName: '', lastName: '' }); }}
+                        className="text-slate-400 hover:text-white text-xs">✕ Cancelar</button>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label className={labelCls}>Nombre *</label>
-                        <input value={newClient.firstName} onChange={fc('firstName')}
-                          readOnly={clientMode === 'existing'}
-                          className={`${inputCls} text-white ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
+                        <input
+                          autoFocus
+                          value={newClientName.firstName}
+                          onChange={e => setNewClientName({ ...newClientName, firstName: e.target.value })}
+                          placeholder="Nombre"
+                          className={`${inputCls} text-white`} />
                       </div>
                       <div>
                         <label className={labelCls}>Apellido *</label>
-                        <input value={newClient.lastName} onChange={fc('lastName')}
-                          readOnly={clientMode === 'existing'}
-                          className={`${inputCls} text-white ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
+                        <input
+                          value={newClientName.lastName}
+                          onChange={e => setNewClientName({ ...newClientName, lastName: e.target.value })}
+                          placeholder="Apellido"
+                          className={`${inputCls} text-white`} />
                       </div>
                     </div>
-                    <DocFields
-                      prefix="main"
-                      docType={newClient.docType} docNumber={newClient.dniPassport} docCountry={newClient.docCountry}
-                      onDocType={fc('docType')} onDocNumber={fc('dniPassport')} onDocCountry={fc('docCountry')}
-                      readonly={clientMode === 'existing'}
-                      warnings={docWarnings}
+                  </div>
+                ) : (
+                  /* Campo de búsqueda con desplegable */
+                  <div className="relative">
+                    <label className={labelCls}>Buscar cliente *</label>
+                    <input
+                      value={clientSearch}
+                      onChange={e => { setClientSearch(e.target.value); }}
+                      onFocus={() => clientSearch.trim() && setShowDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                      placeholder="Nombre, apellido o DNI..."
+                      className={inputCls}
                     />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className={labelCls}>Nacionalidad</label>
-                        <select value={newClient.nationality} onChange={fc('nationality')}
-                          disabled={clientMode === 'existing'}
-                          className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`}>
-                          <option value="">— Seleccionar —</option>
-                          {COUNTRIES.map(c => (
-                            <option key={c.code} value={c.name}>{c.flag} {c.name}</option>
-                          ))}
-                        </select>
+                    {showDropdown && (clientResults.length > 0 || clientSearch.trim()) && (
+                      <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg overflow-hidden shadow-xl max-h-60 overflow-y-auto">
+                        {clientResults.map((c: any) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onMouseDown={e => e.preventDefault()}
+                            onClick={() => { setSelectedClient(c); setForm({ ...form, clientId: c.id }); setShowDropdown(false); setClientSearch(''); }}
+                            className="w-full text-left px-4 py-3 hover:bg-slate-700 transition-colors border-b border-slate-700/50 last:border-0">
+                            <p className="text-sm font-medium text-white">{c.firstName} {c.lastName}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              {c.dniPassport && <span className="mr-2">{c.dniPassport}</span>}
+                              {c.nationality && <span>{c.nationality}</span>}
+                            </p>
+                          </button>
+                        ))}
+                        {clientSearch.trim() && (
+                          <button
+                            type="button"
+                            onMouseDown={e => e.preventDefault()}
+                            onClick={() => { setShowDropdown(false); setCreatingNewClient(true); setNewClientName({ firstName: '', lastName: '' }); }}
+                            className="w-full text-left px-4 py-3 hover:bg-slate-700 transition-colors text-emerald-400 text-sm font-semibold">
+                            ➕ Crear cliente nuevo
+                          </button>
+                        )}
                       </div>
-                      <div>
-                        <label className={labelCls}>Fecha nacimiento</label>
-                        <input type="date" value={newClient.birthDate} onChange={fc('birthDate')}
-                          readOnly={clientMode === 'existing'}
-                          className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className={labelCls}>Email</label>
-                        <input type="email" value={newClient.email} onChange={fc('email')}
-                          readOnly={clientMode === 'existing'}
-                          className={`${inputCls} ${clientMode === 'existing' ? 'opacity-60 cursor-default' : ''}`} />
-                      </div>
-                      <PhoneField
-                        phoneCode={newClient.phoneCode} phoneNumber={newClient.phoneNumber}
-                        onCode={fc('phoneCode')} onNumber={fc('phoneNumber')}
-                        readonly={clientMode === 'existing'}
-                      />
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
