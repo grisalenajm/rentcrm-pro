@@ -2,7 +2,7 @@
 
 ## Entorno
 - **Repo**: `/home/rentcrm/rentcrm-pro` (monorepo npm workspaces)
-- **Frontend**: `apps/frontend/` → puerto 3000 (Vite dev server, hot reload)
+- **Frontend**: `apps/frontend/` → puerto 3000 (Vite dev server dentro de Docker — **requiere rebuild** para ver cambios)
 - **API**: `apps/api/` → puerto 3001 (NestJS, prefijo `/api`)
 - **DB**: PostgreSQL → `postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm`
 - **Redis**: `redis://:rentcrm_redis_pass@localhost:6379`
@@ -79,6 +79,8 @@ rentcrm-pro/
 │           ├── App.tsx                ← rutas React Router
 │           ├── context/
 │           │   └── AuthContext.tsx    ← JWT en memoria (no localStorage)
+│           ├── data/
+│           │   └── countries.ts            ← 195 países ISO 3166-1 (WORLD_COUNTRIES)
 │           ├── components/
 │           │   ├── Layout.tsx              ← drawer móvil hamburguesa
 │           │   ├── ExcelButtons.tsx        ← exportar/importar reutilizable
@@ -185,6 +187,23 @@ SMTP_HOST=...
 SMTP_USER=...
 SMTP_PASS=...
 
+## Roles de usuario
+| Rol | Permisos |
+|-----|----------|
+| `admin` | Todo |
+| `gestor` | Crear/editar bookings, clients, properties, contracts, SES, checkin |
+| `owner` | Solo gastos |
+| viewer | Solo lectura (GET) |
+
+JWT payload: `{ id, email, organizationId, role }`
+
+## Referencia rápida API
+Ver `API_ENDPOINTS.md` para la lista completa de endpoints.
+Todos bajo `/api`, autenticados con JWT Bearer excepto:
+- `POST /api/auth/login`
+- `GET/POST /api/bookings/checkin/:token`
+- `GET/POST /api/contracts/sign/:token`
+
 ## Patrones importantes
 
 ### Rutas públicas (sin JWT)
@@ -230,9 +249,15 @@ error → processed, cancelled
 await this.translationService.translateMany([...textos], lang);
 ```
 
-### Frontend — VITE_API_URL
-VITE_API_URL=http://192.168.1.123:3001  ← IP local, accesible desde móvil
-// NO usar http://api:3001 (no accesible desde navegador externo)
+### Frontend — routing API
+- `api.ts` usa `baseURL: '/api'` (relativo) → Vite proxy redirige a `http://api:3001`
+- `CheckinPage.tsx` usa `VITE_API_URL + '/api'` como fallback directo (página pública)
+- VITE_API_URL=http://192.168.1.123:3001 en .env → para acceso desde móviles externos
+- NO usar http://api:3001 desde el navegador (solo funciona dentro de Docker)
+
+### Lista de países
+`src/data/countries.ts` exporta `WORLD_COUNTRIES` (195 países, ISO 3166-1 alpha-2, en español).
+Usar en cualquier selector de nacionalidad, país doc o dirección. NO duplicar listas inline.
 
 ### Responsive — breakpoints
 Sin prefijo = móvil primero
