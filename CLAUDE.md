@@ -28,8 +28,10 @@ docker logs rentcrm-api --tail=20
 ### Migraciones Prisma (SIEMPRE desde el host, nunca desde el contenedor)
 ```bash
 cd ~/rentcrm-pro/apps/api
-npx prisma migrate dev --name nombre-migracion
-npx prisma generate
+DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma migrate dev --name nombre-migracion
+DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma generate
+# Si falla "migration modified": usar db push en desarrollo
+DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma db push
 ```
 
 ### Frontend (hot reload automático, no necesita rebuild)
@@ -115,16 +117,21 @@ model Booking {
 }
 
 model Client {
-  id          String   @id @default(uuid())
-  firstName   String
-  lastName    String
-  email       String?
-  phone       String?
-  nationality String?
-  language    String?  @default("es")
-  docType     String?
-  dniPassport String?
-  docCountry  String?
+  id             String    @id @default(uuid())
+  firstName      String
+  lastName       String
+  dniPassport    String?
+  nationality    String?
+  birthDate      DateTime?
+  email          String?
+  phone          String?
+  street         String?             // ← dirección estructurada
+  city           String?
+  postalCode     String?   @map("postal_code")
+  province       String?
+  country        String?   @db.VarChar(5)  // código ISO: ES, FR, DE...
+  notes          String?
+  language       String?   @default("es")
   organizationId String
 }
 
@@ -149,15 +156,21 @@ model Expense {
 }
 
 model BookingGuestSes {
-  id        String   @id @default(uuid())
-  bookingId String
-  firstName String
-  lastName  String
-  docType   String?
-  docNumber String?
-  docCountry String?
-  birthDate DateTime?
-  booking   Booking  @relation(...)
+  id         String    @id @default(uuid())
+  bookingId  String
+  firstName  String
+  lastName   String
+  docType    String
+  docNumber  String
+  docCountry String
+  birthDate  DateTime?
+  phone      String?
+  street     String?             // ← dirección estructurada
+  city       String?
+  postalCode String?   @map("postal_code")
+  province   String?
+  country    String?
+  booking    Booking   @relation(...)
 }
 ```
 
@@ -247,9 +260,12 @@ md: = 768px = desktop
 | Prisma unknown arg | Verificar nombres exactos en schema.prisma |
 | LibreTranslate `no` | Usar `nb` (noruego bokmål) |
 | ValidationPipe whitelist | Añadir TODOS los campos al DTO con decoradores |
+| `migrate dev` falla "migration modified" | Usar `prisma db push` en desarrollo (ver sección Migraciones) |
+| Prisma `DATABASE_URL` no resuelve en host | Pasar la URL explícita con variable de entorno al comando |
 
 ## Pendiente (priorizado)
 - [x] WORKFLOW ESTADOS RESERVA: created→registered→processed/error/cancelled. Componente BookingStatusWorkflow. Auto-transiciones en checkin y SES.
+- [x] DIRECCIÓN ESTRUCTURADA: street/city/postalCode/province/country en Client y BookingGuestSes. Formulario en Clients.tsx. Prefill en checkin online. Checkbox "misma dirección" para huéspedes.
 - [ ] MEJORAS FLUJO RESERVA: solo nombre al crear reserva, idioma por nacionalidad del cliente
 - [ ] DOCUMENTOS Y REGLAS DE LA CASA: por propiedad, traducción automática al idioma del cliente
 - [ ] PÁGINA PARTES SES: historial de envíos con navegación
