@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
+import { WORLD_COUNTRIES } from '../data/countries';
 
 const API = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'http://192.168.1.123:3001/api';
 
@@ -151,6 +152,8 @@ export default function CheckinPage() {
     { code: 'AE',    name: booking?.ui?.countryAE    ?? 'Emiratos Árabes Unidos' },
     { code: 'OTHER', name: booking?.ui?.countryOther ?? 'Otro' },
   ].sort((a, b) => a.name.localeCompare(b.name)), [booking?.ui]);
+
+  const ADDRESS_COUNTRIES = WORLD_COUNTRIES;
 
   const handleSubmit = async () => {
     if (!form.firstName || !form.lastName || !form.docNumber || !form.docCountry) {
@@ -304,7 +307,7 @@ export default function CheckinPage() {
                       <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelCountryRes ?? 'País de residencia'}</label>
                       <select value={form.country} onChange={e => setForm({...form, country: e.target.value})}
                         className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
-                        {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                        {ADDRESS_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
                       </select>
                     </div>
                   </div>
@@ -399,7 +402,7 @@ export default function CheckinPage() {
                                 <label className="text-xs text-slate-400 mb-1 block">{booking.ui?.labelCountryRes ?? 'País'}</label>
                                 <select value={g.country} onChange={e => updateGuest(i, 'country', e.target.value)}
                                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
-                                  {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                                  {ADDRESS_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
                                 </select>
                               </div>
                             </div>

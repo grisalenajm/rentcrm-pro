@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import ExcelButtons from '../components/ExcelButtons';
+import { WORLD_COUNTRIES } from '../data/countries';
 
 interface Client {
   id: string;
@@ -22,6 +23,8 @@ interface Client {
   country?: string;
 }
 
+const COUNTRIES = WORLD_COUNTRIES;
+
 const LANGUAGES = [
   { code: 'es', name: 'Español' },
   { code: 'en', name: 'English' },
@@ -35,42 +38,6 @@ const LANGUAGES = [
   { code: 'sv', name: 'Svenska' },
 ];
 
-const COUNTRIES = [
-  { code: 'ES', name: 'España',         phone: '+34',  flag: '🇪🇸' },
-  { code: 'DE', name: 'Alemania',        phone: '+49',  flag: '🇩🇪' },
-  { code: 'FR', name: 'Francia',         phone: '+33',  flag: '🇫🇷' },
-  { code: 'GB', name: 'Reino Unido',     phone: '+44',  flag: '🇬🇧' },
-  { code: 'IT', name: 'Italia',          phone: '+39',  flag: '🇮🇹' },
-  { code: 'PT', name: 'Portugal',        phone: '+351', flag: '🇵🇹' },
-  { code: 'NL', name: 'Países Bajos',    phone: '+31',  flag: '🇳🇱' },
-  { code: 'BE', name: 'Bélgica',         phone: '+32',  flag: '🇧🇪' },
-  { code: 'CH', name: 'Suiza',           phone: '+41',  flag: '🇨🇭' },
-  { code: 'AT', name: 'Austria',         phone: '+43',  flag: '🇦🇹' },
-  { code: 'SE', name: 'Suecia',          phone: '+46',  flag: '🇸🇪' },
-  { code: 'NO', name: 'Noruega',         phone: '+47',  flag: '🇳🇴' },
-  { code: 'DK', name: 'Dinamarca',       phone: '+45',  flag: '🇩🇰' },
-  { code: 'FI', name: 'Finlandia',       phone: '+358', flag: '🇫🇮' },
-  { code: 'PL', name: 'Polonia',         phone: '+48',  flag: '🇵🇱' },
-  { code: 'CZ', name: 'Rep. Checa',      phone: '+420', flag: '🇨🇿' },
-  { code: 'HU', name: 'Hungría',         phone: '+36',  flag: '🇭🇺' },
-  { code: 'RO', name: 'Rumanía',         phone: '+40',  flag: '🇷🇴' },
-  { code: 'GR', name: 'Grecia',          phone: '+30',  flag: '🇬🇷' },
-  { code: 'US', name: 'Estados Unidos',  phone: '+1',   flag: '🇺🇸' },
-  { code: 'CA', name: 'Canadá',          phone: '+1',   flag: '🇨🇦' },
-  { code: 'MX', name: 'México',          phone: '+52',  flag: '🇲🇽' },
-  { code: 'AR', name: 'Argentina',       phone: '+54',  flag: '🇦🇷' },
-  { code: 'BR', name: 'Brasil',          phone: '+55',  flag: '🇧🇷' },
-  { code: 'CO', name: 'Colombia',        phone: '+57',  flag: '🇨🇴' },
-  { code: 'CL', name: 'Chile',           phone: '+56',  flag: '🇨🇱' },
-  { code: 'MA', name: 'Marruecos',       phone: '+212', flag: '🇲🇦' },
-  { code: 'CN', name: 'China',           phone: '+86',  flag: '🇨🇳' },
-  { code: 'JP', name: 'Japón',           phone: '+81',  flag: '🇯🇵' },
-  { code: 'AU', name: 'Australia',       phone: '+61',  flag: '🇦🇺' },
-  { code: 'RU', name: 'Rusia',           phone: '+7',   flag: '🇷🇺' },
-  { code: 'UA', name: 'Ucrania',         phone: '+380', flag: '🇺🇦' },
-  { code: 'TR', name: 'Turquía',         phone: '+90',  flag: '🇹🇷' },
-  { code: 'IN', name: 'India',           phone: '+91',  flag: '🇮🇳' },
-];
 
 function validateDoc(docType: string, docNumber: string, country: string): string | null {
   const n = docNumber.toUpperCase().trim();
@@ -93,12 +60,7 @@ function validateDoc(docType: string, docNumber: string, country: string): strin
   return null;
 }
 
-const ADDRESS_COUNTRIES = [
-  { code: 'ES', name: 'España' }, { code: 'FR', name: 'Francia' }, { code: 'DE', name: 'Alemania' },
-  { code: 'IT', name: 'Italia' }, { code: 'PT', name: 'Portugal' }, { code: 'GB', name: 'Reino Unido' },
-  { code: 'NL', name: 'Países Bajos' }, { code: 'DK', name: 'Dinamarca' }, { code: 'NO', name: 'Noruega' },
-  { code: 'SE', name: 'Suecia' }, { code: 'US', name: 'Estados Unidos' }, { code: 'OTHER', name: 'Otro' },
-];
+const ADDRESS_COUNTRIES = WORLD_COUNTRIES;
 
 const emptyForm = {
   firstName: '', lastName: '',
