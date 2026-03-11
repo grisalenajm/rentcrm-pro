@@ -167,6 +167,26 @@ export default function Bookings() {
   const [guests, setGuests] = useState<ReturnType<typeof emptyGuest>[]>([]);
   const [docWarnings, setDocWarnings] = useState<Record<string, string>>({});
   const [errorMsg, setErrorMsg] = useState('');
+  const [dateError, setDateError] = useState('');
+  const [overlapError, setOverlapError] = useState('');
+
+  // Validación local de fechas (inmediata)
+  useEffect(() => {
+    if (form.checkInDate && form.checkOutDate) {
+      setDateError(
+        new Date(form.checkOutDate) <= new Date(form.checkInDate)
+          ? 'La fecha de salida debe ser posterior a la de entrada'
+          : ''
+      );
+    } else {
+      setDateError('');
+    }
+  }, [form.checkInDate, form.checkOutDate]);
+
+  // Limpiar error de solapamiento cuando cambian fechas o propiedad
+  useEffect(() => {
+    setOverlapError('');
+  }, [form.checkInDate, form.checkOutDate, form.propertyId]);
 
   // Búsqueda con debounce 300ms
   useEffect(() => {
@@ -234,6 +254,8 @@ export default function Bookings() {
 
   const resetForm = () => {
     setForm({ clientId: '', propertyId: '', checkInDate: '', checkOutDate: '', totalAmount: '', source: 'direct', status: 'confirmed', notes: '' });
+    setDateError('');
+    setOverlapError('');
     setClientSearch('');
     setClientResults([]);
     setShowDropdown(false);
@@ -275,6 +297,29 @@ export default function Bookings() {
 
   const handleSubmit = async () => {
     setErrorMsg('');
+    if (dateError) return;
+
+    // Verificar solapamiento contra la API
+    if (form.propertyId && form.checkInDate && form.checkOutDate) {
+      try {
+        const res = await api.get('/bookings', { params: { propertyId: form.propertyId } });
+        const existing: any[] = res.data?.data || res.data || [];
+        const newIn  = new Date(form.checkInDate).getTime();
+        const newOut = new Date(form.checkOutDate).getTime();
+        const fmt = (d: string) => new Date(d).toLocaleDateString('es-ES');
+        for (const b of existing) {
+          if (b.status === 'cancelled') continue;
+          const bIn  = new Date(b.checkInDate).getTime();
+          const bOut = new Date(b.checkOutDate).getTime();
+          if (newIn < bOut && newOut > bIn) {
+            setOverlapError(`La propiedad ya tiene una reserva del ${fmt(b.checkInDate)} al ${fmt(b.checkOutDate)}`);
+            return;
+          }
+        }
+        setOverlapError('');
+      } catch { /* si falla la comprobación, no bloquear */ }
+    }
+
     try {
       let clientId = form.clientId;
       if (creatingNewClient) {
@@ -306,6 +351,7 @@ export default function Bookings() {
   const isSubmitDisabled =
     !form.propertyId || !form.checkInDate || !form.checkOutDate || !form.totalAmount ||
     (!form.clientId && (!creatingNewClient || !newClientName.firstName || !newClientName.lastName)) ||
+    !!dateError || !!overlapError ||
     createMutation.isPending || createClientMutation.isPending;
 
 
@@ -578,13 +624,21 @@ export default function Bookings() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className={labelCls}>{t('bookings.checkIn')} *</label>
-                    <input type="date" value={form.checkInDate} onChange={f('checkInDate')} className={inputCls} />
+                    <input type="date" value={form.checkInDate} onChange={f('checkInDate')}
+                      className={`${inputCls} ${dateError ? 'border-red-500' : ''}`} />
                   </div>
                   <div>
                     <label className={labelCls}>{t('bookings.checkOut')} *</label>
-                    <input type="date" value={form.checkOutDate} onChange={f('checkOutDate')} className={inputCls} />
+                    <input type="date" value={form.checkOutDate} onChange={f('checkOutDate')}
+                      className={`${inputCls} ${dateError ? 'border-red-500' : ''}`} />
                   </div>
                 </div>
+                {dateError && (
+                  <p className="text-red-400 text-xs -mt-2">⚠ {dateError}</p>
+                )}
+                {overlapError && (
+                  <p className="text-red-400 text-xs -mt-2">⚠ {overlapError}</p>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>

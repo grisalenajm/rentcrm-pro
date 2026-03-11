@@ -51,6 +51,8 @@ export default function BookingDetail() {
     source: '',
     notes: '',
   });
+  const [dateError, setDateError] = useState('');
+  const [overlapError, setOverlapError] = useState('');
 
   const contractStatusColor: Record<string, string> = {
     draft:     'bg-slate-500/10 text-slate-400',
@@ -84,8 +86,28 @@ export default function BookingDetail() {
     onError: (e: any) => alert(e.response?.data?.message || 'Error al guardar')
   });
 
+  // Validación local inmediata de fechas
+  useEffect(() => {
+    if (editForm.startDate && editForm.endDate) {
+      setDateError(
+        new Date(editForm.endDate) <= new Date(editForm.startDate)
+          ? 'La fecha de salida debe ser posterior a la de entrada'
+          : ''
+      );
+    } else {
+      setDateError('');
+    }
+  }, [editForm.startDate, editForm.endDate]);
+
+  // Limpiar error de solapamiento al cambiar fechas
+  useEffect(() => {
+    setOverlapError('');
+  }, [editForm.startDate, editForm.endDate]);
+
   const openEdit = () => {
     if (!booking) return;
+    setDateError('');
+    setOverlapError('');
     console.log('BOOKING DATA:', JSON.stringify({checkInDate: booking.checkInDate, checkOutDate: booking.checkOutDate, totalAmount: booking.totalAmount}));
     setEditForm({
       startDate:  booking.checkInDate  ? String(booking.checkInDate).slice(0, 10)  : '',
@@ -97,15 +119,32 @@ export default function BookingDetail() {
     setShowEdit(true);
   };
 
-  const handleEditSubmit = () => {
-    if (!editForm.startDate || !editForm.endDate) {
-      alert('Las fechas son obligatorias');
-      return;
+  const handleEditSubmit = async () => {
+    if (!editForm.startDate || !editForm.endDate) return;
+    if (dateError) return;
+
+    // Verificar solapamiento contra la API (excluir esta misma reserva)
+    if (booking?.propertyId) {
+      try {
+        const res = await api.get('/bookings', { params: { propertyId: booking.propertyId } });
+        const existing: any[] = res.data?.data || res.data || [];
+        const newIn  = new Date(editForm.startDate).getTime();
+        const newOut = new Date(editForm.endDate).getTime();
+        const fmt = (d: string) => new Date(d).toLocaleDateString('es-ES');
+        for (const b of existing) {
+          if (b.status === 'cancelled') continue;
+          if (b.id === id) continue;
+          const bIn  = new Date(b.checkInDate).getTime();
+          const bOut = new Date(b.checkOutDate).getTime();
+          if (newIn < bOut && newOut > bIn) {
+            setOverlapError(`La propiedad ya tiene una reserva del ${fmt(b.checkInDate)} al ${fmt(b.checkOutDate)}`);
+            return;
+          }
+        }
+        setOverlapError('');
+      } catch { /* si falla, no bloquear */ }
     }
-    if (new Date(editForm.endDate) <= new Date(editForm.startDate)) {
-      alert('La fecha de salida debe ser posterior a la de entrada');
-      return;
-    }
+
     updateMutation.mutate({
       startDate: editForm.startDate,
       endDate: editForm.endDate,
@@ -458,15 +497,21 @@ export default function BookingDetail() {
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Entrada *</label>
                   <input type="date" value={editForm.startDate}
                     onChange={e => setEditForm({...editForm, startDate: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                    className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 ${dateError ? 'border-red-500' : 'border-slate-700'}`} />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Salida *</label>
                   <input type="date" value={editForm.endDate}
                     onChange={e => setEditForm({...editForm, endDate: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                    className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 ${dateError ? 'border-red-500' : 'border-slate-700'}`} />
                 </div>
               </div>
+              {dateError && (
+                <p className="text-red-400 text-xs -mt-2">⚠ {dateError}</p>
+              )}
+              {overlapError && (
+                <p className="text-red-400 text-xs -mt-2">⚠ {overlapError}</p>
+              )}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total €</label>
@@ -499,7 +544,7 @@ export default function BookingDetail() {
                 className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
                 Cancelar
               </button>
-              <button onClick={handleEditSubmit} disabled={updateMutation.isPending}
+              <button onClick={handleEditSubmit} disabled={updateMutation.isPending || !!dateError || !!overlapError}
                 className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl text-sm font-semibold transition-colors">
                 {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
               </button>
