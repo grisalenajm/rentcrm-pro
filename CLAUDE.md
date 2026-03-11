@@ -77,8 +77,9 @@ rentcrm-pro/
 │           ├── context/
 │           │   └── AuthContext.tsx    ← JWT en memoria (no localStorage)
 │           ├── components/
-│           │   ├── Layout.tsx         ← drawer móvil hamburguesa
-│           │   └── ExcelButtons.tsx   ← exportar/importar reutilizable
+│           │   ├── Layout.tsx              ← drawer móvil hamburguesa
+│           │   ├── ExcelButtons.tsx        ← exportar/importar reutilizable
+│           │   └── BookingStatusWorkflow.tsx ← badge estado + botones transición
 │           └── pages/
 │               ├── Dashboard.tsx
 │               ├── Bookings.tsx
@@ -98,10 +99,10 @@ model Booking {
   id             String    @id @default(uuid())
   propertyId     String
   clientId       String?
-  startDate      DateTime
-  endDate        DateTime
-  totalPrice     Float?
-  status         String    @default("pending")
+  checkInDate    DateTime              // ← OJO: checkInDate, NO startDate
+  checkOutDate   DateTime              // ← OJO: checkOutDate, NO endDate
+  totalAmount    Float?                // ← OJO: totalAmount, NO totalPrice
+  status         String    @default("created")  // created|registered|processed|error|cancelled
   source         String?
   notes          String?
   checkinToken   String?   @unique
@@ -186,13 +187,26 @@ getCheckin() {}
 // Todos los campos en DTOs deben tener decoradores @IsString(), @IsOptional(), etc.
 ```
 
-### Prisma snake_case vs camelCase
+### Prisma — nombres de campos Booking
 ```typescript
-// El schema usa camelCase pero algunos campos legacy son snake_case
-// Siempre verificar con: grep "fieldName" apps/api/prisma/schema.prisma
-// Al hacer update: mapear manualmente si hay duda
-prisma.booking.update({ data: { startDate: new Date(data.startDate) } })
+// IMPORTANTE: los campos de Booking usan checkInDate/checkOutDate/totalAmount
+// NO startDate/endDate/totalPrice (nombres legacy ya eliminados)
+// Siempre verificar: grep "fieldName" apps/api/prisma/schema.prisma
+prisma.booking.update({ data: { checkInDate: new Date(data.checkInDate), totalAmount: data.totalAmount } })
 ```
+
+### Workflow estados de reserva
+```
+created → registered → processed (flujo normal)
+created → cancelled
+registered → error → registered (reintento)
+registered → cancelled
+error → processed, cancelled
+```
+- `PATCH /bookings/:id/status` con body `{ status }` — valida transiciones en backend
+- `updateStatusOnCheckinComplete()` — auto: created/error → registered al completar checkin
+- `updateStatusOnSesSent(success)` — auto: registered/error → processed o → error al enviar SES
+- Colores: created=amber, registered=blue, processed=emerald, error=red, cancelled=slate
 
 ### TranslationService
 ```typescript
@@ -235,7 +249,7 @@ md: = 768px = desktop
 | ValidationPipe whitelist | Añadir TODOS los campos al DTO con decoradores |
 
 ## Pendiente (priorizado)
-- [ ] WORKFLOW ESTADOS RESERVA: pending→confirmed→completed→cancelled. Botones en BookingDetail. Campo statusChangedAt en BD.
+- [x] WORKFLOW ESTADOS RESERVA: created→registered→processed/error/cancelled. Componente BookingStatusWorkflow. Auto-transiciones en checkin y SES.
 - [ ] MEJORAS FLUJO RESERVA: solo nombre al crear reserva, idioma por nacionalidad del cliente
 - [ ] DOCUMENTOS Y REGLAS DE LA CASA: por propiedad, traducción automática al idioma del cliente
 - [ ] PÁGINA PARTES SES: historial de envíos con navegación
