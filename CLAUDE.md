@@ -230,11 +230,11 @@ prisma.booking.update({ data: { checkInDate: new Date(data.checkInDate), totalAm
 
 ### Workflow estados de reserva
 ```
-created → registered → processed (flujo normal)
-created → cancelled
-registered → error → registered (reintento)
-registered → cancelled
-error → processed, cancelled
+Estados: created, registered, processed, error, cancelled
+Transiciones:
+  created    → registered | cancelled
+  registered → processed  | error | cancelled
+  error      → registered | processed | cancelled
 ```
 - `PATCH /bookings/:id/status` con body `{ status }` — valida transiciones en backend
 - `updateStatusOnCheckinComplete()` — auto: created/error → registered al completar checkin
@@ -289,13 +289,3 @@ md: = 768px = desktop
 | `migrate dev` falla "migration modified" | Usar `prisma db push` en desarrollo (ver sección Migraciones) |
 | Prisma `DATABASE_URL` no resuelve en host | Pasar la URL explícita con variable de entorno al comando |
 
-## Pendiente (priorizado)
-- [x] WORKFLOW ESTADOS RESERVA: created→registered→processed/error/cancelled. Componente BookingStatusWorkflow. Auto-transiciones en checkin y SES.
-- [x] DIRECCIÓN ESTRUCTURADA: street/city/postalCode/province/country en Client y BookingGuestSes. Formulario en Clients.tsx. Prefill en checkin online. Checkbox "misma dirección" para huéspedes.
-- [ ] MEJORAS FLUJO RESERVA: solo nombre al crear reserva, idioma por nacionalidad del cliente
-- [ ] DOCUMENTOS Y REGLAS DE LA CASA: por propiedad, traducción automática al idioma del cliente
-- [ ] PÁGINA PARTES SES: historial de envíos con navegación
-- [ ] CONSULTA ESTADO LOTE SES: confirmación asíncrona Ministerio
-- [ ] NOTIFICACIÓN EMAIL SES: cuando confirma/rechaza
-- [ ] DEPLOY PRODUCCIÓN: Nginx, VITE_API_URL relativo, docker-compose.prod.yml
-- [ ] VERSIONADO API: prefijo /api/v1/
