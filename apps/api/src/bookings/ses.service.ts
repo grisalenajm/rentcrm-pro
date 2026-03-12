@@ -285,4 +285,43 @@ export class SesService {
       throw new BadRequestException(`Error al enviar al SES: ${err.message}`);
     }
   }
+
+  async testConnection(sesEndpoint: string, sesUsuarioWs: string, sesPasswordWs: string, sesCodigoArrendador: string): Promise<{ ok: boolean; message: string }> {
+    const token = Buffer.from(`${sesUsuarioWs}:${sesPasswordWs}`).toString('base64');
+    const soapBody = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:com="http://hospedajes.ses.mir.es/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <com:comunicacion>
+      <peticion>
+        <codigoArrendador>${this.escapeXml(sesCodigoArrendador)}</codigoArrendador>
+        <comunicaciones/>
+      </peticion>
+    </com:comunicacion>
+  </soapenv:Body>
+</soapenv:Envelope>`;
+
+    try {
+      const response = await axios.post(sesEndpoint, soapBody, {
+        headers: {
+          'Content-Type': 'text/xml; charset=UTF-8',
+          'Authorization': `Basic ${token}`,
+          'SOAPAction': 'comunicacion',
+        },
+        timeout: 15000,
+        httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+        validateStatus: () => true,
+      });
+      // HTTP 200 or 500 (SOAP fault) both mean the server responded — connection OK
+      if (response.status === 200 || response.status === 500) {
+        return { ok: true, message: 'Conexión establecida con el Ministerio' };
+      }
+      return { ok: false, message: `Respuesta inesperada del servidor: HTTP ${response.status}` };
+    } catch (err: any) {
+      if (err.code === 'ECONNREFUSED') return { ok: false, message: 'Conexión rechazada — endpoint no accesible' };
+      if (err.code === 'ETIMEDOUT' || err.code === 'ECONNABORTED') return { ok: false, message: 'Timeout — el servidor no responde' };
+      if (err.code === 'ENOTFOUND') return { ok: false, message: 'No se puede resolver el host — verifica el endpoint' };
+      return { ok: false, message: `Error de conexión: ${err.message}` };
+    }
+  }
 }

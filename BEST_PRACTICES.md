@@ -47,3 +47,5 @@
 ## SES / Propiedades
 - sesCodigoEstablecimiento pertenece a Property, NO a Organization
 - Organization solo tiene: sesUsuarioWs, sesPasswordWs, sesCodigoArrendador, sesEndpoint
+- Test de conexión disponible en Settings → botón 'Probar conexión SES'
+- Útil para verificar credenciales sin necesidad de enviar una reserva real

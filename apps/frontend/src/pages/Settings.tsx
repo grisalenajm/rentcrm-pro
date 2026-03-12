@@ -21,6 +21,8 @@ export default function Settings() {
   const [testEmail, setTestEmail] = useState('');
   const [testResult, setTestResult] = useState<{ok: boolean; message: string} | null>(null);
   const [testing, setTesting] = useState(false);
+  const [sesTestResult, setSesTestResult] = useState<{ok: boolean; message: string} | null>(null);
+  const [sesTesting, setSesTesting] = useState(false);
   const [form, setForm] = useState<any>({});
   const { theme, language, setTheme, setLanguage } = useUserPreferences();
 
@@ -54,6 +56,19 @@ export default function Settings() {
     const reader = new FileReader();
     reader.onload = () => setForm({ ...form, logo: reader.result as string });
     reader.readAsDataURL(file);
+  };
+
+  const handleTestSes = async () => {
+    setSesTesting(true);
+    setSesTestResult(null);
+    try {
+      const res = await api.post('/organization/test-ses');
+      setSesTestResult({ ok: res.data.ok, message: res.data.message });
+    } catch (err: any) {
+      setSesTestResult({ ok: false, message: err.response?.data?.message || 'Error desconocido' });
+    } finally {
+      setSesTesting(false);
+    }
   };
 
   const handleTestSmtp = async () => {
@@ -330,6 +345,23 @@ export default function Settings() {
                 </select>
               </div>
             </div>
+            <div className="border-t border-slate-700 pt-4">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                {language === 'es' ? 'Probar conexión con el Ministerio' : 'Test connection to Ministry'}
+              </label>
+              <button
+                onClick={handleTestSes}
+                disabled={!currentValue('sesEndpoint') || !currentValue('sesUsuarioWs') || sesTesting}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-lg text-sm font-semibold transition-colors">
+                {sesTesting ? '⏳' : '🔌'} {language === 'es' ? 'Probar conexión SES' : 'Test SES connection'}
+              </button>
+              {sesTestResult && (
+                <div className={`mt-3 p-3 rounded-lg text-sm ${sesTestResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                  {sesTestResult.ok ? '✅' : '❌'} {sesTestResult.message}
+                </div>
+              )}
+            </div>
+
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-sm text-amber-400">
               <p className="font-semibold mb-1">⚠️ {language === 'es' ? 'Importante' : 'Important'}</p>
               <p>{language === 'es'

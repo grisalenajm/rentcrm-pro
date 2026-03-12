@@ -1,5 +1,6 @@
 import { Controller, Get, Put, Post, Body, Request, UseGuards } from '@nestjs/common';
 import { OrganizationService } from './organization.service';
+import { SesService } from '../bookings/ses.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -7,7 +8,10 @@ import { Roles } from '../auth/roles.decorator';
 @Controller('organization')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class OrganizationController {
-  constructor(private organizationService: OrganizationService) {}
+  constructor(
+    private organizationService: OrganizationService,
+    private sesService: SesService,
+  ) {}
 
   @Get()
   findOne(@Request() req) {
@@ -24,5 +28,17 @@ export class OrganizationController {
   @Roles('admin')
   testSmtp(@Request() req, @Body() body: { email: string }) {
     return this.organizationService.testSmtp(req.user.organizationId, body.email);
+  }
+
+  @Post('test-ses')
+  @Roles('admin')
+  async testSes(@Request() req) {
+    const org = await this.organizationService.findOne(req.user.organizationId);
+    return this.sesService.testConnection(
+      org.sesEndpoint,
+      org.sesUsuarioWs,
+      org.sesPasswordWs,
+      org.sesCodigoArrendador,
+    );
   }
 }
