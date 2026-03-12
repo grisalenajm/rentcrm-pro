@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma.service';
 import * as zlib from 'zlib';
 import { promisify } from 'util';
 import axios from 'axios';
+import * as https from 'https';
 import PDFDocument = require('pdfkit');
 
 const deflate = promisify(zlib.deflateRaw);
@@ -245,6 +246,7 @@ export class SesService {
           'SOAPAction': 'comunicacion',
         },
         timeout: 30000,
+        httpsAgent: new https.Agent({ rejectUnauthorized: false }),
       });
 
       const loteMatch   = response.data.match(/<lote>([^<]+)<\/lote>/);
