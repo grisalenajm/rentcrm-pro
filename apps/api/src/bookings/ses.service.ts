@@ -318,9 +318,17 @@ export class SesService {
         httpsAgent: new https.Agent({ rejectUnauthorized: false }),
         validateStatus: () => true,
       });
-      // Cualquier respuesta HTTP = servidor accesible y credenciales aceptadas por la red.
-      // Un SOAP fault (400/500) sigue significando que el servidor respondió = conexión OK.
-      return { ok: true, message: `Conexión establecida con el Ministerio (HTTP ${response.status})` };
+      // 200/400/500 = servidor SOAP respondió correctamente (incluso si hay error de datos)
+      if (response.status === 200 || response.status === 400 || response.status === 500) {
+        return { ok: true, message: 'Conexión establecida con el Ministerio' };
+      }
+      if (response.status === 401 || response.status === 403) {
+        return { ok: false, message: `Credenciales rechazadas por el Ministerio (HTTP ${response.status}) — verifica usuario y contraseña` };
+      }
+      if (response.status === 404) {
+        return { ok: false, message: 'Endpoint no encontrado (HTTP 404) — verifica que has seleccionado el entorno correcto (producción o pruebas)' };
+      }
+      return { ok: false, message: `Respuesta inesperada del servidor: HTTP ${response.status}` };
     } catch (err: any) {
       if (err.code === 'ECONNREFUSED') return { ok: false, message: 'Conexión rechazada — endpoint no accesible' };
       if (err.code === 'ETIMEDOUT' || err.code === 'ECONNABORTED') return { ok: false, message: 'Timeout — el servidor no responde' };
