@@ -83,6 +83,7 @@ model Property {
   pricePerNight  Decimal?  @map("price_per_night") @db.Decimal(10, 2)
   photo          String?   @db.Text
   status         String    @default("active") @db.VarChar(20)
+  sesCodigoEstablecimiento String? @map("ses_codigo_establecimiento") @db.VarChar(20)
   createdBy      String?   @map("created_by") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")

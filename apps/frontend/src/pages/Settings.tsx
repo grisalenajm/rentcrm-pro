@@ -313,19 +313,12 @@ export default function Settings() {
                   placeholder="••••••••"
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
               </div>
-              <div>
+              <div className="col-span-2">
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Código Arrendador</label>
                 <input value={currentValue('sesCodigoArrendador')} onChange={f('sesCodigoArrendador')}
                   placeholder="0000000001"
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
                 <p className="text-xs text-slate-500 mt-1">Asignado al registrarte en SES</p>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Código Establecimiento</label>
-                <input value={currentValue('sesCodigoEstablecimiento')} onChange={f('sesCodigoEstablecimiento')}
-                  placeholder="0000000002"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                <p className="text-xs text-slate-500 mt-1">Código del alojamiento en SES</p>
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Entorno</label>
@@ -340,8 +333,8 @@ export default function Settings() {
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-sm text-amber-400">
               <p className="font-semibold mb-1">⚠️ {language === 'es' ? 'Importante' : 'Important'}</p>
               <p>{language === 'es'
-                ? 'Las credenciales se guardan cifradas. El código de establecimiento por defecto se puede sobrescribir por propiedad en la configuración de cada alojamiento.'
-                : 'Credentials are stored encrypted. The default establishment code can be overridden per property in each accommodation settings.'}</p>
+                ? 'Las credenciales se guardan cifradas. El código de establecimiento se configura por propiedad en la ficha de cada alojamiento.'
+                : 'Credentials are stored encrypted. The establishment code is configured per property in each accommodation settings.'}</p>
             </div>
           </>
         )}
