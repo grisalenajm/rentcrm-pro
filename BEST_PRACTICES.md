@@ -1,11 +1,11 @@
 # RentCRM Pro — Best Practices
 
 ## Deploy (CRÍTICO)
-- SIEMPRE: docker compose up -d --build (NUNCA solo restart — no recarga código)
-- API cambiada: docker compose up -d --build api
-- Frontend cambiado: docker compose up -d --build frontend
-- Ambos: docker compose up -d --build api frontend
-- Conflicto de nombre de contenedor: docker rm -f rentcrm-api && docker compose up -d --build api
+- El Dockerfile de la API copia el dist/ precompilado del host — NUNCA compila dentro de Docker
+- API cambiada: npm run build --workspace=apps/api && docker compose build api && docker compose up -d api
+- Frontend cambiado: docker compose up -d --build frontend (Vite sí compila dentro de Docker)
+- Conflicto de nombre de contenedor: docker rm -f rentcrm-api && docker compose up -d api
+- NUNCA solo restart — no recarga código
 - Tras cada tarea: git add -A && git commit -m 'mensaje en español' && git push origin main
 
 ## Prisma (CRÍTICO)

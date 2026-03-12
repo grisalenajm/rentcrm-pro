@@ -211,6 +211,7 @@ export class SesService {
     const sesPass       = (org as any).sesPasswordWs;
     const sesArrendador = (org as any).sesCodigoArrendador;
     const sesEndpoint   = (org as any).sesEndpoint;
+    console.log("SES_DEBUG endpoint:", sesEndpoint);
 
     if (!sesUser || !sesPass || !sesArrendador || !sesEndpoint)
       throw new BadRequestException('Credenciales SES incompletas. Ve a Configuración → SES Hospedajes.');
@@ -276,6 +277,8 @@ export class SesService {
       });
       console.log(JSON.stringify({
         event: 'ses_send',
+        errMsg: err.message,
+        errResponse: err.response?.data,
         bookingId,
         organizationId,
         status: 'error',
@@ -288,7 +291,6 @@ export class SesService {
 
   async testConnection(sesEndpoint: string, sesUsuarioWs: string, sesPasswordWs: string, sesCodigoArrendador: string): Promise<{ ok: boolean; message: string }> {
     const token = Buffer.from(`${sesUsuarioWs}:${sesPasswordWs}`).toString('base64');
-    // Usar la misma estructura SOAP real pero sin datos de reserva
     const soapBody = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:com="http://hospedajes.ses.mir.es/">
   <soapenv:Header/>
@@ -318,7 +320,6 @@ export class SesService {
         httpsAgent: new https.Agent({ rejectUnauthorized: false }),
         validateStatus: () => true,
       });
-      // 200/400/500 = servidor SOAP respondió correctamente (incluso si hay error de datos)
       if (response.status === 200 || response.status === 400 || response.status === 500) {
         return { ok: true, message: 'Conexión establecida con el Ministerio' };
       }
