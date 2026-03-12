@@ -51,3 +51,9 @@
 ## Prisma desde dentro del contenedor
 - ❌ docker exec rentcrm-api npx prisma migrate dev
 - ✅ Desde el host con DATABASE_URL explícita apuntando a localhost:5432
+
+## Error SSL en llamadas al SES del Ministerio
+- Error: 'unable to verify the first certificate'
+- Causa: el endpoint del Ministerio usa un certificado no reconocido por Node.js
+- ✅ Solución: añadir httpsAgent: new https.Agent({ rejectUnauthorized: false }) en la llamada axios
+- Nota: solo aplicar en llamadas al SES, no deshabilitar SSL globalmente

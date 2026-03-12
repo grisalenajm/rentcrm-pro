@@ -35,6 +35,10 @@
 - ValidationPipe whitelist activo: TODOS los campos del DTO necesitan decoradores @IsString()/@IsOptional() etc.
 - JWT payload contiene: id, email, organizationId, role
 
+## Llamadas externas HTTPS
+- El endpoint SES del Ministerio requiere rejectUnauthorized: false (certificado no estándar)
+- NUNCA deshabilitar SSL globalmente en axios — solo en el httpsAgent de esa llamada específica
+
 ## i18n / Traducciones
 - Traducciones en apps/frontend/src/i18n/index.ts (NO en ficheros JSON separados)
 - Tras añadir nuevos estados o textos, actualizar TODOS los idiomas en index.ts
