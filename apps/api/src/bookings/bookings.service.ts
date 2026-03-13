@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -10,6 +10,7 @@ import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
   constructor(
     private prisma: PrismaService,
     private translationService: TranslationService,
@@ -351,7 +352,7 @@ export class BookingsService {
       where: { checkinToken: token },
       include: {
         property: { select: { name: true, address: true, city: true } },
-        client:   { select: { firstName: true, lastName: true, email: true, language: true, street: true, city: true, postalCode: true, province: true, country: true } },
+        client:   { select: { firstName: true, lastName: true, language: true, street: true, city: true, postalCode: true, province: true, country: true } },
       },
     });
     if (!booking) throw new NotFoundException('Enlace no válido');
@@ -512,7 +513,6 @@ export class BookingsService {
       endDate:         booking.checkOutDate,
       clientFirstName: booking.client?.firstName,
       clientLastName:  booking.client?.lastName,
-      clientEmail:     booking.client?.email,
       clientStreet:    (booking.client as any)?.street,
       clientCity:      (booking.client as any)?.city,
       clientPostalCode:(booking.client as any)?.postalCode,
@@ -639,6 +639,7 @@ export class BookingsService {
       data: {
         checkinStatus: 'completed',
         checkinDoneAt: new Date(),
+        checkinToken: null,
       },
     });
 
@@ -691,7 +692,7 @@ export class BookingsService {
 
     for (const booking of bookings) {
       await this.sendCheckinLink(booking.id, booking.property.organizationId).catch(e =>
-        console.log(JSON.stringify({ event: 'checkin_reminder_error', bookingId: booking.id, error: e.message }))
+        this.logger.error(JSON.stringify({ event: 'checkin_reminder_error', bookingId: booking.id, error: e.message }))
       );
     }
   }

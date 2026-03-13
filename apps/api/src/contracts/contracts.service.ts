@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { CreateContractDto } from './dto/create-contract.dto';
@@ -8,6 +8,7 @@ import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class ContractsService {
+  private readonly logger = new Logger(ContractsService.name);
   constructor(private prisma: PrismaService) {}
 
   async findAllTemplates(organizationId: string) {
@@ -135,7 +136,7 @@ export class ContractsService {
       where: { id: contract.id },
       data: { status: 'signed', signatureImage: dto.signatureImage, signerName: dto.signerName, signerIp: ip, signedAt: new Date() },
     });
-    console.log(JSON.stringify({
+    this.logger.log(JSON.stringify({
       event: 'contract_signed',
       contractId: contract.id,
       timestamp: new Date().toISOString(),

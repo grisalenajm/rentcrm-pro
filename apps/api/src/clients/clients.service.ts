@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 
 @Injectable()
 export class ClientsService {
+  private readonly logger = new Logger(ClientsService.name);
   constructor(private prisma: PrismaService) {}
 
   async findAll(organizationId: string, search?: string) {
@@ -51,7 +52,7 @@ export class ClientsService {
         ...(birthDate ? { birthDate: new Date(birthDate) } : {}),
       },
     });
-    console.log(JSON.stringify({ event: 'client_modified', action: 'create', clientId: client.id, userId, timestamp: new Date().toISOString() }));
+    this.logger.log(JSON.stringify({ event: 'client_modified', action: 'create', clientId: client.id, userId, timestamp: new Date().toISOString() }));
     return client;
   }
 
@@ -65,7 +66,7 @@ export class ClientsService {
         ...(birthDate ? { birthDate: new Date(birthDate) } : {}),
       },
     });
-    console.log(JSON.stringify({ event: 'client_modified', action: 'update', clientId: id, userId: null, timestamp: new Date().toISOString() }));
+    this.logger.log(JSON.stringify({ event: 'client_modified', action: 'update', clientId: id, userId: null, timestamp: new Date().toISOString() }));
     return client;
   }
 
@@ -75,7 +76,7 @@ export class ClientsService {
       where: { id },
       data: { deletedAt: new Date() },
     });
-    console.log(JSON.stringify({ event: 'client_modified', action: 'delete', clientId: id, userId: null, timestamp: new Date().toISOString() }));
+    this.logger.log(JSON.stringify({ event: 'client_modified', action: 'delete', clientId: id, userId: null, timestamp: new Date().toISOString() }));
     return client;
   }
 }

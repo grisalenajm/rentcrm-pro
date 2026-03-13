@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Request, Res } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Request, Res, Logger } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { BookingsService } from './bookings.service';
@@ -14,6 +14,7 @@ import { Public } from '../auth/public.decorator';
 @Controller('bookings')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class BookingsController {
+  private readonly logger = new Logger(BookingsController.name);
   constructor(
     private bookingsService: BookingsService,
     private sesService: SesService,
@@ -109,7 +110,7 @@ export class BookingsController {
           id, organizationId, userEmail,
           `El Ministerio rechazó el parte SES (código de respuesta: ${result.codigo})`,
           result.lote,
-        ).catch(e => console.log(JSON.stringify({ event: 'ses_error_email_failed', error: e.message })));
+        ).catch(e => this.logger.error(JSON.stringify({ event: 'ses_error_email_failed', error: e.message })));
       }
       return result;
     } catch (err) {

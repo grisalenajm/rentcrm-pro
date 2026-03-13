@@ -29,8 +29,8 @@ export class ICalController {
   @Delete('feeds/:id')
   @Roles('admin', 'gestor')
   @HttpCode(204)
-  remove(@Param('id') id: string) {
-    return this.icalService.remove(id);
+  remove(@Param('id') id: string, @Request() req) {
+    return this.icalService.remove(id, req.user.organizationId);
   }
 
   @Post('feeds/:id/sync')

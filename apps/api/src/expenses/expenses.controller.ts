@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
-import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
+import { IsEnum, IsNumber, IsOptional, IsString, Min, MaxLength } from 'class-validator';
 import { ExpensesService } from './expenses.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -10,9 +10,16 @@ const EXPENSE_TYPES = ['tasas', 'agua', 'luz', 'internet', 'limpieza', 'otros'] 
 class CreateExpenseDto {
   @IsString() propertyId: string;
   @IsString() date: string;
-  @IsNumber() amount: number;
+  @IsNumber() @Min(0) amount: number;
   @IsEnum(EXPENSE_TYPES, { message: 'Tipo de gasto no válido' }) type: string;
-  @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsString() @MaxLength(500) notes?: string;
+}
+
+class UpdateExpenseDto {
+  @IsOptional() @IsString() date?: string;
+  @IsOptional() @IsNumber() @Min(0) amount?: number;
+  @IsOptional() @IsEnum(EXPENSE_TYPES, { message: 'Tipo de gasto no válido' }) type?: string;
+  @IsOptional() @IsString() @MaxLength(500) notes?: string;
 }
 
 @UseGuards(JwtAuthGuard)
@@ -44,14 +51,18 @@ export class ExpensesController {
   @Put(':id')
   @UseGuards(RolesGuard)
   @Roles('admin', 'owner')
-  update(@Request() req, @Param('id') id: string, @Body() body: any) {
-    return this.expensesService.update(parseInt(id), body, req.user.organizationId);
+  update(@Request() req, @Param('id') id: string, @Body() body: UpdateExpenseDto) {
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) throw new BadRequestException('ID de gasto inválido');
+    return this.expensesService.update(numId, body, req.user.organizationId);
   }
 
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles('admin', 'owner')
   remove(@Request() req, @Param('id') id: string) {
-    return this.expensesService.remove(parseInt(id), req.user.organizationId);
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) throw new BadRequestException('ID de gasto inválido');
+    return this.expensesService.remove(numId, req.user.organizationId);
   }
 }

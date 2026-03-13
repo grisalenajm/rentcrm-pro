@@ -4,8 +4,8 @@
 - **Repo**: `/home/rentcrm/rentcrm-pro` (monorepo npm workspaces)
 - **Frontend**: `apps/frontend/` → puerto 3000 (Vite dev server dentro de Docker — **requiere rebuild** para ver cambios)
 - **API**: `apps/api/` → puerto 3001 (NestJS, prefijo `/api`)
-- **DB**: PostgreSQL → `postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm`
-- **Redis**: `redis://:rentcrm_redis_pass@localhost:6379`
+- **DB**: PostgreSQL → `postgresql://rentcrm:[ver .env]@localhost:5432/rentcrm`
+- **Redis**: `redis://:[ver .env]@localhost:6379`
 - **LibreTranslate**: `http://localhost:5000` (externo) / `http://libretranslate:5000` (interno Docker)
 
 ## Contenedores Docker
@@ -30,10 +30,10 @@ docker logs rentcrm-api --tail=20
 ### Migraciones Prisma (SIEMPRE desde el host, nunca desde el contenedor)
 ```bash
 cd ~/rentcrm-pro/apps/api
-DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma migrate dev --name nombre-migracion
-DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma generate
+DATABASE_URL="postgresql://rentcrm:[ver .env]@localhost:5432/rentcrm" npx prisma migrate dev --name nombre-migracion
+DATABASE_URL="postgresql://rentcrm:[ver .env]@localhost:5432/rentcrm" npx prisma generate
 # Si falla "migration modified": usar db push en desarrollo
-DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma db push
+DATABASE_URL="postgresql://rentcrm:[ver .env]@localhost:5432/rentcrm" npx prisma db push
 ```
 
 ### Frontend (requiere rebuild — NO hay hot reload real en el contenedor)
@@ -200,8 +200,8 @@ model Organization {
 
 ## Variables de entorno clave (.env en apps/api/)
 ```
-DATABASE_URL=postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@postgres:5432/rentcrm
-REDIS_URL=redis://:rentcrm_redis_pass@redis:6379
+DATABASE_URL=postgresql://rentcrm:[ver .env]@postgres:5432/rentcrm
+REDIS_URL=redis://:[ver .env]@redis:6379
 JWT_SECRET=...
 FRONTEND_URL=http://192.168.1.123:3000
 LIBRETRANSLATE_URL=http://libretranslate:5000

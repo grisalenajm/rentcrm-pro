@@ -51,8 +51,10 @@ export class ICalService {
     });
   }
 
-  async remove(id: string) {
-    const feed = await this.prisma.availabilitySync.findUnique({ where: { id } });
+  async remove(id: string, organizationId: string) {
+    const feed = await this.prisma.availabilitySync.findFirst({
+      where: { id, property: { organizationId } },
+    });
     if (!feed) throw new NotFoundException('Feed not found');
     await this.prisma.availabilitySync.delete({ where: { id } });
     return { ok: true };

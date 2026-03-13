@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import * as zlib from 'zlib';
 import { promisify } from 'util';
@@ -23,6 +23,7 @@ const ISO2_TO_3: Record<string, string> = {
 
 @Injectable()
 export class SesService {
+  private readonly logger = new Logger(SesService.name);
   constructor(private prisma: PrismaService) {}
 
   private escapeXml(s: string): string {
@@ -211,8 +212,6 @@ export class SesService {
     const sesPass       = (org as any).sesPasswordWs;
     const sesArrendador = (org as any).sesCodigoArrendador;
     const sesEndpoint   = (org as any).sesEndpoint;
-    console.log("SES_DEBUG endpoint:", sesEndpoint);
-
     if (!sesUser || !sesPass || !sesArrendador || !sesEndpoint)
       throw new BadRequestException('Credenciales SES incompletas. Ve a Configuración → SES Hospedajes.');
 
@@ -261,7 +260,7 @@ export class SesService {
       });
 
       const ok = codigo === '0';
-      console.log(JSON.stringify({
+      this.logger.log(JSON.stringify({
         event: 'ses_send',
         bookingId,
         organizationId,
@@ -275,7 +274,7 @@ export class SesService {
         where: { id: bookingId },
         data: { sesStatus: 'error', sesSentAt: new Date() },
       });
-      console.log(JSON.stringify({
+      this.logger.error(JSON.stringify({
         event: 'ses_send',
         errMsg: err.message,
         errResponse: err.response?.data,
