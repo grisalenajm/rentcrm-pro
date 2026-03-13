@@ -94,6 +94,14 @@ export class BookingsController {
     return { ok: true };
   }
 
+  // ── Welcome Package ─────────────────────────────────────────────────────────
+  @Post(':id/welcome/send')
+  @Roles('admin', 'gestor')
+  async sendWelcome(@Param('id') id: string, @Request() req) {
+    await this.bookingsService.sendWelcomePackage(id, req.user.organizationId);
+    return { ok: true };
+  }
+
   // ── SES Envío ──────────────────────────────────────────────────────────────
   @Post(':id/ses/send')
   @Roles('admin', 'gestor')

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import ExcelButtons from '../components/ExcelButtons';
+import ContentEditor from '../components/ContentEditor';
 
 interface Property {
   id: string;
@@ -40,6 +41,9 @@ export default function Properties() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
+  // detail tab
+  const [detailTab, setDetailTab] = useState<'info'|'contenido'>('info');
+
   // iCal state
   const [icalProperty, setIcalProperty] = useState<Property | null>(null);
   const [icalFeeds, setIcalFeeds] = useState<Feed[]>([]);
@@ -54,6 +58,12 @@ export default function Properties() {
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ['properties'],
     queryFn: () => api.get('/properties').then(r => r.data),
+  });
+
+  // Global content for placeholder reference in ContentEditor
+  const { data: globalContent } = useQuery({
+    queryKey: ['property-content', 'global'],
+    queryFn: () => api.get('/property-content').then(r => r.data),
   });
 
   // Financial data for detail panel
@@ -251,7 +261,7 @@ export default function Properties() {
               </thead>
               <tbody>
                 {properties.map((p: Property) => (
-                  <tr key={p.id} className="border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => setDetailProperty(p)}>
+                  <tr key={p.id} className="border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => { setDetailProperty(p); setDetailTab('info'); }}>
                     <td className="px-4 py-3">
                       <span className="font-medium text-white">
                         {p.name}
@@ -287,7 +297,7 @@ export default function Properties() {
           {/* Móvil: tarjetas */}
           <div className="md:hidden space-y-3">
             {properties.map((p: Property) => (
-              <div key={p.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer" onClick={() => setDetailProperty(p)}>
+              <div key={p.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer" onClick={() => { setDetailProperty(p); setDetailTab('info'); }}>
                 <div className="flex justify-between items-start mb-2">
                   <span className="font-medium text-white hover:text-emerald-400 transition-colors">
                     {p.name}
@@ -339,7 +349,33 @@ export default function Properties() {
               </div>
             </div>
 
+            {/* Pestañas */}
+            <div className="flex border-b border-slate-800 px-6">
+              {(['info', 'contenido'] as const).map(tab => (
+                <button key={tab} onClick={() => setDetailTab(tab)}
+                  className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+                    detailTab === tab
+                      ? 'border-emerald-500 text-emerald-400'
+                      : 'border-transparent text-slate-400 hover:text-white'
+                  }`}>
+                  {tab === 'info' ? '📋 Info' : '📄 Contenido'}
+                </button>
+              ))}
+            </div>
+
             <div className="flex-1 overflow-y-auto">
+              {/* Pestaña Contenido */}
+              {detailTab === 'contenido' && (
+                <div className="p-6">
+                  <ContentEditor
+                    propertyId={detailProperty.id}
+                    globalContent={globalContent}
+                  />
+                </div>
+              )}
+
+              {/* Pestaña Info */}
+              {detailTab === 'info' && <>
               {/* Bloque superior: foto + datos */}
               <div className="flex gap-4 p-6">
                 {/* Foto pequeña izquierda */}
@@ -501,6 +537,7 @@ export default function Properties() {
                   </>
                 )}
               </div>
+              </>}
             </div>
           </div>
         </div>

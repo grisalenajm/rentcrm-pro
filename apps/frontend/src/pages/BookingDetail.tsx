@@ -38,6 +38,7 @@ export default function BookingDetail() {
   const qc = useQueryClient();
   const [showRating, setShowRating] = useState(false);
   const [sendingCheckin, setSendingCheckin] = useState(false);
+  const [sendingWelcome, setSendingWelcome] = useState(false);
   const [sesSending, setSesSending] = useState(false);
   const [sesResult, setSesResult] = useState<{ok: boolean; message: string} | null>(null);
   const [ratingScore, setRatingScore] = useState(5);
@@ -168,6 +169,18 @@ export default function BookingDetail() {
     mutationFn: ({ evalId, data }: any) => api.put(`/evaluations/${evalId}`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['evaluation-booking', id] }),
   });
+
+  const handleSendWelcome = async () => {
+    setSendingWelcome(true);
+    try {
+      await api.post(`/bookings/${booking.id}/welcome/send`);
+      qc.invalidateQueries({ queryKey: ['booking', id] });
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Error al enviar el welcome package');
+    } finally {
+      setSendingWelcome(false);
+    }
+  };
 
   const handleSendCheckin = async () => {
     setSendingCheckin(true);
@@ -483,6 +496,26 @@ export default function BookingDetail() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Welcome Package */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6">
+        <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <span>📨</span> {t('bookings.welcomePackage')}
+        </h3>
+        <div className="mb-4">
+          {booking.welcomeSentAt ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full">✓ {t('bookings.welcomeSentAt')} {new Date(booking.welcomeSentAt).toLocaleDateString('es-ES')}</span>
+            </div>
+          ) : (
+            <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded-full">{t('bookings.welcomeNotSent')}</span>
+          )}
+        </div>
+        <button onClick={handleSendWelcome} disabled={sendingWelcome}
+          className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
+          {sendingWelcome ? t('bookings.welcomeSending') : booking.welcomeSentAt ? `🔄 ${t('bookings.sendWelcome')}` : t('bookings.sendWelcome')}
+        </button>
       </div>
 
       {/* Modal edición */}

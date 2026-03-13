@@ -63,7 +63,21 @@ const es = {
     rating: "Valoración de la estancia", noRating: "Sin valoración todavía",
     rateStay: "★ Valorar", contract: "Contrato", noContract: "No hay contrato asociado",
     financials: "Registros financieros", noFinancials: "No hay registros financieros para esta reserva",
-    cancel: "Cancelar reserva", additionalGuests: "Huéspedes adicionales"
+    cancel: "Cancelar reserva", additionalGuests: "Huéspedes adicionales",
+    welcomePackage: "Welcome Package", sendWelcome: "📨 Enviar Welcome Package",
+    welcomeSentAt: "Enviado el", welcomeNotSent: "No enviado", welcomeSending: "Enviando..."
+  },
+  content: {
+    houseRules: "Reglas de la casa", arrivalGuide: "Guía de llegada", localInfo: "Información local",
+    globalContent: "Contenido global", propertyContent: "Contenido de la propiedad",
+    inheritedFromGlobal: "Usando contenido global",
+    documents: "Documentos PDF", uploadPdf: "Subir PDF", noContent: "Sin contenido configurado",
+    save: "Guardar contenido", saving: "Guardando...", saved: "✅ Guardado",
+    deleteDoc: "Eliminar", noDocuments: "No hay documentos", addDocument: "Añadir documento",
+    globalTab: "Global", propertyTab: "Esta propiedad",
+    houseRulesPlaceholder: "Normas del alojamiento (horarios, ruido, mascotas...)",
+    arrivalGuidePlaceholder: "Instrucciones de llegada, cómo entrar, dónde aparcar...",
+    localInfoPlaceholder: "Taxis, restaurantes, supermercados, transporte público...",
   },
   financials: {
     title: "Financiero", new: "Nuevo registro", income: "Ingreso", expense: "Gasto",
@@ -201,7 +215,21 @@ const en = {
     rating: "Stay rating", noRating: "No rating yet",
     rateStay: "★ Rate", contract: "Contract", noContract: "No contract associated",
     financials: "Financial records", noFinancials: "No financial records for this booking",
-    cancel: "Cancel booking", additionalGuests: "Additional guests"
+    cancel: "Cancel booking", additionalGuests: "Additional guests",
+    welcomePackage: "Welcome Package", sendWelcome: "📨 Send Welcome Package",
+    welcomeSentAt: "Sent on", welcomeNotSent: "Not sent", welcomeSending: "Sending..."
+  },
+  content: {
+    houseRules: "House rules", arrivalGuide: "Arrival guide", localInfo: "Local info",
+    globalContent: "Global content", propertyContent: "Property content",
+    inheritedFromGlobal: "Using global content",
+    documents: "PDF Documents", uploadPdf: "Upload PDF", noContent: "No content configured",
+    save: "Save content", saving: "Saving...", saved: "✅ Saved",
+    deleteDoc: "Delete", noDocuments: "No documents", addDocument: "Add document",
+    globalTab: "Global", propertyTab: "This property",
+    houseRulesPlaceholder: "House rules (schedules, noise, pets...)",
+    arrivalGuidePlaceholder: "Arrival instructions, how to get in, parking...",
+    localInfoPlaceholder: "Taxis, restaurants, supermarkets, public transport...",
   },
   financials: {
     title: "Financials", new: "New record", income: "Income", expense: "Expense",

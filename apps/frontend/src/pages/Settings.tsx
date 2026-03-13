@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import { useUserPreferences } from '../context/UserPreferencesContext';
+import ContentEditor from '../components/ContentEditor';
 
 const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'MXN', 'ARS', 'COP'];
 const DATE_FORMATS = ['dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd'];
@@ -16,7 +17,7 @@ export default function Settings() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<'usuario'|'general'|'fiscal'|'email'|'ses'|'preferences'>('usuario');
+  const [activeTab, setActiveTab] = useState<'usuario'|'general'|'fiscal'|'email'|'ses'|'preferences'|'contenido'>('usuario');
   const [smtpPass, setSmtpPass] = useState('');
   const [testEmail, setTestEmail] = useState('');
   const [testResult, setTestResult] = useState<{ok: boolean; message: string} | null>(null);
@@ -94,6 +95,7 @@ export default function Settings() {
     { id: 'fiscal',      label: t('settings.tabs.fiscal') },
     { id: 'email',       label: t('settings.tabs.email') },
     { id: 'ses',         label: '🚔 SES Hospedajes' },
+    { id: 'contenido',   label: '📄 Contenido' },
     { id: 'preferences', label: t('settings.tabs.preferences') },
   ];
 
@@ -369,6 +371,11 @@ export default function Settings() {
                 : 'Credentials are stored encrypted. The establishment code is configured per property in each accommodation settings.'}</p>
             </div>
           </>
+        )}
+
+        {/* CONTENIDO GLOBAL */}
+        {activeTab === 'contenido' && (
+          <ContentEditor propertyId={undefined} />
         )}
 
         {/* PREFERENCES */}

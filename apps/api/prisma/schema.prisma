@@ -37,9 +37,11 @@ model Organization {
   policeReports       PoliceReport[]
   auditLogs           AuditLog[]
   financialCategories FinancialCategory[]
+  contractTemplates   ContractTemplate[]
+  contracts           Contract[]
+  propertyContents    PropertyContent[]
+  propertyDocuments   PropertyDocument[]
 
-  contractTemplates ContractTemplate[]
-  contracts         Contract[]
   @@map("organizations")
 }
 
@@ -96,6 +98,8 @@ model Property {
   availabilitySyncs  AvailabilitySync[]
   availabilityBlocks AvailabilityBlock[]
   expenses           Expense[]
+  propertyContents   PropertyContent[]
+  propertyDocuments  PropertyDocument[]
 
   @@index([organizationId])
   @@map("properties")
@@ -185,6 +189,7 @@ model Booking {
   checkinStatus String?   @map("checkin_status") @db.VarChar(20)
   checkinSentAt DateTime? @map("checkin_sent_at")
   checkinDoneAt DateTime? @map("checkin_done_at")
+  welcomeSentAt DateTime? @map("welcome_sent_at")
   statusChangedAt  DateTime?
   statusHistory    BookingStatusHistory[]
 
@@ -448,4 +453,38 @@ model BookingStatusHistory {
   booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([bookingId])
+}
+
+model PropertyContent {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  propertyId     String?   @map("property_id") @db.Uuid
+  houseRules     String?   @map("house_rules") @db.Text
+  arrivalGuide   String?   @map("arrival_guide") @db.Text
+  localInfo      String?   @map("local_info") @db.Text
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property       Property?     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, propertyId])
+  @@index([organizationId])
+  @@map("property_contents")
+}
+
+model PropertyDocument {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  propertyId     String?  @map("property_id") @db.Uuid
+  name           String   @db.VarChar(255)
+  fileData       String   @map("file_data") @db.Text
+  fileSize       Int      @map("file_size")
+  order          Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property       Property?    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("property_documents")
 }

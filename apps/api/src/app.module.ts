@@ -18,6 +18,7 @@ import { ICalModule } from './ical/ical.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { ExcelModule } from './excel/excel.module';
 import { TranslationModule } from './translation/translation.module';
+import { PropertyContentModule } from './property-content/property-content.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { TranslationModule } from './translation/translation.module';
     ExpensesModule,
     ExcelModule,
     TranslationModule,
+    PropertyContentModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

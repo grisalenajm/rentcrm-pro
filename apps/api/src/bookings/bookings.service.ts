@@ -5,6 +5,7 @@ import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { CreateBookingGuestSesDto } from './dto/booking-guest-ses.dto';
 import { TranslationService } from '../translation/translation.service';
+import { PropertyContentService } from '../property-content/property-content.service';
 import { randomUUID } from 'crypto';
 import * as nodemailer from 'nodemailer';
 
@@ -14,6 +15,7 @@ export class BookingsService {
   constructor(
     private prisma: PrismaService,
     private translationService: TranslationService,
+    private propertyContentService: PropertyContentService,
   ) {}
 
   async findAll(organizationId: string, propertyId?: string) {
@@ -672,6 +674,127 @@ export class BookingsService {
     return { ok: true, message: '¡Checkin completado con éxito!' };
   }
 
+  async sendWelcomePackage(bookingId: string, organizationId: string): Promise<void> {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, organizationId },
+      include: {
+        client:   { select: { firstName: true, email: true, language: true } },
+        property: { select: { id: true, name: true } },
+      },
+    });
+    if (!booking) throw new NotFoundException('Reserva no encontrada');
+    if (!booking.client?.email) throw new BadRequestException('El cliente no tiene email');
+
+    const lang = booking.client.language || 'es';
+    const propertyName = booking.property.name;
+    const checkIn = new Date(booking.checkInDate).toLocaleDateString('es-ES');
+
+    const content = await this.propertyContentService.getContent(organizationId, booking.property.id);
+    const docs    = await this.propertyContentService.getDocumentsWithData(organizationId, booking.property.id);
+
+    // Textos a traducir
+    const textsToTranslate = [
+      `Bienvenido/a a ${propertyName}`,
+      `Hola ${booking.client.firstName}, tu estancia en ${propertyName} comienza el ${checkIn}. Aquí tienes toda la información que necesitas para tu llegada.`,
+      'Reglas de la casa',
+      'Guía de llegada',
+      'Información local',
+      'Tu estancia en',
+      'Información de llegada',
+      'Un saludo del equipo de',
+    ];
+
+    const [
+      welcomeTitle,
+      bodyIntro,
+      houseRulesTitle,
+      arrivalGuideTitle,
+      localInfoTitle,
+      stayAt,
+      arrivalInfo,
+      greetings,
+    ] = await this.translationService.translateMany(textsToTranslate, lang);
+
+    // Traducir el contenido textual
+    const contentTexts: string[] = [];
+    if (content.houseRules)   contentTexts.push(content.houseRules);
+    if (content.arrivalGuide) contentTexts.push(content.arrivalGuide);
+    if (content.localInfo)    contentTexts.push(content.localInfo);
+
+    const translatedContentTexts = contentTexts.length > 0
+      ? await this.translationService.translateMany(contentTexts, lang)
+      : [];
+
+    let idx = 0;
+    const tHouseRules   = content.houseRules   ? translatedContentTexts[idx++] : null;
+    const tArrivalGuide = content.arrivalGuide  ? translatedContentTexts[idx++] : null;
+    const tLocalInfo    = content.localInfo     ? translatedContentTexts[idx++] : null;
+
+    const section = (title: string, text: string | null) => text ? `
+      <div style="margin-bottom: 24px;">
+        <h3 style="color: #10b981; font-size: 16px; margin: 0 0 8px 0; padding-bottom: 6px; border-bottom: 1px solid #334155;">${title}</h3>
+        <p style="color: #cbd5e1; line-height: 1.7; white-space: pre-wrap; margin: 0;">${text}</p>
+      </div>
+    ` : '';
+
+    const hasSections = tHouseRules || tArrivalGuide || tLocalInfo;
+
+    const subject = `${stayAt} ${propertyName} — ${arrivalInfo}`;
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #e2e8f0; border-radius: 12px; overflow: hidden;">
+        <div style="background: #10b981; padding: 24px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 22px;">🏠 ${welcomeTitle}</h1>
+        </div>
+        <div style="padding: 28px;">
+          <p style="color: #94a3b8; line-height: 1.6; margin: 0 0 24px 0;">${bodyIntro}</p>
+          ${hasSections ? `
+            ${section(houseRulesTitle, tHouseRules)}
+            ${section(arrivalGuideTitle, tArrivalGuide)}
+            ${section(localInfoTitle, tLocalInfo)}
+          ` : ''}
+          ${docs.length > 0 ? `
+            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #334155;">
+              <p style="color: #94a3b8; font-size: 14px; margin: 0;">📎 ${docs.length} documento${docs.length > 1 ? 's' : ''} adjunto${docs.length > 1 ? 's' : ''}</p>
+            </div>
+          ` : ''}
+          <p style="color: #64748b; font-size: 13px; margin-top: 24px; border-top: 1px solid #1e293b; padding-top: 16px;">
+            ${greetings} ${propertyName} · RentCRM Pro
+          </p>
+        </div>
+      </div>
+    `;
+
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
+    if (!org?.smtpHost || !org?.smtpPort || !org?.smtpUser || !org?.smtpPass) {
+      throw new BadRequestException('Configuración SMTP incompleta en la organización');
+    }
+    const transporter = nodemailer.createTransport({
+      host: org.smtpHost,
+      port: Number(org.smtpPort),
+      secure: Number(org.smtpPort) === 465,
+      auth: { user: org.smtpUser, pass: org.smtpPass },
+    });
+
+    const attachments = docs.map(doc => ({
+      filename: doc.name.endsWith('.pdf') ? doc.name : `${doc.name}.pdf`,
+      content: Buffer.from(doc.fileData, 'base64'),
+      contentType: 'application/pdf',
+    }));
+
+    await transporter.sendMail({
+      from: org.smtpFrom || org.smtpUser,
+      to: booking.client.email,
+      subject,
+      html,
+      attachments,
+    });
+
+    await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { welcomeSentAt: new Date() },
+    });
+  }
+
   @Cron('0 9 * * *')
   async sendCheckinReminders(): Promise<void> {
     const twoDaysFromNow = new Date();
@@ -693,6 +816,23 @@ export class BookingsService {
     for (const booking of bookings) {
       await this.sendCheckinLink(booking.id, booking.property.organizationId).catch(e =>
         this.logger.error(JSON.stringify({ event: 'checkin_reminder_error', bookingId: booking.id, error: e.message }))
+      );
+    }
+
+    // También enviar el welcome package a reservas que aún no lo hayan recibido
+    const welcomeBookings = await this.prisma.booking.findMany({
+      where: {
+        checkInDate: { gte: startOfDay, lte: endOfDay },
+        welcomeSentAt: null,
+        client: { email: { not: null } },
+        status: { notIn: ['cancelled'] },
+      },
+      include: { property: true },
+    });
+
+    for (const booking of welcomeBookings) {
+      await this.sendWelcomePackage(booking.id, booking.property.organizationId).catch(e =>
+        this.logger.error(JSON.stringify({ event: 'welcome_reminder_error', bookingId: booking.id, error: e.message }))
       );
     }
   }
