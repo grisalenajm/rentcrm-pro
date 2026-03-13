@@ -9,6 +9,7 @@ COPY apps/frontend/index.html ./
 COPY apps/frontend/package.json ./
 COPY apps/frontend/vite.config.ts ./
 COPY apps/frontend/tsconfig*.json ./
+COPY apps/frontend/.env ./.env
 
 EXPOSE 3000
 

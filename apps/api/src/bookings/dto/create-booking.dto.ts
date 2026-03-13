@@ -6,7 +6,7 @@ export class BookingGuestDto {
   clientId: string;
 
   @IsOptional()
-  @IsString()
+  @IsIn(['primary', 'guest', 'child'])
   role?: string;
 }
 

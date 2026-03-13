@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { WORLD_COUNTRIES } from '../data/countries';
 
-const API = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL + '/api' : 'http://192.168.1.123:3001/api';
+const API = import.meta.env.VITE_API_URL + '/api';
 
 const browserLang = navigator.language?.slice(0, 2) || 'en';
 
