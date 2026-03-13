@@ -9,11 +9,13 @@
 - **LibreTranslate**: `http://localhost:5000` (externo) / `http://libretranslate:5000` (interno Docker)
 
 ## Contenedores Docker
+```
 rentcrm-api        → NestJS API (puerto 3001)
 rentcrm-frontend   → Vite React (puerto 3000)
 rentcrm-postgres   → PostgreSQL 15
 rentcrm-redis      → Redis 7
 rentcrm-translate  → LibreTranslate (puerto 5000)
+```
 
 ## Comandos esenciales
 
@@ -46,6 +48,7 @@ cd ~/rentcrm-pro && git add -A && git commit -m "mensaje" && git push origin mai
 ```
 
 ## Estructura de archivos clave
+```
 rentcrm-pro/
 ├── apps/
 │   ├── api/
@@ -61,6 +64,7 @@ rentcrm-pro/
 │   │       ├── bookings/
 │   │       │   ├── bookings.controller.ts  ← IMPORTANTE: rutas checkin ANTES de :id
 │   │       │   ├── bookings.service.ts
+│   │       │   ├── ses.service.ts     ← lógica SES/SOAP Ministerio
 │   │       │   └── dto/
 │   │       │       ├── create-booking.dto.ts
 │   │       │       └── update-booking.dto.ts
@@ -68,6 +72,7 @@ rentcrm-pro/
 │   │       ├── properties/
 │   │       ├── expenses/              ← CRUD gastos por propiedad
 │   │       ├── excel/                 ← exportar/importar Excel
+│   │       ├── organization/          ← config SMTP, SES, logo
 │   │       ├── translation/
 │   │       │   ├── translation.service.ts  ← caché + precalentamiento
 │   │       │   └── translation.module.ts
@@ -77,10 +82,12 @@ rentcrm-pro/
 │       └── src/
 │           ├── main.tsx
 │           ├── App.tsx                ← rutas React Router
+│           ├── i18n/
+│           │   └── index.ts           ← TODAS las traducciones aquí (NO ficheros JSON)
 │           ├── context/
 │           │   └── AuthContext.tsx    ← JWT en memoria (no localStorage)
 │           ├── data/
-│           │   └── countries.ts            ← 195 países ISO 3166-1 (WORLD_COUNTRIES)
+│           │   └── countries.ts       ← 195 países ISO 3166-1 (WORLD_COUNTRIES)
 │           ├── components/
 │           │   ├── Layout.tsx              ← drawer móvil hamburguesa
 │           │   ├── ExcelButtons.tsx        ← exportar/importar reutilizable
@@ -96,7 +103,9 @@ rentcrm-pro/
 │               ├── Calendar.tsx
 │               ├── Contracts.tsx
 │               ├── Police.tsx         ← partes SES
+│               ├── Settings.tsx       ← config org, SMTP, SES (botón test conexión)
 │               └── CheckinPage.tsx    ← página PÚBLICA /checkin/:token
+```
 
 ## Modelos Prisma principales (schema.prisma)
 ```prisma
@@ -114,6 +123,9 @@ model Booking {
   checkinStatus  String?   @default("pending")
   checkinSentAt  DateTime?
   checkinDoneAt  DateTime?
+  sesLote        String?
+  sesStatus      String?
+  sesSentAt      DateTime?
   property       Property  @relation(...)
   client         Client?   @relation(...)
   guests         BookingGuestSes[]
@@ -128,24 +140,25 @@ model Client {
   birthDate      DateTime?
   email          String?
   phone          String?
-  street         String?             // ← dirección estructurada
+  street         String?
   city           String?
   postalCode     String?   @map("postal_code")
   province       String?
-  country        String?   @db.VarChar(5)  // código ISO: ES, FR, DE...
+  country        String?   @db.VarChar(5)
   notes          String?
   language       String?   @default("es")
   organizationId String
 }
 
 model Property {
-  id      String  @id @default(uuid())
-  name    String
-  address String?
-  city    String?
-  photo   String? // base64
-  icalUrl String?
-  organizationId String
+  id                       String  @id @default(uuid())
+  name                     String
+  address                  String?
+  city                     String?
+  photo                    String?
+  icalUrl                  String?
+  sesCodigoEstablecimiento String? // ← código SES por propiedad, NO en Organization
+  organizationId           String
 }
 
 model Expense {
@@ -168,16 +181,25 @@ model BookingGuestSes {
   docCountry String
   birthDate  DateTime?
   phone      String?
-  street     String?             // ← dirección estructurada
+  street     String?
   city       String?
   postalCode String?   @map("postal_code")
   province   String?
   country    String?
   booking    Booking   @relation(...)
 }
+
+model Organization {
+  sesUsuarioWs        String?
+  sesPasswordWs       String?
+  sesCodigoArrendador String?
+  sesEndpoint         String?  // https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion
+  // sesCodigoEstablecimiento NO va aquí, va en Property
+}
 ```
 
 ## Variables de entorno clave (.env en apps/api/)
+```
 DATABASE_URL=postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@postgres:5432/rentcrm
 REDIS_URL=redis://:rentcrm_redis_pass@redis:6379
 JWT_SECRET=...
@@ -186,6 +208,7 @@ LIBRETRANSLATE_URL=http://libretranslate:5000
 SMTP_HOST=...
 SMTP_USER=...
 SMTP_PASS=...
+```
 
 ## Roles de usuario
 | Rol | Permisos |
@@ -193,16 +216,9 @@ SMTP_PASS=...
 | `admin` | Todo |
 | `gestor` | Crear/editar bookings, clients, properties, contracts, SES, checkin |
 | `owner` | Solo gastos |
-| viewer | Solo lectura (GET) |
+| `viewer` | Solo lectura (GET) |
 
 JWT payload: `{ id, email, organizationId, role }`
-
-## Referencia rápida API
-Ver `API_ENDPOINTS.md` para la lista completa de endpoints.
-Todos bajo `/api`, autenticados con JWT Bearer excepto:
-- `POST /api/auth/login`
-- `GET/POST /api/bookings/checkin/:token`
-- `GET/POST /api/contracts/sign/:token`
 
 ## Patrones importantes
 
@@ -214,78 +230,65 @@ getCheckin() {}
 // IMPORTANTE: rutas con parámetro fijo ANTES de :id en el controlador
 ```
 
-### Validación DTO con whitelist
-```typescript
-// main.ts tiene: app.useGlobalPipes(new ValidationPipe({ whitelist: true }))
-// Todos los campos en DTOs deben tener decoradores @IsString(), @IsOptional(), etc.
-```
-
-### Prisma — nombres de campos Booking
-```typescript
-// IMPORTANTE: los campos de Booking usan checkInDate/checkOutDate/totalAmount
-// NO startDate/endDate/totalPrice (nombres legacy ya eliminados)
-// Siempre verificar: grep "fieldName" apps/api/prisma/schema.prisma
-prisma.booking.update({ data: { checkInDate: new Date(data.checkInDate), totalAmount: data.totalAmount } })
-```
-
 ### Workflow estados de reserva
 ```
-Estados: created, registered, processed, error, cancelled
-Transiciones:
-  created    → registered | cancelled
-  registered → processed  | error | cancelled
-  error      → registered | processed | cancelled
+created    → registered | cancelled
+registered → processed  | error | cancelled
+error      → registered | processed | cancelled
+processed  → (final)
+cancelled  → (final)
 ```
-- `PATCH /bookings/:id/status` con body `{ status }` — valida transiciones en backend
-- `updateStatusOnCheckinComplete()` — auto: created/error → registered al completar checkin
-- `updateStatusOnSesSent(success)` — auto: registered/error → processed o → error al enviar SES
 - Colores: created=amber, registered=blue, processed=emerald, error=red, cancelled=slate
 
 ### TranslationService
 ```typescript
-// Caché en memoria + precalentamiento al arrancar (onModuleInit)
 // 10 idiomas: es, en, fr, de, it, pt, nl, da, nb, sv
-// Fallback: devuelve texto original si LibreTranslate no responde
+// Timeouts en sv al arrancar son normales — no son errores
 await this.translationService.translateMany([...textos], lang);
 ```
 
 ### Frontend — routing API
-- `api.ts` usa `baseURL: '/api'` (relativo) → Vite proxy redirige a `http://api:3001`
-- `CheckinPage.tsx` usa `VITE_API_URL + '/api'` como fallback directo (página pública)
-- VITE_API_URL=http://192.168.1.123:3001 en .env → para acceso desde móviles externos
-- NO usar http://api:3001 desde el navegador (solo funciona dentro de Docker)
+- `api.ts` usa `baseURL: '/api'` relativo → Vite proxy redirige a `http://api:3001`
+- `CheckinPage.tsx` usa `VITE_API_URL + '/api'` directo (página pública)
+- NO usar `http://api:3001` desde el navegador
 
-### Lista de países
-`src/data/countries.ts` exporta `WORLD_COUNTRIES` (195 países, ISO 3166-1 alpha-2, en español).
-Usar en cualquier selector de nacionalidad, país doc o dirección. NO duplicar listas inline.
+### i18n
+- TODAS las traducciones en `apps/frontend/src/i18n/index.ts` — NO ficheros JSON
+- Al añadir estados nuevos: actualizar todos los idiomas Y los `statusColor` de cada página
 
-### Responsive — breakpoints
-Sin prefijo = móvil primero
-md: = 768px = desktop
+## SES Hospedajes
 
-### Patrón tabla→tarjetas móvil
-```jsx
-<div className="hidden md:block"><table>...</table></div>
-<div className="md:hidden space-y-3">{items.map(i => <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">...</div>)}</div>
+### Endpoint correcto (CRÍTICO)
 ```
-
-### Patrón modal fullscreen móvil
-```jsx
-<div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-  <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[95vh] overflow-y-auto p-6">
+https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion
 ```
+- ⚠️ `/ws/v1/comunicacion` → 404 (incorrecto aunque aparezca en la doc)
+- `/ws/comunicacion` → 500 con body vacío = endpoint existe ✅
 
-## Problemas conocidos y soluciones
+### Estado (12/03/2026)
+- Endpoint actualizado en BD a `/ws/comunicacion`
+- Sigue dando 404 con XML completo — causa probable: cuenta no activada en el Ministerio
+- **Pendiente**: darse de alta en https://hospedajes.ses.mir.es
+- SSL: `rejectUnauthorized: false` ya aplicado
+- El XML se comprime con `deflate` — pendiente verificar si el Ministerio lo requiere o espera plano
+- El catch en ses.service.ts (~línea 279) no loguea `err.response?.data` — añadir para debugging
+
+## Problemas conocidos
 
 | Problema | Solución |
 |----------|----------|
-| Checkin 401 | Usar `@Public()` decorator, no `@UseGuards()` vacío |
-| Checkin 404 | Rutas fijas ANTES de `:id` en el controlador |
-| Docker no recarga código | Siempre `build + up -d`, nunca solo `restart` |
-| VITE_API_URL móvil | Usar IP real `192.168.1.123`, no `api:3001` |
-| Prisma unknown arg | Verificar nombres exactos en schema.prisma |
-| LibreTranslate `no` | Usar `nb` (noruego bokmål) |
-| ValidationPipe whitelist | Añadir TODOS los campos al DTO con decoradores |
-| `migrate dev` falla "migration modified" | Usar `prisma db push` en desarrollo (ver sección Migraciones) |
-| Prisma `DATABASE_URL` no resuelve en host | Pasar la URL explícita con variable de entorno al comando |
+| Checkin 401 | Usar `@Public()` decorator |
+| Checkin 404 | Rutas fijas ANTES de `:id` |
+| Docker no recarga | `npm run build` + `docker compose build + up -d` |
+| Log debug no aparece | Build no incluyó cambios — repetir `npm run build` explícito |
+| VITE_API_URL móvil | IP real `192.168.1.123`, no `api:3001` |
+| Prisma unknown arg | Verificar nombres en schema.prisma |
+| LibreTranslate `no` | Usar `nb` |
+| ValidationPipe whitelist | Todos los campos del DTO con decoradores |
+| `migrate dev` falla | Usar `prisma db push` en desarrollo |
+| Conflicto contenedor | `docker rm -f rentcrm-api && docker compose up -d api` |
+| SES 404 | Ver sección SES — endpoint sin `/v1/`, pendiente alta en Ministerio |
+| UPDATE BD no persiste | Verificar WHERE con SELECT inmediatamente después |
 
+## Pendiente
+Ver `TODO.md`
