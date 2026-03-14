@@ -76,6 +76,11 @@ rentcrm-pro/
 │   │       ├── translation/
 │   │       │   ├── translation.service.ts  ← caché + precalentamiento
 │   │       │   └── translation.module.ts
+│   │       ├── property-rules/            ← reglas de la casa por propiedad
+│   │       │   ├── property-rules.controller.ts  ← GET/PUT /api/properties/:id/rules
+│   │       │   ├── property-rules.service.ts     ← upsert + traducción + checkin
+│   │       │   ├── property-rules.module.ts
+│   │       │   └── dto/upsert-property-rules.dto.ts
 │   │       └── prisma/
 │   │           └── prisma.service.ts
 │   └── frontend/
@@ -196,6 +201,17 @@ model Organization {
   sesEndpoint         String?  // https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion
   // sesCodigoEstablecimiento NO va aquí, va en Property
 }
+
+model PropertyRules {
+  id                 String   @id @default(uuid())
+  propertyId         String   @unique        // relación 1-1 con Property
+  organizationId     String
+  baseLanguage       String   @default("es")
+  baseContent        String   @db.Text       // texto original
+  translations       Json     @default("{}")  // { "en": "...", "fr": "...", ... }
+  translationsEdited Json     @default("[]")  // idiomas editados manualmente — NO sobreescribir en translate
+  updatedAt          DateTime @updatedAt
+}
 ```
 
 ## Variables de entorno clave (.env en apps/api/)
@@ -256,6 +272,16 @@ await this.translationService.translateMany([...textos], lang);
 - TODAS las traducciones en `apps/frontend/src/i18n/index.ts` — NO ficheros JSON
 - Al añadir estados nuevos: actualizar todos los idiomas Y los `statusColor` de cada página
 
+### Filtros y ordenación de tablas
+- Se hacen en el **frontend** sobre los datos ya cargados (no query params al backend)
+- Patrón: `useState` para filtro texto + columna/dirección ordenación, `useMemo` para derivar lista filtrada
+
+### PropertyRules — traducciones
+- `translations` es un JSON `{ "en": "...", "fr": "..." }` con los 10 idiomas como clave
+- `translationsEdited` es un array de códigos de idioma editados manualmente
+- El endpoint `POST /api/properties/:id/rules/translate` respeta `translationsEdited` — nunca sobreescribe esos idiomas
+- En checkin: si existe `translations[lang]` → se usa; si no → se devuelve `baseContent`
+
 ## SES Hospedajes
 
 ### Endpoint correcto (CRÍTICO)
@@ -289,6 +315,7 @@ https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion
 | Conflicto contenedor | `docker rm -f rentcrm-api && docker compose up -d api` |
 | SES 404 | Ver sección SES — endpoint sin `/v1/`, pendiente alta en Ministerio |
 | UPDATE BD no persiste | Verificar WHERE con SELECT inmediatamente después |
+| ClientDetail sin reservas | Usar `GET /api/bookings?clientId=` — NO `evaluations/summary` |
 
 ## Pendiente
 Ver `TODO.md`
