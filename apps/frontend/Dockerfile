@@ -2,6 +2,7 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+COPY node_modules ./node_modules/
 COPY apps/frontend/node_modules ./node_modules/
 COPY apps/frontend/src ./src/
 COPY apps/frontend/public ./public/

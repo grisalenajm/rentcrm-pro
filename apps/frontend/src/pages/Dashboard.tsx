@@ -1,124 +1,737 @@
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
-import { useAuth } from '../context/AuthContext';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, PieChart, Pie, Cell,
+} from 'recharts';
+
+const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const PIE_COLORS = ['#10b981','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16','#a855f7','#ec4899'];
+const TABS = ['Resumen','Negocio','Clientes','Cumplimiento'];
+const NOW = new Date();
+const CURRENT_YEAR = NOW.getFullYear();
+const YEARS = [CURRENT_YEAR - 2, CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
+
+function daysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function nightsBetween(checkIn: string, checkOut: string) {
+  return Math.max(0, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000));
+}
+
+function kpiCard(label: string, value: string | number, sub?: string) {
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+      <div className="text-2xl font-bold text-emerald-400">{value}</div>
+      <div className="text-sm font-medium text-white mt-1">{label}</div>
+      {sub && <div className="text-xs text-slate-400 mt-0.5">{sub}</div>}
+    </div>
+  );
+}
+
+const tooltipStyle = { backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: 8 };
 
 export default function Dashboard() {
-  const { t } = useTranslation();
-  const { user } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(0);
+  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
+  const [occupancyPropId, setOccupancyPropId] = useState('');
+  const [bizPeriod, setBizPeriod] = useState<'month'|'quarter'|'year'>('year');
 
-  const { data: properties = [] } = useQuery({ queryKey: ['properties'], queryFn: () => api.get('/properties').then(r => r.data) });
-  const { data: clients = [] } = useQuery({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data) });
-  const { data: bookings = [] } = useQuery({ queryKey: ['bookings'], queryFn: () => api.get('/bookings').then(r => r.data) });
-  const { data: financials = [] } = useQuery({ queryKey: ['financials'], queryFn: () => api.get('/financials').then(r => r.data) });
+  const { data: bookings = [] }   = useQuery({ queryKey: ['bookings'],    queryFn: () => api.get('/bookings').then(r => r.data) });
+  const { data: properties = [] } = useQuery({ queryKey: ['properties'],  queryFn: () => api.get('/properties').then(r => r.data) });
+  const { data: clients = [] }    = useQuery({ queryKey: ['clients'],     queryFn: () => api.get('/clients').then(r => r.data) });
+  const { data: financials = [] } = useQuery({ queryKey: ['financials-dashboard'], queryFn: () => api.get('/financials').then(r => r.data) });
+  const { data: expenses = [] }   = useQuery({ queryKey: ['expenses-dashboard'],   queryFn: () => api.get('/expenses').then(r => r.data) });
+  const { data: contracts = [] }  = useQuery({ queryKey: ['contracts'],   queryFn: () => api.get('/contracts').then(r => r.data) });
 
-  const activeBookings = bookings.filter((b: any) => b.status === 'confirmed').length;
-  const totalRevenue = financials.filter((f: any) => f.type === 'income').reduce((s: number, f: any) => s + Number(f.amount), 0);
-  const recentBookings = [...bookings].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5);
+  // ── TAB 1: RESUMEN ────────────────────────────────────────────────────────
 
-  const stats = [
-    { label: t('dashboard.totalProperties'), value: properties.length, icon: '🏠', color: 'text-emerald-400', path: '/properties' },
-    { label: t('dashboard.totalClients'),    value: clients.length,    icon: '👥', color: 'text-blue-400',    path: '/clients' },
-    { label: t('dashboard.activeBookings'),  value: activeBookings,    icon: '📅', color: 'text-amber-400',   path: '/bookings' },
-    { label: t('dashboard.totalRevenue'),    value: `€${totalRevenue.toLocaleString('es-ES', { minimumFractionDigits: 0 })}`, icon: '💶', color: 'text-emerald-400', path: '/financials' },
-  ];
+  const todayStr = NOW.toISOString().slice(0, 10);
 
-  const statusColor: Record<string, string> = {
-    confirmed: 'bg-emerald-500/10 text-emerald-400',
-    cancelled:  'bg-red-500/10 text-red-400',
-    completed:  'bg-slate-500/10 text-slate-400',
+  const occupancyToday = useMemo(() => {
+    const occupied = new Set(
+      bookings.filter((b: any) =>
+        b.status !== 'cancelled' &&
+        b.checkInDate.slice(0, 10) <= todayStr &&
+        b.checkOutDate.slice(0, 10) > todayStr
+      ).map((b: any) => b.propertyId)
+    );
+    return properties.length > 0 ? Math.round(occupied.size / properties.length * 100) : 0;
+  }, [bookings, properties, todayStr]);
+
+  const monthIncome = useMemo(() =>
+    financials.filter((f: any) => {
+      const d = new Date(f.date);
+      return f.type === 'income' && d.getFullYear() === CURRENT_YEAR && d.getMonth() === NOW.getMonth();
+    }).reduce((s: number, f: any) => s + Number(f.amount), 0),
+    [financials]);
+
+  const activeBookings = useMemo(() =>
+    bookings.filter((b: any) =>
+      b.status !== 'cancelled' && b.checkOutDate.slice(0, 10) >= todayStr
+    ).length,
+    [bookings, todayStr]);
+
+  const checkinsPendingToday = useMemo(() =>
+    bookings.filter((b: any) =>
+      b.checkInDate.slice(0, 10) === todayStr && b.checkinStatus !== 'completed'
+    ).length,
+    [bookings, todayStr]);
+
+  // Bar chart: last 12 months income vs expenses
+  const monthlyBarData = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(NOW.getFullYear(), NOW.getMonth() - 11 + i, 1);
+      const yr = d.getFullYear(), mo = d.getMonth();
+      const income = financials.filter((f: any) => {
+        const fd = new Date(f.date);
+        return f.type === 'income' && fd.getFullYear() === yr && fd.getMonth() === mo;
+      }).reduce((s: number, f: any) => s + Number(f.amount), 0);
+      const expense = expenses.filter((e: any) => {
+        const ed = new Date(e.date);
+        return ed.getFullYear() === yr && ed.getMonth() === mo;
+      }).reduce((s: number, e: any) => s + Number(e.amount), 0);
+      return { name: MONTHS[mo], ingresos: Math.round(income), gastos: Math.round(expense) };
+    });
+  }, [financials, expenses]);
+
+  // Line chart: monthly occupancy for selected property
+  const propId = occupancyPropId || (properties[0]?.id ?? '');
+  const occupancyLineData = useMemo(() => {
+    return MONTHS.map((name, mo) => {
+      const days = daysInMonth(selectedYear, mo);
+      const occupied = new Set<number>();
+      bookings.filter((b: any) => b.propertyId === propId && b.status !== 'cancelled').forEach((b: any) => {
+        const start = new Date(b.checkInDate);
+        const end   = new Date(b.checkOutDate);
+        for (const d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+          if (d.getFullYear() === selectedYear && d.getMonth() === mo) {
+            occupied.add(d.getDate());
+          }
+        }
+      });
+      return { name, 'Ocupación %': Math.round(occupied.size / days * 100) };
+    });
+  }, [bookings, propId, selectedYear]);
+
+  // Heat map: occupied days of the year
+  const heatMap = useMemo(() => {
+    const grid: boolean[][] = Array.from({ length: 12 }, () => Array(31).fill(false));
+    bookings.filter((b: any) => b.status !== 'cancelled').forEach((b: any) => {
+      const start = new Date(b.checkInDate);
+      const end   = new Date(b.checkOutDate);
+      for (const d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+        if (d.getFullYear() === selectedYear) {
+          grid[d.getMonth()][d.getDate() - 1] = true;
+        }
+      }
+    });
+    return grid;
+  }, [bookings, selectedYear]);
+
+  // ── TAB 2: NEGOCIO ────────────────────────────────────────────────────────
+
+  const getBizRange = (period: 'month'|'quarter'|'year') => {
+    if (period === 'month') {
+      return { from: new Date(selectedYear, NOW.getMonth(), 1), to: new Date(selectedYear, NOW.getMonth() + 1, 0, 23, 59, 59) };
+    } else if (period === 'quarter') {
+      const q = Math.floor(NOW.getMonth() / 3);
+      return { from: new Date(selectedYear, q * 3, 1), to: new Date(selectedYear, q * 3 + 3, 0, 23, 59, 59) };
+    }
+    return { from: new Date(selectedYear, 0, 1), to: new Date(selectedYear, 11, 31, 23, 59, 59) };
   };
 
+  const propertyProfitability = useMemo(() => {
+    return properties.map((p: any) => {
+      const income = financials.filter((f: any) => {
+        const d = new Date(f.date);
+        return f.propertyId === p.id && f.type === 'income' && d.getFullYear() === selectedYear;
+      }).reduce((s: number, f: any) => s + Number(f.amount), 0);
+      const expense = expenses.filter((e: any) => {
+        const d = new Date(e.date);
+        return e.propertyId === p.id && d.getFullYear() === selectedYear;
+      }).reduce((s: number, e: any) => s + Number(e.amount), 0);
+      const net = income - expense;
+      const roi = expense > 0 ? Math.round(net / expense * 100) : 0;
+      return { id: p.id, name: p.name, income: Math.round(income), expense: Math.round(expense), net: Math.round(net), roi };
+    }).sort((a: any, b: any) => b.income - a.income);
+  }, [properties, financials, expenses, selectedYear]);
+
+  const sourcePieData = useMemo(() => {
+    const { from, to } = getBizRange(bizPeriod);
+    const counts: Record<string, number> = {};
+    bookings.filter((b: any) => {
+      const d = new Date(b.checkInDate);
+      return b.status !== 'cancelled' && d >= from && d <= to;
+    }).forEach((b: any) => {
+      const src = b.source || 'direct';
+      counts[src] = (counts[src] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [bookings, bizPeriod, selectedYear]);
+
+  const bizMetrics = useMemo(() => {
+    const { from, to } = getBizRange(bizPeriod);
+    const periodBkgs = bookings.filter((b: any) => {
+      const d = new Date(b.checkInDate);
+      return b.status !== 'cancelled' && d >= from && d <= to;
+    });
+    const prevFrom = new Date(from); prevFrom.setFullYear(prevFrom.getFullYear() - 1);
+    const prevTo   = new Date(to);   prevTo.setFullYear(prevTo.getFullYear() - 1);
+    const prevBkgs = bookings.filter((b: any) => {
+      const d = new Date(b.checkInDate);
+      return b.status !== 'cancelled' && d >= prevFrom && d <= prevTo;
+    });
+    const avgPrice = (bkgs: any[]) => bkgs.length > 0
+      ? Math.round(bkgs.reduce((s: number, b: any) => s + Number(b.totalAmount || 0), 0) / bkgs.length)
+      : 0;
+    const avgNights = (bkgs: any[]) => bkgs.length > 0
+      ? Math.round(bkgs.reduce((s: number, b: any) => s + nightsBetween(b.checkInDate, b.checkOutDate), 0) / bkgs.length * 10) / 10
+      : 0;
+    return {
+      count: periodBkgs.length,
+      avgPrice: avgPrice(periodBkgs),
+      avgNights: avgNights(periodBkgs),
+      prevCount: prevBkgs.length,
+      prevAvgPrice: avgPrice(prevBkgs),
+      prevAvgNights: avgNights(prevBkgs),
+    };
+  }, [bookings, bizPeriod, selectedYear]);
+
+  // ── TAB 3: CLIENTES ───────────────────────────────────────────────────────
+
+  const clientData = useMemo(() => {
+    const spending: Record<string, { client: any; total: number; count: number; lastVisit: string }> = {};
+    bookings.filter((b: any) => b.clientId && b.status !== 'cancelled').forEach((b: any) => {
+      const id = b.clientId;
+      if (!spending[id]) spending[id] = { client: b.client, total: 0, count: 0, lastVisit: b.checkInDate };
+      spending[id].total += Number(b.totalAmount || 0);
+      spending[id].count++;
+      if (b.checkInDate > spending[id].lastVisit) spending[id].lastVisit = b.checkInDate;
+    });
+    const sorted = Object.values(spending).sort((a, b) => b.total - a.total);
+    const top10 = sorted.slice(0, 10);
+    const newC = sorted.filter(c => c.count === 1).length;
+    const retC = sorted.filter(c => c.count > 1).length;
+    return { top10, newClients: newC, returningClients: retC };
+  }, [bookings]);
+
+  const nationalityPie = useMemo(() => {
+    const counts: Record<string, number> = {};
+    clients.forEach((c: any) => {
+      const nat = c.nationality || c.country || 'Desconocida';
+      counts[nat] = (counts[nat] || 0) + 1;
+    });
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const top8 = sorted.slice(0, 8).map(([name, value]) => ({ name, value }));
+    const others = sorted.slice(8).reduce((s, [, v]) => s + v, 0);
+    if (others > 0) top8.push({ name: 'Otros', value: others });
+    return top8;
+  }, [clients]);
+
+  // ── TAB 4: CUMPLIMIENTO ───────────────────────────────────────────────────
+
+  const sesData = useMemo(() => {
+    const monthBkgs = bookings.filter((b: any) => {
+      const d = new Date(b.checkInDate);
+      return d.getFullYear() === NOW.getFullYear() && d.getMonth() === NOW.getMonth();
+    });
+    const sent    = monthBkgs.filter((b: any) => b.sesStatus === 'enviado').length;
+    const error   = monthBkgs.filter((b: any) => b.sesStatus === 'error').length;
+    const pending = monthBkgs.filter((b: any) => !b.sesStatus).length;
+    const pendingList = bookings.filter((b: any) =>
+      b.status !== 'cancelled' && b.sesStatus !== 'enviado'
+    ).slice(0, 20);
+    return { sent, error, pending, pendingList };
+  }, [bookings]);
+
+  const checkinData = useMemo(() => {
+    const monthBkgs = bookings.filter((b: any) => {
+      const d = new Date(b.checkInDate);
+      return d.getFullYear() === NOW.getFullYear() && d.getMonth() === NOW.getMonth();
+    });
+    const done    = monthBkgs.filter((b: any) => b.checkinStatus === 'completed').length;
+    const pending = monthBkgs.filter((b: any) => b.checkinStatus !== 'completed').length;
+    return { done, pending };
+  }, [bookings]);
+
+  const contractData = useMemo(() => {
+    const monthContracts = contracts.filter((c: any) => {
+      const d = new Date(c.createdAt);
+      return d.getFullYear() === NOW.getFullYear() && d.getMonth() === NOW.getMonth();
+    });
+    const signed   = monthContracts.filter((c: any) => c.signedAt).length;
+    const unsigned = monthContracts.filter((c: any) => !c.signedAt).length;
+    return { signed, unsigned };
+  }, [contracts]);
+
+  const periodLabel = bizPeriod === 'month' ? MONTHS[NOW.getMonth()] : bizPeriod === 'quarter' ? `Q${Math.floor(NOW.getMonth() / 3) + 1}` : 'Año completo';
+  const delta = (curr: number, prev: number) => {
+    if (prev === 0) return null;
+    const pct = Math.round((curr - prev) / prev * 100);
+    return <span className={`text-xs ml-1 ${pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{pct >= 0 ? '▲' : '▼'}{Math.abs(pct)}% vs año ant.</span>;
+  };
+
+  // ── RENDER ────────────────────────────────────────────────────────────────
+
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">{t('common.name') === 'Name' ? `Welcome, ${user?.name}` : `Bienvenido, ${user?.name}`}</h1>
-        <p className="text-slate-400 text-sm mt-1">{t('dashboard.title')} · RentCRM Pro</p>
+    <div className="p-4 md:p-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <span className="text-slate-400 text-sm">Año:</span>
+          <select
+            value={selectedYear}
+            onChange={e => setSelectedYear(Number(e.target.value))}
+            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          >
+            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {stats.map(({ label, value, icon, color, path }) => (
-          <button key={label} onClick={() => navigate(path)}
-            className="bg-slate-900 border border-slate-800 rounded-xl p-5 text-left hover:border-slate-700 transition-colors">
-            <div className="text-2xl mb-2">{icon}</div>
-            <div className={`text-2xl font-bold ${color}`}>{value}</div>
-            <div className="text-slate-400 text-sm mt-1">{label}</div>
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-slate-800 mb-6 overflow-x-auto">
+        {TABS.map((tab, i) => (
+          <button
+            key={i}
+            onClick={() => setActiveTab(i)}
+            className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px
+              ${activeTab === i
+                ? 'border-emerald-500 text-emerald-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+          >
+            {tab}
           </button>
         ))}
       </div>
 
-      {/* Reservas recientes */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
-          <h2 className="font-semibold">{t('dashboard.recentBookings')}</h2>
-          <button onClick={() => navigate('/bookings')} className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
-            {t('common.view')} →
-          </button>
+      {/* ── TAB 1: RESUMEN ── */}
+      {activeTab === 0 && (
+        <div className="space-y-6">
+          {/* KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {kpiCard('Ocupación actual', `${occupancyToday}%`, `${properties.length} propiedades`)}
+            {kpiCard('Ingresos del mes', `€${monthIncome.toLocaleString('es-ES', { maximumFractionDigits: 0 })}`, MONTHS[NOW.getMonth()])}
+            {kpiCard('Reservas activas', activeBookings, 'en curso o próximas')}
+            {kpiCard('Checkins hoy', checkinsPendingToday, 'pendientes de completar')}
+          </div>
+
+          {/* Bar: ingresos vs gastos últimos 12 meses */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <h2 className="font-semibold mb-4">Ingresos vs Gastos — últimos 12 meses</h2>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={monthlyBarData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={v => `€${v}`} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`€${Number(v).toLocaleString('es-ES')}`, '']} />
+                <Legend wrapperStyle={{ color: '#94a3b8', fontSize: 13 }} />
+                <Bar dataKey="ingresos" fill="#10b981" radius={[3,3,0,0]} />
+                <Bar dataKey="gastos"   fill="#ef4444" radius={[3,3,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Line: ocupación mensual por propiedad */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <h2 className="font-semibold">Ocupación mensual — {selectedYear}</h2>
+              <select
+                value={occupancyPropId}
+                onChange={e => setOccupancyPropId(e.target.value)}
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={occupancyLineData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={v => `${v}%`} domain={[0, 100]} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`, 'Ocupación']} />
+                <Line type="monotone" dataKey="Ocupación %" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Heat map: días ocupados */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <h2 className="font-semibold mb-4">Días ocupados — {selectedYear}</h2>
+            <div className="overflow-x-auto">
+              <div className="min-w-[560px]">
+                {/* Day headers */}
+                <div className="flex gap-0.5 mb-1 ml-8">
+                  {Array.from({ length: 31 }, (_, d) => (
+                    <div key={d} className="w-4 text-center text-slate-600 text-[9px] shrink-0">{d + 1}</div>
+                  ))}
+                </div>
+                {heatMap.map((days, mo) => (
+                  <div key={mo} className="flex items-center gap-0.5 mb-0.5">
+                    <div className="w-7 text-slate-400 text-[11px] text-right mr-1 shrink-0">{MONTHS[mo]}</div>
+                    {days.map((occupied, d) => {
+                      const maxDay = daysInMonth(selectedYear, mo);
+                      return (
+                        <div
+                          key={d}
+                          className={`w-4 h-4 rounded-sm shrink-0 ${
+                            d >= maxDay ? 'opacity-0' : occupied ? 'bg-emerald-500' : 'bg-slate-800'
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+                <div className="flex items-center gap-3 mt-3">
+                  <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-500" /><span className="text-xs text-slate-400">Ocupado</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-slate-800" /><span className="text-xs text-slate-400">Libre</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        {recentBookings.length === 0 ? (
-          <div className="text-slate-400 text-center py-10 text-sm">{t('common.noData')}</div>
-        ) : (
-          <>
-            {/* Desktop */}
-            <div className="hidden md:block">
+      )}
+
+      {/* ── TAB 2: NEGOCIO ── */}
+      {activeTab === 1 && (
+        <div className="space-y-6">
+          {/* Period selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400 text-sm">Periodo:</span>
+            {(['month','quarter','year'] as const).map(p => (
+              <button
+                key={p}
+                onClick={() => setBizPeriod(p)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  bizPeriod === p ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {p === 'month' ? 'Mes' : p === 'quarter' ? 'Trimestre' : 'Año'}
+              </button>
+            ))}
+            <span className="text-slate-500 text-sm">· {periodLabel}</span>
+          </div>
+
+          {/* Metrics row */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <div className="text-2xl font-bold text-emerald-400">
+                €{bizMetrics.avgPrice.toLocaleString('es-ES')}
+                {delta(bizMetrics.avgPrice, bizMetrics.prevAvgPrice)}
+              </div>
+              <div className="text-sm text-white mt-1">Precio medio reserva</div>
+              <div className="text-xs text-slate-400">{bizMetrics.count} reservas · {bizMetrics.prevCount} año ant.</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <div className="text-2xl font-bold text-emerald-400">
+                {bizMetrics.avgNights} noches
+                {delta(bizMetrics.avgNights, bizMetrics.prevAvgNights)}
+              </div>
+              <div className="text-sm text-white mt-1">Estancia media</div>
+              <div className="text-xs text-slate-400">{bizMetrics.prevAvgNights} noches año anterior</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 col-span-2 md:col-span-1">
+              <div className="text-2xl font-bold text-blue-400">{bizMetrics.count}</div>
+              <div className="text-sm text-white mt-1">Reservas en el periodo</div>
+              <div className="text-xs text-slate-400">{bizMetrics.prevCount} mismo periodo año anterior</div>
+            </div>
+          </div>
+
+          {/* Property profitability table */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-800">
+              <h2 className="font-semibold">Rentabilidad por propiedad — {selectedYear}</h2>
+            </div>
+            <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-800">
-                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.client')}</th>
-                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
-                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
-                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkOut')}</th>
-                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('common.total')}</th>
-                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('common.status')}</th>
+                    {['Propiedad','Ingresos','Gastos','Beneficio neto','ROI %'].map(h => (
+                      <th key={h} className="text-left px-5 py-3 text-slate-400 font-semibold whitespace-nowrap">{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {recentBookings.map((b: any) => (
-                    <tr key={b.id} onClick={() => navigate(`/bookings/${b.id}`)}
-                      className="border-b border-slate-800 hover:bg-slate-800/70 cursor-pointer transition-colors">
-                      <td className="px-5 py-3 font-medium">{b.client?.firstName} {b.client?.lastName}</td>
-                      <td className="px-5 py-3 text-slate-400">{b.property?.name}</td>
-                      <td className="px-5 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
-                      <td className="px-5 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
-                      <td className="px-5 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
-                      <td className="px-5 py-3">
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[b.status] || 'bg-slate-500/10 text-slate-400'}`}>
-                          {t(`bookings.statuses.${b.status}`)}
-                        </span>
-                      </td>
+                  {propertyProfitability.map((p: any) => (
+                    <tr key={p.id} className="border-b border-slate-800 last:border-0 hover:bg-slate-800/50">
+                      <td className="px-5 py-3 font-medium">{p.name}</td>
+                      <td className="px-5 py-3 text-emerald-400">€{p.income.toLocaleString('es-ES')}</td>
+                      <td className="px-5 py-3 text-red-400">€{p.expense.toLocaleString('es-ES')}</td>
+                      <td className={`px-5 py-3 font-semibold ${p.net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>€{p.net.toLocaleString('es-ES')}</td>
+                      <td className={`px-5 py-3 font-semibold ${p.roi >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{p.roi}%</td>
                     </tr>
                   ))}
+                  {propertyProfitability.length === 0 && (
+                    <tr><td colSpan={5} className="px-5 py-8 text-center text-slate-400 text-sm">Sin datos para {selectedYear}</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
+          </div>
 
-            {/* Móvil */}
-            <div className="md:hidden space-y-3 p-4">
-              {recentBookings.map((b: any) => (
-                <div key={b.id} onClick={() => navigate(`/bookings/${b.id}`)}
-                  className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-medium text-white">{b.client?.firstName} {b.client?.lastName}</span>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[b.status] || 'bg-slate-500/10 text-slate-400'}`}>
-                      {t(`bookings.statuses.${b.status}`)}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-400 mb-1">{b.property?.name}</div>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-xs text-slate-400">
-                      {new Date(b.checkInDate).toLocaleDateString('es-ES')} → {new Date(b.checkOutDate).toLocaleDateString('es-ES')}
-                    </span>
-                    <span className="font-semibold text-emerald-400 text-sm">€{b.totalAmount}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Ranking horizontal bars */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <h2 className="font-semibold mb-4">Ranking por ingresos — {selectedYear}</h2>
+              {propertyProfitability.length > 0 ? (
+                <ResponsiveContainer width="100%" height={Math.max(200, propertyProfitability.length * 44)}>
+                  <BarChart
+                    data={propertyProfitability}
+                    layout="vertical"
+                    margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
+                    <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={v => `€${v}`} />
+                    <YAxis type="category" dataKey="name" tick={{ fill: '#e2e8f0', fontSize: 12 }} width={100} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`€${Number(v).toLocaleString('es-ES')}`, 'Ingresos']} />
+                    <Bar dataKey="income" fill="#10b981" radius={[0,3,3,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-slate-400 text-sm text-center py-10">Sin datos</div>
+              )}
+            </div>
+
+            {/* Pie: origen reservas */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <h2 className="font-semibold mb-4">Origen de reservas — {periodLabel}</h2>
+              {sourcePieData.length > 0 ? (
+                <div className="flex flex-col items-center">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie data={sourcePieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`} labelLine={false}>
+                        {sourcePieData.map((_: any, i: number) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={tooltipStyle} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-wrap gap-2 justify-center mt-2">
+                    {sourcePieData.map((s: any, i: number) => (
+                      <div key={s.name} className="flex items-center gap-1.5 text-xs text-slate-300">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                        {s.name} ({s.value})
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              ) : (
+                <div className="text-slate-400 text-sm text-center py-10">Sin datos</div>
+              )}
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 3: CLIENTES ── */}
+      {activeTab === 2 && (
+        <div className="space-y-6">
+          {/* KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {kpiCard('Clientes únicos', clientData.top10.length + (Object.keys(clientData).length > 3 ? '...' : ''), 'con reservas')}
+            {kpiCard('Clientes nuevos', clientData.newClients, '1 sola estancia')}
+            {kpiCard('Clientes repetidores', clientData.returningClients,
+              clientData.newClients + clientData.returningClients > 0
+                ? `${Math.round(clientData.returningClients / (clientData.newClients + clientData.returningClients) * 100)}% del total`
+                : '—'
+            )}
+          </div>
+
+          {/* Top 10 clients table */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-800">
+              <h2 className="font-semibold">Top 10 clientes por gasto</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800">
+                    {['#','Cliente','Estancias','Gasto total','Última visita'].map(h => (
+                      <th key={h} className="text-left px-5 py-3 text-slate-400 font-semibold whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {clientData.top10.map((c, i) => (
+                    <tr
+                      key={c.client?.id ?? i}
+                      className="border-b border-slate-800 last:border-0 hover:bg-slate-800/50 cursor-pointer"
+                      onClick={() => c.client?.id && navigate(`/clients/${c.client.id}`)}
+                    >
+                      <td className="px-5 py-3 text-slate-400">{i + 1}</td>
+                      <td className="px-5 py-3 font-medium">{c.client?.firstName} {c.client?.lastName}</td>
+                      <td className="px-5 py-3 text-slate-300">{c.count}</td>
+                      <td className="px-5 py-3 font-semibold text-emerald-400">€{Math.round(c.total).toLocaleString('es-ES')}</td>
+                      <td className="px-5 py-3 text-slate-400">{new Date(c.lastVisit).toLocaleDateString('es-ES')}</td>
+                    </tr>
+                  ))}
+                  {clientData.top10.length === 0 && (
+                    <tr><td colSpan={5} className="px-5 py-8 text-center text-slate-400 text-sm">Sin datos</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Nationality pie */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <h2 className="font-semibold mb-4">Nacionalidades de huéspedes</h2>
+            {nationalityPie.length > 0 ? (
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={nationalityPie} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({ name, percent }) => percent > 0.04 ? `${name} ${Math.round(percent * 100)}%` : ''} labelLine={false}>
+                      {nationalityPie.map((_: any, i: number) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                  {nationalityPie.map((n: any, i: number) => (
+                    <div key={n.name} className="flex items-center gap-1.5 text-xs text-slate-300">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      {n.name} ({n.value})
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-slate-400 text-sm text-center py-10">Sin datos de clientes</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 4: CUMPLIMIENTO ── */}
+      {activeTab === 3 && (
+        <div className="space-y-6">
+          {/* SES KPIs */}
+          <div>
+            <h2 className="font-semibold mb-3 text-slate-300">Partes SES — {MONTHS[NOW.getMonth()]} {NOW.getFullYear()}</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <div className="text-2xl font-bold text-emerald-400">✅ {sesData.sent}</div>
+                <div className="text-sm text-white mt-1">Enviados</div>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <div className="text-2xl font-bold text-red-400">❌ {sesData.error}</div>
+                <div className="text-sm text-white mt-1">Con error</div>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 col-span-2 md:col-span-1">
+                <div className="text-2xl font-bold text-amber-400">⏳ {sesData.pending}</div>
+                <div className="text-sm text-white mt-1">Pendientes</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Pending SES list */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+              <h2 className="font-semibold">Reservas con SES pendiente</h2>
+              <button onClick={() => navigate('/police')} className="text-xs text-emerald-400 hover:text-emerald-300">Ir a Partes SES →</button>
+            </div>
+            {sesData.pendingList.length === 0 ? (
+              <div className="text-slate-400 text-sm text-center py-8">✅ Todo al día</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800">
+                      {['Check-in','Propiedad','Cliente','Estado SES'].map(h => (
+                        <th key={h} className="text-left px-5 py-3 text-slate-400 font-semibold whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sesData.pendingList.map((b: any) => (
+                      <tr key={b.id} className="border-b border-slate-800 last:border-0 hover:bg-slate-800/50 cursor-pointer" onClick={() => navigate('/police')}>
+                        <td className="px-5 py-3 text-slate-300">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
+                        <td className="px-5 py-3 text-slate-300">{b.property?.name}</td>
+                        <td className="px-5 py-3 font-medium">{b.client?.firstName} {b.client?.lastName}</td>
+                        <td className="px-5 py-3">
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                            b.sesStatus === 'error' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'
+                          }`}>
+                            {b.sesStatus === 'error' ? '❌ Error' : '⏳ Pendiente'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Checkin KPIs */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <h2 className="font-semibold mb-4">Check-in online — {MONTHS[NOW.getMonth()]}</h2>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-300">✅ Completados</span>
+                  <span className="font-bold text-emerald-400">{checkinData.done}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-300">⏳ Pendientes</span>
+                  <span className="font-bold text-amber-400">{checkinData.pending}</span>
+                </div>
+                {checkinData.done + checkinData.pending > 0 && (
+                  <div>
+                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                      <span>Progreso</span>
+                      <span>{Math.round(checkinData.done / (checkinData.done + checkinData.pending) * 100)}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-800 rounded-full">
+                      <div
+                        className="h-2 bg-emerald-500 rounded-full transition-all"
+                        style={{ width: `${Math.round(checkinData.done / (checkinData.done + checkinData.pending) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Contracts KPIs */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <h2 className="font-semibold mb-4">Contratos — {MONTHS[NOW.getMonth()]}</h2>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-300">✅ Firmados</span>
+                  <span className="font-bold text-emerald-400">{contractData.signed}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-300">⏳ Sin firmar</span>
+                  <span className="font-bold text-amber-400">{contractData.unsigned}</span>
+                </div>
+                {contractData.signed + contractData.unsigned > 0 && (
+                  <div>
+                    <div className="flex justify-between text-xs text-slate-400 mb-1">
+                      <span>Firmados</span>
+                      <span>{Math.round(contractData.signed / (contractData.signed + contractData.unsigned) * 100)}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-800 rounded-full">
+                      <div
+                        className="h-2 bg-emerald-500 rounded-full transition-all"
+                        style={{ width: `${Math.round(contractData.signed / (contractData.signed + contractData.unsigned) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {contractData.signed + contractData.unsigned === 0 && (
+                  <div className="text-slate-400 text-sm text-center py-2">Sin contratos este mes</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
