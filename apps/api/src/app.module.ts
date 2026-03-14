@@ -19,6 +19,7 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { ExcelModule } from './excel/excel.module';
 import { TranslationModule } from './translation/translation.module';
 import { PropertyContentModule } from './property-content/property-content.module';
+import { PropertyRulesModule } from './property-rules/property-rules.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { PropertyContentModule } from './property-content/property-content.modul
     ExcelModule,
     TranslationModule,
     PropertyContentModule,
+    PropertyRulesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

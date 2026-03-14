@@ -6,6 +6,7 @@ import { UpdateBookingDto } from './dto/update-booking.dto';
 import { CreateBookingGuestSesDto } from './dto/booking-guest-ses.dto';
 import { TranslationService } from '../translation/translation.service';
 import { PropertyContentService } from '../property-content/property-content.service';
+import { PropertyRulesService } from '../property-rules/property-rules.service';
 import { randomUUID } from 'crypto';
 import * as nodemailer from 'nodemailer';
 
@@ -16,19 +17,22 @@ export class BookingsService {
     private prisma: PrismaService,
     private translationService: TranslationService,
     private propertyContentService: PropertyContentService,
+    private propertyRulesService: PropertyRulesService,
   ) {}
 
-  async findAll(organizationId: string, propertyId?: string) {
+  async findAll(organizationId: string, propertyId?: string, clientId?: string) {
     return this.prisma.booking.findMany({
       where: {
         organizationId,
         ...(propertyId ? { propertyId } : {}),
+        ...(clientId ? { clientId } : {}),
       },
       include: {
-        client:   { select: { id: true, firstName: true, lastName: true, dniPassport: true } },
-        property: { select: { id: true, name: true, city: true } },
-        guests:   { include: { client: { select: { id: true, firstName: true, lastName: true } } } },
-        guestsSes: true,
+        client:     { select: { id: true, firstName: true, lastName: true, dniPassport: true } },
+        property:   { select: { id: true, name: true, city: true } },
+        guests:     { include: { client: { select: { id: true, firstName: true, lastName: true } } } },
+        guestsSes:  true,
+        evaluation: true,
       },
       orderBy: { checkInDate: 'desc' },
     });
@@ -364,6 +368,8 @@ export class BookingsService {
 
     const lang = (booking.client as any)?.language || 'es';
 
+    const houseRules = await this.propertyRulesService.getRulesForCheckin(booking.propertyId, lang);
+
     const [
       titleText,
       subtitleText,
@@ -521,6 +527,7 @@ export class BookingsService {
       clientProvince:  (booking.client as any)?.province,
       clientCountry:   (booking.client as any)?.country,
       language:        lang,
+      houseRules,
       ui: {
         titleText,
         subtitleText,
@@ -686,79 +693,49 @@ export class BookingsService {
     if (!booking.client?.email) throw new BadRequestException('El cliente no tiene email');
 
     const lang = booking.client.language || 'es';
+    const guestName    = `${booking.client.firstName}`;
     const propertyName = booking.property.name;
-    const checkIn = new Date(booking.checkInDate).toLocaleDateString('es-ES');
+    const checkIn      = new Date(booking.checkInDate).toLocaleDateString('es-ES');
 
     const content = await this.propertyContentService.getContent(organizationId, booking.property.id);
     const docs    = await this.propertyContentService.getDocumentsWithData(organizationId, booking.property.id);
 
-    // Textos a traducir
-    const textsToTranslate = [
-      `Bienvenido/a a ${propertyName}`,
-      `Hola ${booking.client.firstName}, tu estancia en ${propertyName} comienza el ${checkIn}. Aquí tienes toda la información que necesitas para tu llegada.`,
-      'Reglas de la casa',
-      'Guía de llegada',
-      'Información local',
-      'Tu estancia en',
-      'Información de llegada',
-      'Un saludo del equipo de',
-    ];
+    // Replace variables in template
+    let templateHtml = content.template || '';
+    templateHtml = templateHtml
+      .replace(/\{\{guest_name\}\}/g, guestName)
+      .replace(/\{\{property_name\}\}/g, propertyName);
 
-    const [
-      welcomeTitle,
-      bodyIntro,
-      houseRulesTitle,
-      arrivalGuideTitle,
-      localInfoTitle,
-      stayAt,
-      arrivalInfo,
-      greetings,
-    ] = await this.translationService.translateMany(textsToTranslate, lang);
-
-    // Traducir el contenido textual
-    const contentTexts: string[] = [];
-    if (content.houseRules)   contentTexts.push(content.houseRules);
-    if (content.arrivalGuide) contentTexts.push(content.arrivalGuide);
-    if (content.localInfo)    contentTexts.push(content.localInfo);
-
-    const translatedContentTexts = contentTexts.length > 0
-      ? await this.translationService.translateMany(contentTexts, lang)
-      : [];
-
-    let idx = 0;
-    const tHouseRules   = content.houseRules   ? translatedContentTexts[idx++] : null;
-    const tArrivalGuide = content.arrivalGuide  ? translatedContentTexts[idx++] : null;
-    const tLocalInfo    = content.localInfo     ? translatedContentTexts[idx++] : null;
-
-    const section = (title: string, text: string | null) => text ? `
-      <div style="margin-bottom: 24px;">
-        <h3 style="color: #10b981; font-size: 16px; margin: 0 0 8px 0; padding-bottom: 6px; border-bottom: 1px solid #334155;">${title}</h3>
-        <p style="color: #cbd5e1; line-height: 1.7; white-space: pre-wrap; margin: 0;">${text}</p>
-      </div>
-    ` : '';
-
-    const hasSections = tHouseRules || tArrivalGuide || tLocalInfo;
-
+    // Translate subject and fallback texts
+    const [stayAt, arrivalInfo] = await this.translationService.translateMany(
+      ['Tu estancia en', 'Información de llegada'],
+      lang,
+    );
     const subject = `${stayAt} ${propertyName} — ${arrivalInfo}`;
+
+    // If template exists, translate it (LibreTranslate generally preserves HTML tags)
+    let bodyHtml = templateHtml;
+    if (bodyHtml && lang !== 'es') {
+      const [translated] = await this.translationService.translateMany([bodyHtml], lang);
+      bodyHtml = translated || bodyHtml;
+    }
+
+    // Wrap in email shell
     const html = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: #0f172a; color: #e2e8f0; border-radius: 12px; overflow: hidden;">
-        <div style="background: #10b981; padding: 24px; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 22px;">🏠 ${welcomeTitle}</h1>
+      <div style="font-family: sans-serif; max-width: 640px; margin: 0 auto; background: #0f172a; color: #e2e8f0; border-radius: 12px; overflow: hidden;">
+        <div style="background: #10b981; padding: 20px 28px;">
+          <h1 style="color: white; margin: 0; font-size: 20px;">🏠 ${propertyName}</h1>
+          <p style="color: rgba(255,255,255,0.8); margin: 4px 0 0 0; font-size: 14px;">${checkIn}</p>
         </div>
-        <div style="padding: 28px;">
-          <p style="color: #94a3b8; line-height: 1.6; margin: 0 0 24px 0;">${bodyIntro}</p>
-          ${hasSections ? `
-            ${section(houseRulesTitle, tHouseRules)}
-            ${section(arrivalGuideTitle, tArrivalGuide)}
-            ${section(localInfoTitle, tLocalInfo)}
-          ` : ''}
+        <div style="padding: 28px; line-height: 1.7; color: #e2e8f0;">
+          ${bodyHtml || `<p style="color:#94a3b8;">Bienvenido/a a ${propertyName}. ¡Que disfrutes tu estancia!</p>`}
           ${docs.length > 0 ? `
             <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #334155;">
               <p style="color: #94a3b8; font-size: 14px; margin: 0;">📎 ${docs.length} documento${docs.length > 1 ? 's' : ''} adjunto${docs.length > 1 ? 's' : ''}</p>
             </div>
           ` : ''}
-          <p style="color: #64748b; font-size: 13px; margin-top: 24px; border-top: 1px solid #1e293b; padding-top: 16px;">
-            ${greetings} ${propertyName} · RentCRM Pro
+          <p style="color: #64748b; font-size: 12px; margin-top: 24px; border-top: 1px solid #1e293b; padding-top: 16px;">
+            RentCRM Pro
           </p>
         </div>
       </div>

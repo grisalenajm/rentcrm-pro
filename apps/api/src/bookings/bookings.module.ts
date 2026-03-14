@@ -5,9 +5,10 @@ import { CheckinController } from './checkin.controller';
 import { SesService } from './ses.service';
 import { TranslationModule } from '../translation/translation.module';
 import { PropertyContentModule } from '../property-content/property-content.module';
+import { PropertyRulesModule } from '../property-rules/property-rules.module';
 
 @Module({
-  imports: [TranslationModule, PropertyContentModule],
+  imports: [TranslationModule, PropertyContentModule, PropertyRulesModule],
   controllers: [BookingsController, CheckinController],
   providers: [BookingsService, SesService],
   exports: [BookingsService, SesService],

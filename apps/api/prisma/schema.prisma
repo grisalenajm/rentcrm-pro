@@ -100,6 +100,7 @@ model Property {
   expenses           Expense[]
   propertyContents   PropertyContent[]
   propertyDocuments  PropertyDocument[]
+  propertyRules      PropertyRules?
 
   @@index([organizationId])
   @@map("properties")
@@ -459,9 +460,7 @@ model PropertyContent {
   id             String    @id @default(uuid()) @db.Uuid
   organizationId String    @map("organization_id") @db.Uuid
   propertyId     String?   @map("property_id") @db.Uuid
-  houseRules     String?   @map("house_rules") @db.Text
-  arrivalGuide   String?   @map("arrival_guide") @db.Text
-  localInfo      String?   @map("local_info") @db.Text
+  template       String?   @db.Text
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -470,6 +469,21 @@ model PropertyContent {
   @@unique([organizationId, propertyId])
   @@index([organizationId])
   @@map("property_contents")
+}
+
+model PropertyRules {
+  id                 String   @id @default(uuid()) @db.Uuid
+  propertyId         String   @unique @map("property_id") @db.Uuid
+  organizationId     String   @map("organization_id") @db.Uuid
+  baseLanguage       String   @default("es") @map("base_language") @db.VarChar(10)
+  baseContent        String   @map("base_content") @db.Text
+  translations       Json     @default("{}")
+  translationsEdited Json     @default("[]") @map("translations_edited")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_rules")
 }
 
 model PropertyDocument {
