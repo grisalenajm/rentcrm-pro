@@ -48,9 +48,9 @@ export default function ClientDetail() {
     manual_block: t('bookings.sources.manual_block'),
   };
 
-  const { data: summary, isLoading } = useQuery({
-    queryKey: ['client-summary', id],
-    queryFn: () => api.get(`/evaluations/client/${id}/summary`).then(r => r.data),
+  const { data: bookingsData, isLoading } = useQuery({
+    queryKey: ['client-bookings', id],
+    queryFn: () => api.get(`/bookings?clientId=${id}`).then(r => r.data),
     enabled: !!id,
   });
 
@@ -63,7 +63,7 @@ export default function ClientDetail() {
   const createEvalMutation = useMutation({
     mutationFn: (data: any) => api.post('/evaluations', data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['client-summary', id] });
+      qc.invalidateQueries({ queryKey: ['client-bookings', id] });
       setRatingBookingId(null);
       setRatingScore(5);
       setRatingNotes('');
@@ -73,7 +73,7 @@ export default function ClientDetail() {
   const updateEvalMutation = useMutation({
     mutationFn: ({ evalId, data }: any) => api.put(`/evaluations/${evalId}`, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['client-summary', id] });
+      qc.invalidateQueries({ queryKey: ['client-bookings', id] });
       setEditingEval(null);
     },
   });
@@ -90,13 +90,16 @@ export default function ClientDetail() {
 
   if (isLoading) return <div className="p-6 text-slate-400">{t('common.loading')}</div>;
 
-  const bookings = summary?.bookings || [];
-  const avgScore = summary?.avgScore;
-  const totalBookings = summary?.totalBookings || 0;
-  const totalSpent = summary?.totalSpent || 0;
+  const bookings = bookingsData || [];
+  const evaluated = bookings.filter((b: any) => b.evaluation);
+  const avgScore = evaluated.length
+    ? evaluated.reduce((s: number, b: any) => s + b.evaluation.score, 0) / evaluated.length
+    : null;
+  const totalBookings = bookings.length;
+  const totalSpent = bookings.reduce((s: number, b: any) => s + Number(b.totalAmount || 0), 0);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button onClick={() => navigate('/clients')}
@@ -105,175 +108,179 @@ export default function ClientDetail() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        {/* Datos cliente */}
-        <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <h2 className="font-bold text-lg mb-4">{client?.firstName} {client?.lastName}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            {client?.dniPassport && (
-              <div>
-                <span className="text-slate-400">{t('clients.dni')}: </span>
-                <span className="font-mono">{client.dniPassport}</span>
-              </div>
-            )}
-            {client?.nationality && (
-              <div>
-                <span className="text-slate-400">{t('clients.nationality')}: </span>
-                <span>{client.nationality}</span>
-              </div>
-            )}
-            {client?.email && (
-              <div>
-                <span className="text-slate-400">{t('common.email')}: </span>
-                <span>{client.email}</span>
-              </div>
-            )}
-            {client?.phone && (
-              <div>
-                <span className="text-slate-400">{t('common.phone')}: </span>
-                <span>{client.phone}</span>
-              </div>
-            )}
-            {client?.birthDate && (
-              <div>
-                <span className="text-slate-400">{t('clients.birthDate')}: </span>
-                <span>{new Date(client.birthDate).toLocaleDateString('es-ES')}</span>
-              </div>
-            )}
-            <div>
-              <p className="text-xs text-slate-400">Idioma de contacto</p>
-              <p className="text-white text-sm">
-                {LANGUAGES.find(l => l.code === client?.language)?.name || 'Español'}
-              </p>
-            </div>
-          </div>
-          {(client?.street || client?.city || client?.postalCode) && (
-            <div className="md:col-span-2 mt-1">
-              <span className="text-slate-400">Dirección: </span>
-              <span>
-                {[client.street, client.postalCode && client.city ? `${client.postalCode} ${client.city}` : (client.city || client.postalCode), client.province, client.country]
-                  .filter(Boolean).join(', ')}
-              </span>
-            </div>
-          )}
-          {client?.notes && (
-            <div className="mt-3 text-sm text-slate-400 border-t border-slate-800 pt-3 md:col-span-2">{client.notes}</div>
-          )}
-        </div>
+      {/* Layout dos columnas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Resumen */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-          <div>
-            <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.totalBookings')}</div>
-            <div className="text-2xl font-bold">{totalBookings}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.totalSpent')}</div>
-            <div className="text-2xl font-bold text-emerald-400">€{Number(totalSpent).toLocaleString('es-ES')}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.avgRating')}</div>
-            {avgScore ? (
-              <div className="flex items-center gap-2">
-                <Stars score={Math.round(avgScore)} />
-                <span className="text-sm text-slate-400">({avgScore.toFixed(1)})</span>
-              </div>
-            ) : (
-              <div className="text-slate-500 text-sm">{t('evaluations.noRating')}</div>
-            )}
-          </div>
-        </div>
-      </div>
+        {/* ── Columna izquierda: datos del cliente + resumen ─────────── */}
+        <div className="space-y-6">
 
-      {/* Historial reservas */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-800">
-          <h3 className="font-semibold">{t('bookings.title')}</h3>
-        </div>
-        {bookings.length === 0 ? (
-          <div className="text-slate-400 text-center py-10 text-sm">{t('common.noData')}</div>
-        ) : (
-          <>
-            {/* Desktop: tabla */}
-            <div className="hidden md:block">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-800">
-                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
-                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
-                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkOut')}</th>
-                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('common.total')}</th>
-                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.source')}</th>
-                    <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('clients.rating')}</th>
-                    <th className="px-5 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookings.map((b: any) => (
-                    <tr key={b.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
-                      <td className="px-5 py-3 font-medium">{b.property?.name || '—'}</td>
-                      <td className="px-5 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
-                      <td className="px-5 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
-                      <td className="px-5 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
-                      <td className="px-5 py-3 text-slate-400">{sourceLabel[b.source] || b.source}</td>
-                      <td className="px-5 py-3">
-                        {b.evaluation ? (
-                          <div className="flex items-center gap-2">
-                            <Stars score={b.evaluation.score} />
-                            <button onClick={() => setEditingEval({ ...b.evaluation })}
-                              className="text-xs text-slate-400 hover:text-white transition-colors">
-                              {t('common.edit')}
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-slate-600 text-xs">{t('clients.noRating')}</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3">
-                        {!b.evaluation && (
-                          <button onClick={() => { setRatingBookingId(b.id); setRatingScore(5); setRatingNotes(''); }}
-                            className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
-                            {t('evaluations.rate')}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Móvil: tarjetas */}
-            <div className="md:hidden space-y-3 p-4">
-              {bookings.map((b: any) => (
-                <div key={b.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-medium text-white">{b.property?.name || '—'}</span>
-                    <span className="text-xs font-semibold text-emerald-400">€{b.totalAmount}</span>
-                  </div>
-                  <p className="text-xs text-slate-400 mb-1">
-                    {new Date(b.checkInDate).toLocaleDateString('es-ES')} → {new Date(b.checkOutDate).toLocaleDateString('es-ES')}
-                  </p>
-                  <p className="text-xs text-slate-500 mb-2">{sourceLabel[b.source] || b.source}</p>
-                  {b.evaluation ? (
-                    <div className="flex items-center gap-2">
-                      <Stars score={b.evaluation.score} />
-                      <button onClick={() => setEditingEval({ ...b.evaluation })}
-                        className="text-xs text-slate-400 hover:text-white transition-colors">
-                        {t('common.edit')}
-                      </button>
-                    </div>
-                  ) : (
-                    <button onClick={() => { setRatingBookingId(b.id); setRatingScore(5); setRatingNotes(''); }}
-                      className="mt-1 px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
-                      {t('evaluations.rate')}
-                    </button>
-                  )}
+          {/* Datos cliente */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <h2 className="font-bold text-lg mb-4">{client?.firstName} {client?.lastName}</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              {client?.dniPassport && (
+                <div>
+                  <span className="text-slate-400">{t('clients.dni')}: </span>
+                  <span className="font-mono">{client.dniPassport}</span>
                 </div>
-              ))}
+              )}
+              {client?.nationality && (
+                <div>
+                  <span className="text-slate-400">{t('clients.nationality')}: </span>
+                  <span>{client.nationality}</span>
+                </div>
+              )}
+              {client?.email && (
+                <div>
+                  <span className="text-slate-400">{t('common.email')}: </span>
+                  <span>{client.email}</span>
+                </div>
+              )}
+              {client?.phone && (
+                <div>
+                  <span className="text-slate-400">{t('common.phone')}: </span>
+                  <span>{client.phone}</span>
+                </div>
+              )}
+              {client?.birthDate && (
+                <div>
+                  <span className="text-slate-400">{t('clients.birthDate')}: </span>
+                  <span>{new Date(client.birthDate).toLocaleDateString('es-ES')}</span>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-slate-400">Idioma de contacto</p>
+                <p className="text-white text-sm">
+                  {LANGUAGES.find(l => l.code === client?.language)?.name || 'Español'}
+                </p>
+              </div>
             </div>
-          </>
-        )}
+            {(client?.street || client?.city || client?.postalCode) && (
+              <div className="mt-3 text-sm">
+                <span className="text-slate-400">Dirección: </span>
+                <span>
+                  {[client.street, client.postalCode && client.city ? `${client.postalCode} ${client.city}` : (client.city || client.postalCode), client.province, client.country]
+                    .filter(Boolean).join(', ')}
+                </span>
+              </div>
+            )}
+            {client?.notes && (
+              <div className="mt-3 text-sm text-slate-400 border-t border-slate-800 pt-3">{client.notes}</div>
+            )}
+          </div>
+
+          {/* Resumen */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+            <div>
+              <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.totalBookings')}</div>
+              <div className="text-2xl font-bold">{totalBookings}</div>
+            </div>
+            <div>
+              <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.totalSpent')}</div>
+              <div className="text-2xl font-bold text-emerald-400">€{Number(totalSpent).toLocaleString('es-ES')}</div>
+            </div>
+            <div>
+              <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.avgRating')}</div>
+              {avgScore ? (
+                <div className="flex items-center gap-2">
+                  <Stars score={Math.round(avgScore)} />
+                  <span className="text-sm text-slate-400">({avgScore.toFixed(1)})</span>
+                </div>
+              ) : (
+                <div className="text-slate-500 text-sm">{t('evaluations.noRating')}</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Columna derecha: historial de reservas ─────────────────── */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-800">
+            <h3 className="font-semibold">{t('bookings.title')}</h3>
+          </div>
+          {bookings.length === 0 ? (
+            <div className="text-slate-400 text-center py-10 text-sm">{t('common.noData')}</div>
+          ) : (
+            <>
+              {/* Desktop: tabla */}
+              <div className="hidden md:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800">
+                      <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
+                      <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
+                      <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('bookings.checkOut')}</th>
+                      <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('common.total')}</th>
+                      <th className="text-left px-5 py-3 text-slate-400 font-semibold">{t('clients.rating')}</th>
+                      <th className="px-5 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bookings.map((b: any) => (
+                      <tr key={b.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                        <td className="px-5 py-3 font-medium">{b.property?.name || '—'}</td>
+                        <td className="px-5 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
+                        <td className="px-5 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
+                        <td className="px-5 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
+                        <td className="px-5 py-3">
+                          {b.evaluation ? (
+                            <div className="flex items-center gap-2">
+                              <Stars score={b.evaluation.score} />
+                              <button onClick={() => setEditingEval({ ...b.evaluation })}
+                                className="text-xs text-slate-400 hover:text-white transition-colors">
+                                {t('common.edit')}
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-slate-600 text-xs">{t('clients.noRating')}</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          {!b.evaluation && (
+                            <button onClick={() => { setRatingBookingId(b.id); setRatingScore(5); setRatingNotes(''); }}
+                              className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
+                              {t('evaluations.rate')}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Móvil: tarjetas */}
+              <div className="md:hidden space-y-3 p-4">
+                {bookings.map((b: any) => (
+                  <div key={b.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-medium text-white">{b.property?.name || '—'}</span>
+                      <span className="text-xs font-semibold text-emerald-400">€{b.totalAmount}</span>
+                    </div>
+                    <p className="text-xs text-slate-400 mb-1">
+                      {new Date(b.checkInDate).toLocaleDateString('es-ES')} → {new Date(b.checkOutDate).toLocaleDateString('es-ES')}
+                    </p>
+                    <p className="text-xs text-slate-500 mb-2">{sourceLabel[b.source] || b.source}</p>
+                    {b.evaluation ? (
+                      <div className="flex items-center gap-2">
+                        <Stars score={b.evaluation.score} />
+                        <button onClick={() => setEditingEval({ ...b.evaluation })}
+                          className="text-xs text-slate-400 hover:text-white transition-colors">
+                          {t('common.edit')}
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setRatingBookingId(b.id); setRatingScore(5); setRatingNotes(''); }}
+                        className="mt-1 px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
+                        {t('evaluations.rate')}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Modal crear valoración */}

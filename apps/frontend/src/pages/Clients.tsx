@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -86,6 +86,7 @@ const emptyForm = {
 
 const inputCls = "w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
 const labelCls = "block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1";
+const selCls   = "px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
 
 function Stars({ score }: { score: number }) {
   return (
@@ -100,7 +101,15 @@ export default function Clients() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
+
+  // ── Filtros y ordenación ───────────────────────────────────────────────
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterNationality, setFilterNationality] = useState('');
+  const [filterLanguage, setFilterLanguage] = useState('');
+  const [sortKey, setSortKey] = useState('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // ── Formulario ────────────────────────────────────────────────────────
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -111,8 +120,8 @@ export default function Clients() {
   const STALE_5MIN = 5 * 60 * 1000;
 
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ['clients', search],
-    queryFn: () => api.get('/clients', { params: { search: search || undefined } }).then(r => {
+    queryKey: ['clients'],
+    queryFn: () => api.get('/clients').then(r => {
       const d = r.data; return d?.data || d || [];
     }),
     staleTime: STALE_5MIN,
@@ -137,6 +146,55 @@ export default function Clients() {
     placeholderData: keepPreviousData,
   });
 
+  // ── Ordenación ────────────────────────────────────────────────────────
+  const handleSort = (key: string) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const thSort = (label: string, key: string) => (
+    <th onClick={() => handleSort(key)}
+      className="text-left px-4 py-3 text-slate-400 font-semibold cursor-pointer hover:text-white select-none transition-colors whitespace-nowrap">
+      {label}{sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+    </th>
+  );
+
+  // ── Filtrado + ordenación ─────────────────────────────────────────────
+  const filteredSorted = useMemo(() => {
+    let r = [...clients];
+    if (filterSearch) {
+      const s = filterSearch.toLowerCase();
+      r = r.filter((c: Client) =>
+        `${c.firstName} ${c.lastName}`.toLowerCase().includes(s) ||
+        (c.dniPassport || '').toLowerCase().includes(s)
+      );
+    }
+    if (filterNationality) r = r.filter((c: Client) => c.nationality === filterNationality);
+    if (filterLanguage)    r = r.filter((c: Client) => c.language === filterLanguage);
+    if (sortKey) {
+      r.sort((a: Client, b: Client) => {
+        if (sortKey === 'bookings') {
+          const sa = (summaries as any)[a.id]?.totalBookings ?? 0;
+          const sb = (summaries as any)[b.id]?.totalBookings ?? 0;
+          return sortDir === 'asc' ? sa - sb : sb - sa;
+        }
+        if (sortKey === 'rating') {
+          const sa = (summaries as any)[a.id]?.avgScore ?? 0;
+          const sb = (summaries as any)[b.id]?.avgScore ?? 0;
+          return sortDir === 'asc' ? sa - sb : sb - sa;
+        }
+        let va = '', vb = '';
+        if      (sortKey === 'name')     { va = `${a.firstName} ${a.lastName}`; vb = `${b.firstName} ${b.lastName}`; }
+        else if (sortKey === 'dni')      { va = a.dniPassport || ''; vb = b.dniPassport || ''; }
+        else if (sortKey === 'email')    { va = a.email || ''; vb = b.email || ''; }
+        else if (sortKey === 'language') { va = a.language || ''; vb = b.language || ''; }
+        const cmp = va.localeCompare(vb, 'es');
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+    }
+    return r;
+  }, [clients, summaries, filterSearch, filterNationality, filterLanguage, sortKey, sortDir]);
+
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post('/clients', data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['clients'] }); setShowForm(false); setForm(emptyForm); },
@@ -157,7 +215,6 @@ export default function Clients() {
   const openEdit = (e: React.MouseEvent, c: Client) => {
     e.stopPropagation();
     setEditing(c);
-    // Parse phone: try to split code from number
     let phoneCode = '+34';
     let phoneNumber = c.phone || '';
     const match = (c.phone || '').match(/^(\+\d{1,4})(.*)$/);
@@ -216,12 +273,17 @@ export default function Clients() {
     else createMutation.mutate(data);
   };
 
+  const hasFilters = filterSearch || filterNationality || filterLanguage;
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">{t('clients.title')}</h1>
-          <p className="text-slate-400 text-sm mt-1">{clients.length} {t('clients.registered')}</p>
+          <p className="text-slate-400 text-sm mt-1">
+            {filteredSorted.length} {t('clients.registered')}
+            {hasFilters && clients.length !== filteredSorted.length ? ` (de ${clients.length})` : ''}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <ExcelButtons entity="clients" onImportSuccess={() => qc.invalidateQueries({ queryKey: ['clients'] })} />
@@ -232,16 +294,36 @@ export default function Clients() {
         </div>
       </div>
 
-      <div className="mb-4">
-        <input placeholder={`${t('common.search')}...`} value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full max-w-md px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+      {/* ── Barra de filtros ────────────────────────────────────────────── */}
+      <div className="mb-4 flex flex-wrap gap-3">
+        <input
+          placeholder="Buscar por nombre o DNI..."
+          value={filterSearch}
+          onChange={e => setFilterSearch(e.target.value)}
+          className="flex-1 min-w-48 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+        />
+        <select value={filterNationality} onChange={e => setFilterNationality(e.target.value)} className={selCls}>
+          <option value="">Todas las nac.</option>
+          {COUNTRIES.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
+        </select>
+        <select value={filterLanguage} onChange={e => setFilterLanguage(e.target.value)} className={selCls}>
+          <option value="">Todos los idiomas</option>
+          {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+        </select>
+        {hasFilters && (
+          <button onClick={() => { setFilterSearch(''); setFilterNationality(''); setFilterLanguage(''); }}
+            className="px-3 py-2 text-xs text-slate-400 hover:text-white border border-slate-700 rounded-lg transition-colors">
+            Limpiar
+          </button>
+        )}
       </div>
 
       {isLoading ? (
         <div className="text-slate-400 text-center py-20">{t('common.loading')}</div>
       ) : clients.length === 0 ? (
         <div className="text-slate-400 text-center py-20">{t('common.noData')}</div>
+      ) : filteredSorted.length === 0 ? (
+        <div className="text-slate-400 text-center py-20">No se encontraron resultados</div>
       ) : (
         <>
           {/* Desktop: tabla */}
@@ -249,18 +331,18 @@ export default function Clients() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-800">
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.name')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('clients.dni')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.email')}</th>
+                  {thSort(t('common.name'), 'name')}
+                  {thSort(t('clients.dni'), 'dni')}
+                  {thSort(t('common.email'), 'email')}
                   <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.phone')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('clients.bookings')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('clients.rating')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">Idioma</th>
+                  {thSort(t('clients.bookings'), 'bookings')}
+                  {thSort(t('clients.rating'), 'rating')}
+                  {thSort('Idioma', 'language')}
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {clients.map((c: Client) => {
+                {filteredSorted.map((c: Client) => {
                   const s = (summaries as any)[c.id];
                   return (
                     <tr key={c.id} onClick={() => navigate(`/clients/${c.id}`)}
@@ -297,7 +379,7 @@ export default function Clients() {
 
           {/* Móvil: tarjetas */}
           <div className="md:hidden space-y-3">
-            {clients.map((c: Client) => {
+            {filteredSorted.map((c: Client) => {
               const s = (summaries as any)[c.id];
               return (
                 <div key={c.id} onClick={() => navigate(`/clients/${c.id}`)}

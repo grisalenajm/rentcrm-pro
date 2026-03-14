@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -89,6 +89,7 @@ const emptyGuest = () => ({
 
 const inputCls = "w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
 const labelCls = "block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1";
+const selCls   = "px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
 
 function DocFields({ prefix, docType, docNumber, docCountry, onDocType, onDocNumber, onDocCountry, readonly, warnings }: {
   prefix: string; docType: string; docNumber: string; docCountry: string;
@@ -152,7 +153,17 @@ export default function Bookings() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
-  // Estado búsqueda cliente
+
+  // ── Filtros y ordenación ───────────────────────────────────────────────
+  const [filterSearch, setFilterSearch]       = useState('');
+  const [filterProperty, setFilterProperty]   = useState('');
+  const [filterStatus, setFilterStatus]       = useState('');
+  const [filterDateFrom, setFilterDateFrom]   = useState('');
+  const [filterDateTo, setFilterDateTo]       = useState('');
+  const [sortKey, setSortKey]                 = useState('checkin');
+  const [sortDir, setSortDir]                 = useState<'asc' | 'desc'>('desc');
+
+  // ── Estado búsqueda cliente ───────────────────────────────────────────
   const [clientSearch, setClientSearch] = useState('');
   const [clientResults, setClientResults] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -219,6 +230,62 @@ export default function Bookings() {
     queryFn: () => api.get('/properties').then(r => r.data),
   });
   const properties = propertiesRaw?.data || propertiesRaw || [];
+
+  // ── Ordenación ────────────────────────────────────────────────────────
+  const handleSort = (key: string) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const thSort = (label: string, key: string) => (
+    <th onClick={() => handleSort(key)}
+      className="text-left px-4 py-3 text-slate-400 font-semibold cursor-pointer hover:text-white select-none transition-colors whitespace-nowrap">
+      {label}{sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+    </th>
+  );
+
+  // ── Filtrado + ordenación ─────────────────────────────────────────────
+  const filteredSorted = useMemo(() => {
+    let r = [...bookings];
+    if (filterSearch) {
+      const s = filterSearch.toLowerCase();
+      r = r.filter((b: any) =>
+        `${b.client?.firstName || ''} ${b.client?.lastName || ''}`.toLowerCase().includes(s) ||
+        (b.property?.name || '').toLowerCase().includes(s)
+      );
+    }
+    if (filterProperty) r = r.filter((b: any) => b.propertyId === filterProperty || b.property?.id === filterProperty);
+    if (filterStatus)   r = r.filter((b: any) => b.status === filterStatus);
+    if (filterDateFrom) r = r.filter((b: any) => new Date(b.checkInDate) >= new Date(filterDateFrom));
+    if (filterDateTo)   r = r.filter((b: any) => new Date(b.checkInDate) <= new Date(filterDateTo));
+    if (sortKey) {
+      r.sort((a: any, b: any) => {
+        if (sortKey === 'checkin')  {
+          const va = new Date(a.checkInDate).getTime();
+          const vb = new Date(b.checkInDate).getTime();
+          return sortDir === 'asc' ? va - vb : vb - va;
+        }
+        if (sortKey === 'checkout') {
+          const va = new Date(a.checkOutDate).getTime();
+          const vb = new Date(b.checkOutDate).getTime();
+          return sortDir === 'asc' ? va - vb : vb - va;
+        }
+        if (sortKey === 'total') {
+          const va = Number(a.totalAmount) || 0;
+          const vb = Number(b.totalAmount) || 0;
+          return sortDir === 'asc' ? va - vb : vb - va;
+        }
+        let va = '', vb = '';
+        if      (sortKey === 'client')   { va = `${a.client?.firstName || ''} ${a.client?.lastName || ''}`; vb = `${b.client?.firstName || ''} ${b.client?.lastName || ''}`; }
+        else if (sortKey === 'property') { va = a.property?.name || ''; vb = b.property?.name || ''; }
+        else if (sortKey === 'source')   { va = a.source || ''; vb = b.source || ''; }
+        else if (sortKey === 'status')   { va = a.status || ''; vb = b.status || ''; }
+        const cmp = va.localeCompare(vb, 'es');
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+    }
+    return r;
+  }, [bookings, filterSearch, filterProperty, filterStatus, filterDateFrom, filterDateTo, sortKey, sortDir]);
 
   const createClientMutation = useMutation({
     mutationFn: (data: any) => api.post('/clients', data).then(r => r.data),
@@ -354,13 +421,17 @@ export default function Bookings() {
     !!dateError || !!overlapError ||
     createMutation.isPending || createClientMutation.isPending;
 
+  const hasFilters = filterSearch || filterProperty || filterStatus || filterDateFrom || filterDateTo;
 
   return (
     <div className="p-4 md:p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">{t('bookings.title')}</h1>
-          <p className="text-slate-400 text-sm mt-1">{bookings.length} {t('bookings.registered')}</p>
+          <p className="text-slate-400 text-sm mt-1">
+            {filteredSorted.length} {t('bookings.registered')}
+            {hasFilters && bookings.length !== filteredSorted.length ? ` (de ${bookings.length})` : ''}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <ExcelButtons entity="bookings" showImport={false} />
@@ -371,10 +442,52 @@ export default function Bookings() {
         </div>
       </div>
 
+      {/* ── Barra de filtros ────────────────────────────────────────────── */}
+      <div className="mb-4 flex flex-wrap gap-3">
+        <input
+          placeholder="Buscar cliente o propiedad..."
+          value={filterSearch}
+          onChange={e => setFilterSearch(e.target.value)}
+          className="flex-1 min-w-48 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+        />
+        <select value={filterProperty} onChange={e => setFilterProperty(e.target.value)} className={selCls}>
+          <option value="">Todas las propiedades</option>
+          {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={selCls}>
+          <option value="">Todos los estados</option>
+          {['created','registered','processed','error','cancelled'].map(s => (
+            <option key={s} value={s}>{t(`bookings.statuses.${s}`)}</option>
+          ))}
+        </select>
+        <input
+          type="date"
+          value={filterDateFrom}
+          onChange={e => setFilterDateFrom(e.target.value)}
+          title="Check-in desde"
+          className={selCls}
+        />
+        <input
+          type="date"
+          value={filterDateTo}
+          onChange={e => setFilterDateTo(e.target.value)}
+          title="Check-in hasta"
+          className={selCls}
+        />
+        {hasFilters && (
+          <button onClick={() => { setFilterSearch(''); setFilterProperty(''); setFilterStatus(''); setFilterDateFrom(''); setFilterDateTo(''); }}
+            className="px-3 py-2 text-xs text-slate-400 hover:text-white border border-slate-700 rounded-lg transition-colors">
+            Limpiar
+          </button>
+        )}
+      </div>
+
       {isLoading ? (
         <div className="text-slate-400 text-center py-20">{t('common.loading')}</div>
       ) : bookings.length === 0 ? (
         <div className="text-slate-400 text-center py-20">{t('common.noData')}</div>
+      ) : filteredSorted.length === 0 ? (
+        <div className="text-slate-400 text-center py-20">No se encontraron resultados</div>
       ) : (
         <>
           {/* Desktop: tabla */}
@@ -382,17 +495,17 @@ export default function Bookings() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-800">
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.client')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.property')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.checkIn')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.checkOut')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.total')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('bookings.source')}</th>
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.status')}</th>
+                  {thSort(t('bookings.client'), 'client')}
+                  {thSort(t('bookings.property'), 'property')}
+                  {thSort(t('bookings.checkIn'), 'checkin')}
+                  {thSort(t('bookings.checkOut'), 'checkout')}
+                  {thSort(t('common.total'), 'total')}
+                  {thSort(t('bookings.source'), 'source')}
+                  {thSort(t('common.status'), 'status')}
                 </tr>
               </thead>
               <tbody>
-                {bookings.map((b: any) => (
+                {filteredSorted.map((b: any) => (
                   <tr key={b.id} onClick={() => navigate(`/bookings/${b.id}`)}
                     className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
                     <td className="px-4 py-3 font-medium">{b.client?.firstName} {b.client?.lastName}</td>
@@ -413,7 +526,7 @@ export default function Bookings() {
           </div>
           {/* Móvil: tarjetas */}
           <div className="md:hidden space-y-3">
-            {bookings.map((b: any) => (
+            {filteredSorted.map((b: any) => (
               <div key={b.id} onClick={() => navigate(`/bookings/${b.id}`)}
                 className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:bg-slate-800/70">
                 <div className="flex justify-between items-start mb-2">
