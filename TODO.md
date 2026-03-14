@@ -19,7 +19,12 @@
 
 ## Completado
 
-### Sesión 14/03/2026
+### Sesión 14/03/2026 (tarde)
+- [x] Dashboard rediseñado con 4 pestañas (recharts): Resumen, Negocio, Clientes, Cumplimiento
+- [x] Fix Dockerfile frontend: copiar root node_modules (hoisting npm workspaces)
+- [x] Documentación actualizada: README, ESTADO_PROYECTO, TODO
+
+### Sesión 14/03/2026 (mañana)
 - [x] Mejoras flujo reserva: búsqueda cliente con debounce, idioma por nacionalidad, validación solapamiento fechas
 - [x] Fix parpadeo reservas en lista de clientes (staleTime + keepPreviousData)
 - [x] Fix ClientDetail: reservas visibles via GET /api/bookings?clientId= (antes usaba evaluations/summary)

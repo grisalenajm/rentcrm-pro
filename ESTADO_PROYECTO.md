@@ -1,7 +1,7 @@
 # 🏘️ RentCRM Pro — Estado del Proyecto
 
-**Última actualización:** 08/03/2026
-**Versión:** 1.5
+**Última actualización:** 14/03/2026
+**Versión:** 1.6
 **Entorno:** LXC Docker · 192.168.1.123 · Frontend :3000 · API :3001
 
 ---
@@ -23,7 +23,7 @@
 
 ### Frontend (React + Vite + TypeScript + Tailwind)
 - **Login** — autenticación JWT
-- **Dashboard** — métricas reales (propiedades, clientes, reservas, ingresos) + reservas recientes
+- **Dashboard** — 4 pestañas: Resumen (KPIs, barras ingresos/gastos, línea ocupación, mapa de calor), Negocio (rentabilidad, ranking, tarta canales, métricas con comparativa), Clientes (top 10, nacionalidades, nuevos/repetidores), Cumplimiento (SES, checkins, contratos)
 - **Properties** — CRUD completo + código SES por propiedad + **sección iCal por propiedad** (feeds, sync, export .ics)
 - **Clients** — lista con valoración media + tipo doc + país con bandera + teléfono con prefijo
 - **ClientDetail** — historial de reservas + ratings + resumen
@@ -51,7 +51,7 @@
 | 🔴 Alta | Consulta de estado de lote SES (verificación asíncrona del Ministerio) |
 | 🟡 Media | Página "Partes SES" — historial de envíos con estado y filtros |
 | 🟡 Media | Notificación por email cuando SES confirma/rechaza un parte |
-| 🟡 Media | Dashboard mejorado — gráficos de ingresos y tasa de ocupación |
+| ✅ Hecho | Dashboard mejorado — 4 pestañas con recharts (14/03/2026) |
 | 🟢 Baja | Tests de envío con entorno de pruebas SES |
 | 🟢 Baja | Notificaciones push (check-in próximo, contratos sin firmar, pagos pendientes) |
 
@@ -137,6 +137,11 @@ POSTGRES_PASSWORD=...
 ---
 
 ## 📋 Historial de Sesiones
+
+### Sesión 14/03/2026
+- ✅ **Dashboard rediseñado** — 4 pestañas con recharts: Resumen (KPIs hoy, barras ingresos/gastos 12 meses, línea ocupación mensual por propiedad, mapa de calor 12×31), Negocio (rentabilidad por propiedad, ranking horizontal, tarta canales, precio medio/estancia media con comparativa año anterior), Clientes (top 10, tarta nacionalidades, nuevos vs repetidores), Cumplimiento (KPIs SES/checkin/contratos del mes, lista SES pendiente)
+- ✅ **Fix Dockerfile frontend** — copia root `node_modules` además de los de workspace (igual que API); necesario tras hoisting de vite/recharts por npm workspaces
+- ✅ **Documentación actualizada** — README completo, ESTADO_PROYECTO, TODO
 
 ### Sesión 08/03/2026
 - ✅ **Documentación actualizada** — CLAUDE.md y ESTADO_PROYECTO.md sincronizados con estado real del proyecto
