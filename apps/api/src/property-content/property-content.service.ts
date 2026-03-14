@@ -12,17 +12,17 @@ export class PropertyContentService {
       where: { organizationId, propertyId: null },
     });
 
-    if (!propertyId) return global ?? { houseRules: null, arrivalGuide: null, localInfo: null };
+    if (!propertyId) {
+      return { template: global?.template ?? null, _specific: null, _global: global ?? null };
+    }
 
     const specific = await this.prisma.propertyContent.findFirst({
       where: { organizationId, propertyId },
     });
 
-    // Merge: use property-specific value if non-empty, otherwise fall back to global
     return {
-      houseRules:   specific?.houseRules   || global?.houseRules   || null,
-      arrivalGuide: specific?.arrivalGuide || global?.arrivalGuide || null,
-      localInfo:    specific?.localInfo    || global?.localInfo    || null,
+      // Merged: use property template if non-empty, else global
+      template: specific?.template || global?.template || null,
       _specific: specific ?? null,
       _global:   global   ?? null,
     };
@@ -35,20 +35,14 @@ export class PropertyContentService {
     if (existing) {
       return this.prisma.propertyContent.update({
         where: { id: existing.id },
-        data: {
-          houseRules:   dto.houseRules,
-          arrivalGuide: dto.arrivalGuide,
-          localInfo:    dto.localInfo,
-        },
+        data: { template: dto.template },
       });
     }
     return this.prisma.propertyContent.create({
       data: {
         organizationId,
         propertyId: propertyId ?? null,
-        houseRules:   dto.houseRules,
-        arrivalGuide: dto.arrivalGuide,
-        localInfo:    dto.localInfo,
+        template: dto.template,
       },
     });
   }

@@ -2,18 +2,18 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
+import RichTextEditor from './RichTextEditor';
 
 interface Props {
   propertyId?: string;
-  globalContent?: { houseRules?: string | null; arrivalGuide?: string | null; localInfo?: string | null };
 }
 
-export default function ContentEditor({ propertyId, globalContent }: Props) {
+export default function ContentEditor({ propertyId }: Props) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [saved, setSaved] = useState(false);
-  const [form, setForm] = useState({ houseRules: '', arrivalGuide: '', localInfo: '' });
+  const [template, setTemplate] = useState('');
   const [initialized, setInitialized] = useState(false);
 
   const queryKey = propertyId
@@ -31,6 +31,12 @@ export default function ContentEditor({ propertyId, globalContent }: Props) {
     }).then(r => r.data),
   });
 
+  const { data: globalContent } = useQuery({
+    queryKey: ['property-content', 'global'],
+    queryFn: () => api.get('/property-content').then(r => r.data),
+    enabled: !!propertyId,
+  });
+
   const { data: documents = [], refetch: refetchDocs } = useQuery({
     queryKey: docsQueryKey,
     queryFn: () => api.get('/property-content/documents', {
@@ -40,21 +46,26 @@ export default function ContentEditor({ propertyId, globalContent }: Props) {
 
   useEffect(() => {
     if (content && !initialized) {
-      setForm({
-        houseRules:   (propertyId ? content._specific?.houseRules   : content.houseRules)   ?? '',
-        arrivalGuide: (propertyId ? content._specific?.arrivalGuide : content.arrivalGuide) ?? '',
-        localInfo:    (propertyId ? content._specific?.localInfo    : content.localInfo)    ?? '',
-      });
+      // For property-specific editor: show only the property override, not merged
+      const raw = propertyId ? (content._specific?.template ?? '') : (content.template ?? '');
+      setTemplate(raw);
       setInitialized(true);
     }
   }, [content, initialized, propertyId]);
 
+  // Reset when switching properties
+  useEffect(() => {
+    setInitialized(false);
+    setTemplate('');
+  }, [propertyId]);
+
   const saveMutation = useMutation({
-    mutationFn: (data: any) => api.put('/property-content', data, {
+    mutationFn: () => api.put('/property-content', { template }, {
       params: propertyId ? { propertyId } : {},
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: ['property-content', 'global'] });
       setInitialized(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -85,86 +96,78 @@ export default function ContentEditor({ propertyId, globalContent }: Props) {
     e.target.value = '';
   };
 
-  const getPlaceholder = (field: string, globalVal?: string | null) => {
-    if (!propertyId) return (t as any)(`content.${field}Placeholder`) || '';
-    return globalVal
-      ? `${t('content.inheritedFromGlobal')}: ${globalVal.slice(0, 80)}${globalVal.length > 80 ? '...' : ''}`
-      : ((t as any)(`content.${field}Placeholder`) || '');
-  };
-
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const hasGlobal = !!globalContent?.template;
+  const hasSpecific = !!content?._specific?.template;
+
   return (
     <div className="space-y-5">
-      {propertyId && globalContent && (
-        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 text-xs text-slate-400">
-          ℹ️ {t('content.inheritedFromGlobal')} — los campos vacíos heredan el contenido global.
+      {/* Banner de herencia global (solo en editor de propiedad) */}
+      {propertyId && !hasSpecific && hasGlobal && (
+        <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+          <span className="text-amber-400 text-lg shrink-0">🌐</span>
+          <div>
+            <p className="text-sm font-semibold text-amber-400">{t('content.usingGlobalTemplate')}</p>
+            <p className="text-xs text-slate-400 mt-0.5">Edita aquí para crear una versión personalizada para esta propiedad.</p>
+          </div>
         </div>
       )}
 
-      {/* Reglas de la casa */}
-      <div>
-        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-          {t('content.houseRules')}
-          {propertyId && form.houseRules && (
-            <span className="ml-2 text-emerald-400 normal-case font-normal">· sobreescrito</span>
-          )}
-        </label>
-        <textarea
-          value={form.houseRules}
-          onChange={e => setForm({ ...form, houseRules: e.target.value })}
-          rows={5}
-          placeholder={getPlaceholder('houseRules', globalContent?.houseRules)}
-          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none placeholder:text-slate-600"
-        />
-      </div>
+      {/* Preview del template global cuando no hay override */}
+      {propertyId && !hasSpecific && hasGlobal && (
+        <div className="border border-slate-700 rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-700">
+            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Vista previa — plantilla global</span>
+          </div>
+          <div
+            className="px-4 py-3 text-sm text-slate-300 leading-relaxed max-h-48 overflow-y-auto bg-slate-800/30"
+            dangerouslySetInnerHTML={{ __html: globalContent.template }}
+          />
+        </div>
+      )}
 
-      {/* Guía de llegada */}
+      {/* Editor */}
       <div>
-        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-          {t('content.arrivalGuide')}
-          {propertyId && form.arrivalGuide && (
-            <span className="ml-2 text-emerald-400 normal-case font-normal">· sobreescrito</span>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            {t('content.template')}
+            {propertyId && hasSpecific && (
+              <span className="ml-2 text-emerald-400 normal-case font-normal">· personalizado</span>
+            )}
+          </label>
+          {propertyId && hasSpecific && (
+            <button
+              onClick={() => { setTemplate(''); saveMutation.mutate(); }}
+              className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+              ↩ Usar plantilla global
+            </button>
           )}
-        </label>
-        <textarea
-          value={form.arrivalGuide}
-          onChange={e => setForm({ ...form, arrivalGuide: e.target.value })}
-          rows={5}
-          placeholder={getPlaceholder('arrivalGuide', globalContent?.arrivalGuide)}
-          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none placeholder:text-slate-600"
-        />
-      </div>
-
-      {/* Info local */}
-      <div>
-        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-          {t('content.localInfo')}
-          {propertyId && form.localInfo && (
-            <span className="ml-2 text-emerald-400 normal-case font-normal">· sobreescrito</span>
-          )}
-        </label>
-        <textarea
-          value={form.localInfo}
-          onChange={e => setForm({ ...form, localInfo: e.target.value })}
-          rows={4}
-          placeholder={getPlaceholder('localInfo', globalContent?.localInfo)}
-          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none placeholder:text-slate-600"
+        </div>
+        <RichTextEditor
+          value={template}
+          onChange={setTemplate}
+          placeholder={
+            propertyId && hasGlobal
+              ? 'Escribe aquí para personalizar esta propiedad (deja vacío para usar la plantilla global)...'
+              : 'Escribe la plantilla del welcome package. Usa los botones para insertar variables como {{guest_name}} o {{property_name}}...'
+          }
+          minHeight="320px"
         />
       </div>
 
       <button
-        onClick={() => saveMutation.mutate(form)}
+        onClick={() => saveMutation.mutate()}
         disabled={saveMutation.isPending}
         className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
         {saved ? t('content.saved') : saveMutation.isPending ? t('content.saving') : t('content.save')}
       </button>
 
-      {/* Documentos PDF */}
+      {/* Documentos PDF adjuntos */}
       <div className="border-t border-slate-700 pt-5">
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
@@ -188,9 +191,13 @@ export default function ContentEditor({ propertyId, globalContent }: Props) {
                   <span className="text-red-400 shrink-0">📄</span>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-white truncate">{doc.name}</p>
-                    <p className="text-xs text-slate-500">{formatSize(doc.fileSize)}{doc.propertyId === null ? ' · global' : ''}</p>
+                    <p className="text-xs text-slate-500">
+                      {formatSize(doc.fileSize)}
+                      {doc.propertyId === null && propertyId && ' · global'}
+                    </p>
                   </div>
                 </div>
+                {/* Solo permite borrar documentos propios del contexto actual */}
                 {(doc.propertyId === null ? !propertyId : true) && (
                   <button
                     onClick={() => { if (confirm(t('common.confirm_delete'))) deleteMutation.mutate(doc.id); }}

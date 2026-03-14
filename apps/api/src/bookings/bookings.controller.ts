@@ -21,8 +21,12 @@ export class BookingsController {
   ) {}
 
   @Get()
-  findAll(@Request() req, @Query('propertyId') propertyId?: string) {
-    return this.bookingsService.findAll(req.user.organizationId, propertyId);
+  findAll(
+    @Request() req,
+    @Query('propertyId') propertyId?: string,
+    @Query('clientId') clientId?: string,
+  ) {
+    return this.bookingsService.findAll(req.user.organizationId, propertyId, clientId);
   }
 
   @Public()
