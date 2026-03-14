@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
@@ -108,11 +108,15 @@ export default function Clients() {
   const validationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const languageManuallySet = useRef(false);
 
+  const STALE_5MIN = 5 * 60 * 1000;
+
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['clients', search],
     queryFn: () => api.get('/clients', { params: { search: search || undefined } }).then(r => {
       const d = r.data; return d?.data || d || [];
     }),
+    staleTime: STALE_5MIN,
+    placeholderData: keepPreviousData,
   });
 
   const { data: summaries = {} } = useQuery({
@@ -129,6 +133,8 @@ export default function Clients() {
       return Object.fromEntries(results.map(r => [r.id, r]));
     },
     enabled: clients.length > 0,
+    staleTime: STALE_5MIN,
+    placeholderData: keepPreviousData,
   });
 
   const createMutation = useMutation({
