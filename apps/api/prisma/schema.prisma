@@ -79,6 +79,7 @@ model Property {
   city           String    @db.VarChar(100)
   province       String    @db.VarChar(100)
   postalCode     String?   @map("postal_code") @db.VarChar(10)
+  country        String?   @map("country") @db.VarChar(5)
   rooms          Int
   bathrooms      Int?
   maxGuests      Int?      @map("max_guests")

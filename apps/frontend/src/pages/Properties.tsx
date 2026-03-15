@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import ExcelButtons from '../components/ExcelButtons';
 import ContentEditor from '../components/ContentEditor';
+import { WORLD_COUNTRIES } from '../data/countries';
 
 interface Property {
   id: string;
@@ -11,7 +12,12 @@ interface Property {
   address: string;
   city: string;
   province?: string;
+  postalCode?: string;
+  country?: string;
   rooms: number;
+  bathrooms?: number;
+  maxGuests?: number;
+  pricePerNight?: number;
   status: string;
   sesCodigoEstablecimiento?: string;
   photo?: string;
@@ -26,7 +32,7 @@ interface Feed {
   lastSyncStatus: string;
 }
 
-const emptyForm = { name:'', address:'', city:'', province:'', rooms:'1', status: 'active', sesCodigoEstablecimiento:'' };
+const emptyForm = { name:'', address:'', city:'', province:'', postalCode:'', country:'ES', rooms:'1', bathrooms:'', maxGuests:'', pricePerNight:'', status: 'active', sesCodigoEstablecimiento:'' };
 
 const fmtEur = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
@@ -97,13 +103,34 @@ export default function Properties() {
   const openCreate = () => { setEditing(null); setForm(emptyForm); setShowForm(true); };
   const openEdit = (p: Property) => {
     setEditing(p);
-    setForm({ name: p.name, address: p.address, city: p.city, province: p.province||'', rooms: String(p.rooms), status: p.status || 'active', sesCodigoEstablecimiento: (p as any).sesCodigoEstablecimiento||'' });
+    setForm({
+      name: p.name,
+      address: p.address,
+      city: p.city,
+      province: p.province || '',
+      postalCode: p.postalCode || '',
+      country: p.country || 'ES',
+      rooms: String(p.rooms),
+      bathrooms: p.bathrooms ? String(p.bathrooms) : '',
+      maxGuests: p.maxGuests ? String(p.maxGuests) : '',
+      pricePerNight: p.pricePerNight ? String(p.pricePerNight) : '',
+      status: p.status || 'active',
+      sesCodigoEstablecimiento: p.sesCodigoEstablecimiento || '',
+    });
     setShowForm(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const data = { ...form, rooms: Number(form.rooms) };
+    const data = {
+      ...form,
+      rooms: Number(form.rooms),
+      bathrooms: form.bathrooms ? Number(form.bathrooms) : undefined,
+      maxGuests: form.maxGuests ? Number(form.maxGuests) : undefined,
+      pricePerNight: form.pricePerNight ? Number(form.pricePerNight) : undefined,
+      postalCode: form.postalCode || undefined,
+      country: form.country || undefined,
+    };
     if (editing) updateMutation.mutate({ id: editing.id, data });
     else createMutation.mutate(data);
   };
@@ -402,8 +429,20 @@ export default function Properties() {
                       <p className="text-white text-sm">{detailProperty.province || '—'}</p>
                     </div>
                     <div>
+                      <p className="text-xs text-slate-400">País</p>
+                      <p className="text-white text-sm">
+                        {detailProperty.country
+                          ? (WORLD_COUNTRIES.find(c => c.code === detailProperty.country)?.name || detailProperty.country)
+                          : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Código Postal</p>
+                      <p className="text-white text-sm">{detailProperty.postalCode || '—'}</p>
+                    </div>
+                    <div>
                       <p className="text-xs text-slate-400">Habitaciones</p>
-                      <p className="text-white text-sm">{detailProperty.rooms}</p>
+                      <p className="text-white text-sm">{detailProperty.rooms}{detailProperty.bathrooms ? ` · ${detailProperty.bathrooms} baños` : ''}</p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-400">Estado</p>
@@ -411,6 +450,18 @@ export default function Properties() {
                         {statusLabel(detailProperty.status)}
                       </span>
                     </div>
+                    {detailProperty.maxGuests && (
+                      <div>
+                        <p className="text-xs text-slate-400">Máx. huéspedes</p>
+                        <p className="text-white text-sm">{detailProperty.maxGuests}</p>
+                      </div>
+                    )}
+                    {detailProperty.pricePerNight && (
+                      <div>
+                        <p className="text-xs text-slate-400">Precio/noche</p>
+                        <p className="text-white text-sm">{fmtEur(Number(detailProperty.pricePerNight))}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -546,45 +597,106 @@ export default function Properties() {
       {/* Property create/edit modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
-            <h2 className="text-lg font-bold mb-5">{editing ? t('common.edit') : t('properties.new')}</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('common.name')} *</label>
-                  <input value={form.name} onChange={f('name')} required
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('common.address')} *</label>
-                  <input value={form.address} onChange={f('address')} required
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('common.city')} *</label>
-                  <input value={form.city} onChange={f('city')} required
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('properties.province')}</label>
-                  <input value={form.province} onChange={f('province')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('properties.rooms')} *</label>
-                  <input type="number" min="1" value={form.rooms} onChange={f('rooms')} required
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">🚔 Código SES Establecimiento</label>
-                  <input value={form.sesCodigoEstablecimiento} onChange={f('sesCodigoEstablecimiento')}
-                    placeholder="0000000002"
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                  <p className="text-xs text-slate-500 mt-1">Código asignado a esta propiedad en SES Hospedajes</p>
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+              <h2 className="text-lg font-bold">{editing ? t('common.edit') : t('properties.new')}</h2>
+              <button type="button" onClick={() => setShowForm(false)}
+                className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+
+              {/* Identificación */}
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Identificación</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('common.name')} *</label>
+                    <input value={form.name} onChange={f('name')} required
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('common.address')}</label>
+                    <input value={form.address} onChange={f('address')}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('common.city')}</label>
+                    <input value={form.city} onChange={f('city')}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('properties.province')}</label>
+                    <input value={form.province} onChange={f('province')}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">País</label>
+                    <select value={form.country} onChange={f('country')}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                      {WORLD_COUNTRIES.map(c => (
+                        <option key={c.code} value={c.code}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Código Postal</label>
+                    <input value={form.postalCode} onChange={f('postalCode')}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
                 </div>
               </div>
+
+              {/* Capacidad */}
+              <div className="border-t border-slate-800 pt-5">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Capacidad</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('properties.rooms')} *</label>
+                    <input type="number" min="1" value={form.rooms} onChange={f('rooms')} required
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Baños</label>
+                    <input type="number" min="0" value={form.bathrooms} onChange={f('bathrooms')}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Máx. huéspedes</label>
+                    <input type="number" min="1" value={form.maxGuests} onChange={f('maxGuests')}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Precio/noche €</label>
+                    <input type="number" min="0" step="0.01" value={form.pricePerNight} onChange={f('pricePerNight')}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Estado y SES */}
+              <div className="border-t border-slate-800 pt-5">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Configuración</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('common.status')}</label>
+                    <select value={form.status} onChange={f('status')}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                      <option value="active">Activa</option>
+                      <option value="maintenance">Mantenimiento</option>
+                      <option value="inactive">Inactiva</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Código SES Establecimiento</label>
+                    <input value={form.sesCodigoEstablecimiento} onChange={f('sesCodigoEstablecimiento')}
+                      placeholder="0000000002"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                </div>
+              </div>
+
               {editing && (
-                <div className="border-t border-slate-800 pt-4 mt-2">
+                <div className="border-t border-slate-800 pt-5">
                   <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">iCal</p>
                   <div>
                     <p className="text-xs text-slate-400 mb-1">URL exportación</p>
@@ -604,11 +716,12 @@ export default function Properties() {
                   </button>
                 </div>
               )}
+
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">{t('common.cancel')}</button>
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">{t('common.cancel')}</button>
                 <button type="submit"
-                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-sm font-semibold transition-colors">
                   {editing ? t('common.save') : t('properties.new')}
                 </button>
               </div>

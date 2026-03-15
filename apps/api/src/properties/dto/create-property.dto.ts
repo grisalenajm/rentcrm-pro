@@ -18,6 +18,10 @@ export class CreatePropertyDto {
   @IsString()
   postalCode?: string;
 
+  @IsOptional()
+  @IsString()
+  country?: string;
+
   @IsInt()
   @Min(1)
   @Type(() => Number)
