@@ -188,21 +188,55 @@ export class ExcelService {
 
     const VALID_SOURCES = ['direct', 'airbnb', 'booking', 'vrbo', 'manual_block'];
     const errors: string[] = [];
-    const rows: any[] = [];
+
+    // Paso 1: parsear todas las filas de forma síncrona
+    interface ParsedRow {
+      rowNumber: number;
+      propertyId: string;
+      email: string;
+      clientName: string;
+      checkInDate: Date;
+      checkOutDate: Date;
+      totalAmount: number;
+      source: string;
+      externalId: string | null;
+    }
+    const parsed: ParsedRow[] = [];
+
+    const parseDate = (str: string, label: string, rowNumber: number): Date | null => {
+      const parts = str.split('/');
+      if (parts.length !== 3) {
+        errors.push(`Fila ${rowNumber}: Fecha ${label} "${str}" inválida. Formato: DD/MM/YYYY`);
+        return null;
+      }
+      const [day, month, year] = parts;
+      const d = new Date(`${year}-${month}-${day}`);
+      if (isNaN(d.getTime())) {
+        errors.push(`Fila ${rowNumber}: Fecha ${label} "${str}" inválida`);
+        return null;
+      }
+      return d;
+    };
 
     ws.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return;
 
-      const propName   = row.getCell(1).text?.trim();
+      const propName    = row.getCell(1).text?.trim();
       const clientEmail = row.getCell(2).text?.trim();
-      const checkInStr  = row.getCell(3).text?.trim();
-      const checkOutStr = row.getCell(4).text?.trim();
-      const amountStr   = row.getCell(5).text?.trim();
-      const sourceRaw   = row.getCell(6).text?.trim().toLowerCase() || 'direct';
-      const externalId  = row.getCell(7).text?.trim() || null;
+      const clientName  = row.getCell(3).text?.trim();
+      const checkInStr  = row.getCell(4).text?.trim();
+      const checkOutStr = row.getCell(5).text?.trim();
+      const amountStr   = row.getCell(6).text?.trim();
+      const sourceRaw   = row.getCell(7).text?.trim().toLowerCase() || 'direct';
+      const externalId  = row.getCell(8).text?.trim() || null;
 
-      if (!propName || !clientEmail || !checkInStr || !checkOutStr || !amountStr) {
-        errors.push(`Fila ${rowNumber}: Propiedad, email cliente, entrada, salida e importe son obligatorios`);
+      if (!propName || !checkInStr || !checkOutStr || !amountStr) {
+        errors.push(`Fila ${rowNumber}: Propiedad, entrada, salida e importe son obligatorios`);
+        return;
+      }
+
+      if (!clientEmail && !clientName) {
+        errors.push(`Fila ${rowNumber}: Se requiere email o nombre del cliente`);
         return;
       }
 
@@ -212,31 +246,8 @@ export class ExcelService {
         return;
       }
 
-      const clientId = clientMap.get(clientEmail.toLowerCase());
-      if (!clientId) {
-        errors.push(`Fila ${rowNumber}: Cliente con email "${clientEmail}" no encontrado`);
-        return;
-      }
-
-      const source = VALID_SOURCES.includes(sourceRaw) ? sourceRaw : 'direct';
-
-      const parseDate = (str: string, label: string): Date | null => {
-        const parts = str.split('/');
-        if (parts.length !== 3) {
-          errors.push(`Fila ${rowNumber}: Fecha ${label} "${str}" inválida. Formato: DD/MM/YYYY`);
-          return null;
-        }
-        const [day, month, year] = parts;
-        const d = new Date(`${year}-${month}-${day}`);
-        if (isNaN(d.getTime())) {
-          errors.push(`Fila ${rowNumber}: Fecha ${label} "${str}" inválida`);
-          return null;
-        }
-        return d;
-      };
-
-      const checkInDate  = parseDate(checkInStr, 'entrada');
-      const checkOutDate = parseDate(checkOutStr, 'salida');
+      const checkInDate  = parseDate(checkInStr, 'entrada', rowNumber);
+      const checkOutDate = parseDate(checkOutStr, 'salida', rowNumber);
       if (!checkInDate || !checkOutDate) return;
 
       if (checkOutDate <= checkInDate) {
@@ -250,12 +261,63 @@ export class ExcelService {
         return;
       }
 
-      rows.push({ organizationId, propertyId, clientId, checkInDate, checkOutDate, totalAmount, source, externalId });
+      const source = VALID_SOURCES.includes(sourceRaw) ? sourceRaw : 'direct';
+
+      parsed.push({ rowNumber, propertyId, email: clientEmail, clientName, checkInDate, checkOutDate, totalAmount, source, externalId });
     });
 
-    if (rows.length === 0) return { imported: 0, errors };
+    if (parsed.length === 0) return { imported: 0, errors };
 
-    // Cargar reservas existentes para detectar duplicados
+    // Paso 2: resolver clientId para cada fila (async — puede crear clientes nuevos)
+    interface ResolvedRow {
+      rowNumber: number;
+      propertyId: string;
+      clientId: string;
+      checkInDate: Date;
+      checkOutDate: Date;
+      totalAmount: number;
+      source: string;
+      externalId: string | null;
+    }
+    const resolved: ResolvedRow[] = [];
+
+    for (const p of parsed) {
+      let clientId: string | null = null;
+
+      if (p.email) {
+        clientId = clientMap.get(p.email.toLowerCase()) ?? null;
+        if (!clientId) {
+          errors.push(`Fila ${p.rowNumber}: Cliente con email "${p.email}" no encontrado`);
+          continue;
+        }
+      } else {
+        // Sin email → crear cliente provisional por nombre
+        const tokens = p.clientName.split(/\s+/);
+        const firstName = tokens[0];
+        const lastName  = tokens.length > 1 ? tokens.slice(1).join(' ') : '-';
+        const newClient = await this.prisma.client.create({
+          data: { firstName, lastName, organizationId, notes: 'Pendiente completar' },
+        });
+        clientId = newClient.id;
+        // Añadir al mapa para evitar crear duplicados si aparece el mismo nombre en el Excel
+        clientMap.set(p.clientName.toLowerCase(), clientId);
+      }
+
+      resolved.push({
+        rowNumber: p.rowNumber,
+        propertyId: p.propertyId,
+        clientId,
+        checkInDate: p.checkInDate,
+        checkOutDate: p.checkOutDate,
+        totalAmount: p.totalAmount,
+        source: p.source,
+        externalId: p.externalId,
+      });
+    }
+
+    if (resolved.length === 0) return { imported: 0, errors };
+
+    // Paso 3: detectar duplicados contra BD y dentro del propio Excel
     const existing = await this.prisma.booking.findMany({
       where: { organizationId },
       select: { propertyId: true, clientId: true, checkInDate: true, checkOutDate: true },
@@ -267,17 +329,15 @@ export class ExcelService {
     );
 
     const newRows: any[] = [];
-    let duplicates = 0;
-    rows.forEach((row, i) => {
-      const key = `${row.propertyId}|${row.clientId}|${row.checkInDate.toISOString().slice(0, 10)}|${row.checkOutDate.toISOString().slice(0, 10)}`;
+    for (const r of resolved) {
+      const key = `${r.propertyId}|${r.clientId}|${r.checkInDate.toISOString().slice(0, 10)}|${r.checkOutDate.toISOString().slice(0, 10)}`;
       if (existingSet.has(key)) {
-        errors.push(`Fila ${i + 2}: Reserva duplicada (misma propiedad, cliente y fechas ya existe)`);
-        duplicates++;
+        errors.push(`Fila ${r.rowNumber}: Reserva duplicada (misma propiedad, cliente y fechas ya existe)`);
       } else {
-        existingSet.add(key); // evita duplicados dentro del propio Excel
-        newRows.push(row);
+        existingSet.add(key);
+        newRows.push({ organizationId, propertyId: r.propertyId, clientId: r.clientId, checkInDate: r.checkInDate, checkOutDate: r.checkOutDate, totalAmount: r.totalAmount, source: r.source, externalId: r.externalId });
       }
-    });
+    }
 
     if (newRows.length > 0) {
       await this.prisma.booking.createMany({ data: newRows });
@@ -348,14 +408,16 @@ export class ExcelService {
     } else if (type === 'bookings') {
       ws.columns = [
         { header: 'Propiedad * (nombre exacto)', key: 'property', width: 30 },
-        { header: 'Email cliente *', key: 'clientEmail', width: 30 },
+        { header: 'Email cliente (si existe)', key: 'clientEmail', width: 28 },
+        { header: 'Nombre cliente (si no hay email)', key: 'clientName', width: 28 },
         { header: 'Entrada * (DD/MM/YYYY)', key: 'checkInDate', width: 22 },
         { header: 'Salida * (DD/MM/YYYY)', key: 'checkOutDate', width: 22 },
         { header: 'Total € *', key: 'totalAmount', width: 12 },
         { header: 'Origen (direct/airbnb/booking/vrbo/manual_block)', key: 'source', width: 48 },
         { header: 'ID Externo', key: 'externalId', width: 20 },
       ];
-      ws.addRow(['Paradise terrace', 'cliente@ejemplo.com', '01/06/2025', '08/06/2025', '490.00', 'airbnb', '']);
+      ws.addRow(['Paradise terrace', 'cliente@ejemplo.com', '', '01/06/2025', '08/06/2025', '490.00', 'airbnb', '']);
+      ws.addRow(['Paradise terrace', '', 'Juan García López', '10/07/2025', '17/07/2025', '630.00', 'booking', 'BK-12345']);
     } else {
       ws.columns = [
         { header: 'Propiedad * (nombre exacto)', key: 'property', width: 30 },
