@@ -434,7 +434,7 @@ export default function Bookings() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ExcelButtons entity="bookings" showImport={false} />
+          <ExcelButtons entity="bookings" onImportSuccess={() => qc.invalidateQueries({ queryKey: ['bookings'] })} />
           <button onClick={() => { setShowForm(true); setErrorMsg(''); resetForm(); }}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
             + {t('bookings.new')}

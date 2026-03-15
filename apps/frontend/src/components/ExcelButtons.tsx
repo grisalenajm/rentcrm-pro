@@ -13,7 +13,7 @@ export default function ExcelButtons({ entity, onImportSuccess, showImport = tru
   const [showResult, setShowResult] = useState(false);
   const [result, setResult] = useState<{ imported: number; errors: string[] } | null>(null);
 
-  const canImport = entity === 'clients' || entity === 'expenses';
+  const canImport = entity === 'clients' || entity === 'expenses' || entity === 'bookings';
 
   const handleExport = async () => {
     try {

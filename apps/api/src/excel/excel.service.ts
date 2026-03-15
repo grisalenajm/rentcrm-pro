@@ -166,6 +166,125 @@ export class ExcelService {
     return { imported: rows.length, errors };
   }
 
+  async importBookings(buffer: Buffer, organizationId: string): Promise<{ imported: number; errors: string[] }> {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buffer as any);
+    const ws = wb.getWorksheet(1);
+    if (!ws) throw new BadRequestException('Archivo Excel inválido');
+
+    const properties = await this.prisma.property.findMany({
+      where: { organizationId },
+      select: { id: true, name: true },
+    });
+    const propMap = new Map(properties.map(p => [p.name.toLowerCase(), p.id]));
+
+    const clients = await this.prisma.client.findMany({
+      where: { organizationId },
+      select: { id: true, email: true },
+    });
+    const clientMap = new Map(
+      clients.filter(c => c.email).map(c => [c.email!.toLowerCase(), c.id]),
+    );
+
+    const VALID_SOURCES = ['direct', 'airbnb', 'booking', 'vrbo', 'manual_block'];
+    const errors: string[] = [];
+    const rows: any[] = [];
+
+    ws.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+
+      const propName   = row.getCell(1).text?.trim();
+      const clientEmail = row.getCell(2).text?.trim();
+      const checkInStr  = row.getCell(3).text?.trim();
+      const checkOutStr = row.getCell(4).text?.trim();
+      const amountStr   = row.getCell(5).text?.trim();
+      const sourceRaw   = row.getCell(6).text?.trim().toLowerCase() || 'direct';
+      const externalId  = row.getCell(7).text?.trim() || null;
+
+      if (!propName || !clientEmail || !checkInStr || !checkOutStr || !amountStr) {
+        errors.push(`Fila ${rowNumber}: Propiedad, email cliente, entrada, salida e importe son obligatorios`);
+        return;
+      }
+
+      const propertyId = propMap.get(propName.toLowerCase());
+      if (!propertyId) {
+        errors.push(`Fila ${rowNumber}: Propiedad "${propName}" no encontrada`);
+        return;
+      }
+
+      const clientId = clientMap.get(clientEmail.toLowerCase());
+      if (!clientId) {
+        errors.push(`Fila ${rowNumber}: Cliente con email "${clientEmail}" no encontrado`);
+        return;
+      }
+
+      const source = VALID_SOURCES.includes(sourceRaw) ? sourceRaw : 'direct';
+
+      const parseDate = (str: string, label: string): Date | null => {
+        const parts = str.split('/');
+        if (parts.length !== 3) {
+          errors.push(`Fila ${rowNumber}: Fecha ${label} "${str}" inválida. Formato: DD/MM/YYYY`);
+          return null;
+        }
+        const [day, month, year] = parts;
+        const d = new Date(`${year}-${month}-${day}`);
+        if (isNaN(d.getTime())) {
+          errors.push(`Fila ${rowNumber}: Fecha ${label} "${str}" inválida`);
+          return null;
+        }
+        return d;
+      };
+
+      const checkInDate  = parseDate(checkInStr, 'entrada');
+      const checkOutDate = parseDate(checkOutStr, 'salida');
+      if (!checkInDate || !checkOutDate) return;
+
+      if (checkOutDate <= checkInDate) {
+        errors.push(`Fila ${rowNumber}: La fecha de salida debe ser posterior a la de entrada`);
+        return;
+      }
+
+      const totalAmount = parseFloat(amountStr);
+      if (isNaN(totalAmount) || totalAmount < 0) {
+        errors.push(`Fila ${rowNumber}: Importe "${amountStr}" no válido`);
+        return;
+      }
+
+      rows.push({ organizationId, propertyId, clientId, checkInDate, checkOutDate, totalAmount, source, externalId });
+    });
+
+    if (rows.length === 0) return { imported: 0, errors };
+
+    // Cargar reservas existentes para detectar duplicados
+    const existing = await this.prisma.booking.findMany({
+      where: { organizationId },
+      select: { propertyId: true, clientId: true, checkInDate: true, checkOutDate: true },
+    });
+    const existingSet = new Set(
+      existing.map(b =>
+        `${b.propertyId}|${b.clientId}|${b.checkInDate.toISOString().slice(0, 10)}|${b.checkOutDate.toISOString().slice(0, 10)}`,
+      ),
+    );
+
+    const newRows: any[] = [];
+    let duplicates = 0;
+    rows.forEach((row, i) => {
+      const key = `${row.propertyId}|${row.clientId}|${row.checkInDate.toISOString().slice(0, 10)}|${row.checkOutDate.toISOString().slice(0, 10)}`;
+      if (existingSet.has(key)) {
+        errors.push(`Fila ${i + 2}: Reserva duplicada (misma propiedad, cliente y fechas ya existe)`);
+        duplicates++;
+      } else {
+        existingSet.add(key); // evita duplicados dentro del propio Excel
+        newRows.push(row);
+      }
+    });
+
+    if (newRows.length > 0) {
+      await this.prisma.booking.createMany({ data: newRows });
+    }
+    return { imported: newRows.length, errors };
+  }
+
   async importExpenses(buffer: Buffer, organizationId: string): Promise<{ imported: number; errors: string[] }> {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buffer as any);
@@ -212,7 +331,7 @@ export class ExcelService {
 
   // ─── PLANTILLAS ─────────────────────────────────────────
 
-  async getTemplate(type: 'clients' | 'expenses'): Promise<Buffer> {
+  async getTemplate(type: 'clients' | 'expenses' | 'bookings'): Promise<Buffer> {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Plantilla');
     if (type === 'clients') {
@@ -226,6 +345,17 @@ export class ExcelService {
         { header: 'Notas', key: 'notes', width: 30 },
       ];
       ws.addRow(['Ejemplo', 'García López', 'ejemplo@email.com', '+34600000000', '12345678A', 'Española', '']);
+    } else if (type === 'bookings') {
+      ws.columns = [
+        { header: 'Propiedad * (nombre exacto)', key: 'property', width: 30 },
+        { header: 'Email cliente *', key: 'clientEmail', width: 30 },
+        { header: 'Entrada * (DD/MM/YYYY)', key: 'checkInDate', width: 22 },
+        { header: 'Salida * (DD/MM/YYYY)', key: 'checkOutDate', width: 22 },
+        { header: 'Total € *', key: 'totalAmount', width: 12 },
+        { header: 'Origen (direct/airbnb/booking/vrbo/manual_block)', key: 'source', width: 48 },
+        { header: 'ID Externo', key: 'externalId', width: 20 },
+      ];
+      ws.addRow(['Paradise terrace', 'cliente@ejemplo.com', '01/06/2025', '08/06/2025', '490.00', 'airbnb', '']);
     } else {
       ws.columns = [
         { header: 'Propiedad * (nombre exacto)', key: 'property', width: 30 },

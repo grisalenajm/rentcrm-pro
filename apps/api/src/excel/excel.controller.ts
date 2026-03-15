@@ -40,7 +40,7 @@ export class ExcelController {
 
   // Plantillas
   @Get('template/:type')
-  async getTemplate(@Param('type') type: 'clients' | 'expenses', @Res() res: Response) {
+  async getTemplate(@Param('type') type: 'clients' | 'expenses' | 'bookings', @Res() res: Response) {
     const buffer = await this.excelService.getTemplate(type);
     res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': `attachment; filename="plantilla_${type}.xlsx"` });
     res.send(buffer);
@@ -59,5 +59,12 @@ export class ExcelController {
   async importExpenses(@UploadedFile() file: Express.Multer.File, @Request() req) {
     if (!file) throw new Error('No se recibió ningún archivo');
     return this.excelService.importExpenses(file.buffer, req.user.organizationId);
+  }
+
+  @Post('import/bookings')
+  @UseInterceptors(FileInterceptor('file'))
+  async importBookings(@UploadedFile() file: Express.Multer.File, @Request() req) {
+    if (!file) throw new Error('No se recibió ningún archivo');
+    return this.excelService.importBookings(file.buffer, req.user.organizationId);
   }
 }
