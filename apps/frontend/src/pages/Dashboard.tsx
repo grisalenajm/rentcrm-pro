@@ -12,7 +12,8 @@ const PIE_COLORS = ['#10b981','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4',
 const TABS = ['Resumen','Negocio','Clientes','Cumplimiento'];
 const NOW = new Date();
 const CURRENT_YEAR = NOW.getFullYear();
-const YEARS = [CURRENT_YEAR - 2, CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
+const YEARS = [CURRENT_YEAR - 4, CURRENT_YEAR - 3, CURRENT_YEAR - 2, CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
+const FIVE_YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - 4 + i);
 
 function daysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -32,13 +33,26 @@ function kpiCard(label: string, value: string | number, sub?: string) {
   );
 }
 
+function toTop10WithOthers(counts: Record<string, number>) {
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const top10 = sorted.slice(0, 10).map(([name, value]) => ({ name, value }));
+  const others = sorted.slice(10).reduce((s, [, v]) => s + v, 0);
+  if (others > 0) top10.push({ name: 'Otros', value: others });
+  return top10;
+}
+
 const tooltipStyle = { backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: 8 };
+
+type ViewMode = 'monthly' | 'annual' | 'compare';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
+  const [compareYearB, setCompareYearB] = useState(CURRENT_YEAR - 1);
+  const [viewMode, setViewMode] = useState<ViewMode>('monthly');
   const [occupancyPropId, setOccupancyPropId] = useState('');
+  const [heatMapPropId, setHeatMapPropId] = useState('');
   const [bizPeriod, setBizPeriod] = useState<'month'|'quarter'|'year'>('year');
 
   const { data: bookings = [] }   = useQuery({ queryKey: ['bookings'],    queryFn: () => api.get('/bookings').then(r => r.data) });
@@ -82,46 +96,100 @@ export default function Dashboard() {
     ).length,
     [bookings, todayStr]);
 
-  // Bar chart: last 12 months income vs expenses
-  const monthlyBarData = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => {
-      const d = new Date(NOW.getFullYear(), NOW.getMonth() - 11 + i, 1);
-      const yr = d.getFullYear(), mo = d.getMonth();
-      const income = financials.filter((f: any) => {
-        const fd = new Date(f.date);
-        return f.type === 'income' && fd.getFullYear() === yr && fd.getMonth() === mo;
-      }).reduce((s: number, f: any) => s + Number(f.amount), 0);
-      const expense = expenses.filter((e: any) => {
-        const ed = new Date(e.date);
-        return ed.getFullYear() === yr && ed.getMonth() === mo;
-      }).reduce((s: number, e: any) => s + Number(e.amount), 0);
-      return { name: MONTHS[mo], ingresos: Math.round(income), gastos: Math.round(expense) };
-    });
-  }, [financials, expenses]);
+  // Helpers para extraer ingresos/gastos por año+mes
+  const getIncome = (yr: number, mo?: number) =>
+    financials.filter((f: any) => {
+      const d = new Date(f.date);
+      return f.type === 'income' && d.getFullYear() === yr && (mo === undefined || d.getMonth() === mo);
+    }).reduce((s: number, f: any) => s + Number(f.amount), 0);
 
-  // Line chart: monthly occupancy for selected property
+  const getExpense = (yr: number, mo?: number) =>
+    expenses.filter((e: any) => {
+      const d = new Date(e.date);
+      return d.getFullYear() === yr && (mo === undefined || d.getMonth() === mo);
+    }).reduce((s: number, e: any) => s + Number(e.amount), 0);
+
+  // Bar chart: viewMode-aware
+  const chartBarData = useMemo(() => {
+    if (viewMode === 'annual') {
+      return FIVE_YEARS.map(yr => ({
+        name: String(yr),
+        ingresos: Math.round(getIncome(yr)),
+        gastos:   Math.round(getExpense(yr)),
+      }));
+    }
+    if (viewMode === 'compare') {
+      const yA = selectedYear, yB = compareYearB;
+      return MONTHS.map((name, mo) => ({
+        name,
+        [`ing.${yA}`]: Math.round(getIncome(yA, mo)),
+        [`gas.${yA}`]: Math.round(getExpense(yA, mo)),
+        [`ing.${yB}`]: Math.round(getIncome(yB, mo)),
+        [`gas.${yB}`]: Math.round(getExpense(yB, mo)),
+      }));
+    }
+    // monthly
+    return MONTHS.map((name, mo) => ({
+      name,
+      ingresos: Math.round(getIncome(selectedYear, mo)),
+      gastos:   Math.round(getExpense(selectedYear, mo)),
+    }));
+  }, [financials, expenses, viewMode, selectedYear, compareYearB]);
+
+  // Line chart: viewMode-aware
   const propId = occupancyPropId || (properties[0]?.id ?? '');
-  const occupancyLineData = useMemo(() => {
-    return MONTHS.map((name, mo) => {
-      const days = daysInMonth(selectedYear, mo);
-      const occupied = new Set<number>();
-      bookings.filter((b: any) => b.propertyId === propId && b.status !== 'cancelled').forEach((b: any) => {
-        const start = new Date(b.checkInDate);
-        const end   = new Date(b.checkOutDate);
-        for (const d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
-          if (d.getFullYear() === selectedYear && d.getMonth() === mo) {
-            occupied.add(d.getDate());
-          }
-        }
-      });
-      return { name, 'Ocupación %': Math.round(occupied.size / days * 100) };
-    });
-  }, [bookings, propId, selectedYear]);
 
-  // Heat map: occupied days of the year
+  const getMonthOccupancy = (yr: number, mo: number, pid: string) => {
+    const days = daysInMonth(yr, mo);
+    const occupied = new Set<number>();
+    bookings.filter((b: any) => b.propertyId === pid && b.status !== 'cancelled').forEach((b: any) => {
+      const start = new Date(b.checkInDate), end = new Date(b.checkOutDate);
+      for (const d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+        if (d.getFullYear() === yr && d.getMonth() === mo) occupied.add(d.getDate());
+      }
+    });
+    return days > 0 ? Math.round(occupied.size / days * 100) : 0;
+  };
+
+  const getYearOccupancy = (yr: number, pid: string) => {
+    const totalDays = MONTHS.reduce((s, _, mo) => s + daysInMonth(yr, mo), 0);
+    const occupied = new Set<string>();
+    bookings.filter((b: any) => b.propertyId === pid && b.status !== 'cancelled').forEach((b: any) => {
+      const start = new Date(b.checkInDate), end = new Date(b.checkOutDate);
+      for (const d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+        if (d.getFullYear() === yr) occupied.add(`${d.getMonth()}-${d.getDate()}`);
+      }
+    });
+    return totalDays > 0 ? Math.round(occupied.size / totalDays * 100) : 0;
+  };
+
+  const chartLineData = useMemo(() => {
+    if (viewMode === 'annual') {
+      return FIVE_YEARS.map(yr => ({
+        name: String(yr),
+        'Ocupación %': getYearOccupancy(yr, propId),
+      }));
+    }
+    if (viewMode === 'compare') {
+      const yA = selectedYear, yB = compareYearB;
+      return MONTHS.map((name, mo) => ({
+        name,
+        [`Ocup.${yA}`]: getMonthOccupancy(yA, mo, propId),
+        [`Ocup.${yB}`]: getMonthOccupancy(yB, mo, propId),
+      }));
+    }
+    return MONTHS.map((name, mo) => ({
+      name,
+      'Ocupación %': getMonthOccupancy(selectedYear, mo, propId),
+    }));
+  }, [bookings, propId, viewMode, selectedYear, compareYearB]);
+
+  // Heat map: filtrable por propiedad
   const heatMap = useMemo(() => {
     const grid: boolean[][] = Array.from({ length: 12 }, () => Array(31).fill(false));
-    bookings.filter((b: any) => b.status !== 'cancelled').forEach((b: any) => {
+    bookings.filter((b: any) =>
+      b.status !== 'cancelled' && (!heatMapPropId || b.propertyId === heatMapPropId)
+    ).forEach((b: any) => {
       const start = new Date(b.checkInDate);
       const end   = new Date(b.checkOutDate);
       for (const d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
@@ -131,7 +199,7 @@ export default function Dashboard() {
       }
     });
     return grid;
-  }, [bookings, selectedYear]);
+  }, [bookings, selectedYear, heatMapPropId]);
 
   // ── TAB 2: NEGOCIO ────────────────────────────────────────────────────────
 
@@ -171,7 +239,7 @@ export default function Dashboard() {
       const src = b.source || 'direct';
       counts[src] = (counts[src] || 0) + 1;
     });
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+    return toTop10WithOthers(counts);
   }, [bookings, bizPeriod, selectedYear]);
 
   const bizMetrics = useMemo(() => {
@@ -226,11 +294,7 @@ export default function Dashboard() {
       const nat = c.nationality || c.country || 'Desconocida';
       counts[nat] = (counts[nat] || 0) + 1;
     });
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const top8 = sorted.slice(0, 8).map(([name, value]) => ({ name, value }));
-    const others = sorted.slice(8).reduce((s, [, v]) => s + v, 0);
-    if (others > 0) top8.push({ name: 'Otros', value: others });
-    return top8;
+    return toTop10WithOthers(counts);
   }, [clients]);
 
   // ── TAB 4: CUMPLIMIENTO ───────────────────────────────────────────────────
@@ -276,22 +340,69 @@ export default function Dashboard() {
     return <span className={`text-xs ml-1 ${pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{pct >= 0 ? '▲' : '▼'}{Math.abs(pct)}% vs año ant.</span>;
   };
 
+  const viewModeLabel = viewMode === 'monthly' ? 'Mensual' : viewMode === 'annual' ? 'Anual' : 'Comparativa';
+  const barChartTitle = viewMode === 'annual'
+    ? `Ingresos vs Gastos — ${FIVE_YEARS[0]}–${FIVE_YEARS[4]}`
+    : viewMode === 'compare'
+    ? `Ingresos vs Gastos — ${selectedYear} vs ${compareYearB}`
+    : `Ingresos vs Gastos — ${selectedYear}`;
+
+  const lineChartTitle = viewMode === 'annual'
+    ? `Ocupación anual`
+    : viewMode === 'compare'
+    ? `Ocupación — ${selectedYear} vs ${compareYearB}`
+    : `Ocupación mensual — ${selectedYear}`;
+
   // ── RENDER ────────────────────────────────────────────────────────────────
 
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+      <div className="flex flex-col gap-3 mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-slate-400 text-sm">Año:</span>
-          <select
-            value={selectedYear}
-            onChange={e => setSelectedYear(Number(e.target.value))}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          >
-            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Año selector */}
+          {viewMode !== 'annual' && (
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-sm">{viewMode === 'compare' ? 'Año A:' : 'Año:'}</span>
+              <select
+                value={selectedYear}
+                onChange={e => setSelectedYear(Number(e.target.value))}
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Año B — solo en comparativa */}
+          {viewMode === 'compare' && (
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-sm">Año B:</span>
+              <select
+                value={compareYearB}
+                onChange={e => setCompareYearB(Number(e.target.value))}
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Vista selector */}
+          <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+            {(['monthly', 'annual', 'compare'] as ViewMode[]).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === mode ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {mode === 'monthly' ? 'Mensual' : mode === 'annual' ? 'Anual' : 'Comparativa'}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -322,48 +433,79 @@ export default function Dashboard() {
             {kpiCard('Checkins hoy', checkinsPendingToday, 'pendientes de completar')}
           </div>
 
-          {/* Bar: ingresos vs gastos últimos 12 meses */}
+          {/* Bar: ingresos vs gastos */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-            <h2 className="font-semibold mb-4">Ingresos vs Gastos — últimos 12 meses</h2>
+            <h2 className="font-semibold mb-4">{barChartTitle}</h2>
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={monthlyBarData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <BarChart data={chartBarData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} />
                 <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={v => `€${v}`} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`€${Number(v).toLocaleString('es-ES')}`, '']} />
                 <Legend wrapperStyle={{ color: '#94a3b8', fontSize: 13 }} />
-                <Bar dataKey="ingresos" fill="#10b981" radius={[3,3,0,0]} />
-                <Bar dataKey="gastos"   fill="#ef4444" radius={[3,3,0,0]} />
+                {viewMode === 'compare' ? (
+                  <>
+                    <Bar dataKey={`ing.${selectedYear}`}  fill="#10b981" name={`Ingresos ${selectedYear}`}  radius={[3,3,0,0]} />
+                    <Bar dataKey={`gas.${selectedYear}`}  fill="#ef4444" name={`Gastos ${selectedYear}`}    radius={[3,3,0,0]} />
+                    <Bar dataKey={`ing.${compareYearB}`} fill="#06b6d4" name={`Ingresos ${compareYearB}`}  radius={[3,3,0,0]} />
+                    <Bar dataKey={`gas.${compareYearB}`} fill="#f97316" name={`Gastos ${compareYearB}`}    radius={[3,3,0,0]} />
+                  </>
+                ) : (
+                  <>
+                    <Bar dataKey="ingresos" fill="#10b981" radius={[3,3,0,0]} />
+                    <Bar dataKey="gastos"   fill="#ef4444" radius={[3,3,0,0]} />
+                  </>
+                )}
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Line: ocupación mensual por propiedad */}
+          {/* Line: ocupación */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-              <h2 className="font-semibold">Ocupación mensual — {selectedYear}</h2>
-              <select
-                value={occupancyPropId}
-                onChange={e => setOccupancyPropId(e.target.value)}
-                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <h2 className="font-semibold">{lineChartTitle}</h2>
+              {viewMode !== 'annual' && (
+                <select
+                  value={occupancyPropId}
+                  onChange={e => setOccupancyPropId(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              )}
             </div>
             <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={occupancyLineData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <LineChart data={chartLineData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} />
                 <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={v => `${v}%`} domain={[0, 100]} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`, 'Ocupación']} />
-                <Line type="monotone" dataKey="Ocupación %" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 3 }} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`, '']} />
+                <Legend wrapperStyle={{ color: '#94a3b8', fontSize: 13 }} />
+                {viewMode === 'compare' ? (
+                  <>
+                    <Line type="monotone" dataKey={`Ocup.${selectedYear}`}  stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 3 }} name={`Ocup. ${selectedYear}`} />
+                    <Line type="monotone" dataKey={`Ocup.${compareYearB}`} stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6', r: 3 }} name={`Ocup. ${compareYearB}`} />
+                  </>
+                ) : (
+                  <Line type="monotone" dataKey="Ocupación %" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 3 }} />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </div>
 
           {/* Heat map: días ocupados */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-            <h2 className="font-semibold mb-4">Días ocupados — {selectedYear}</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <h2 className="font-semibold">Días ocupados — {selectedYear}</h2>
+              <select
+                value={heatMapPropId}
+                onChange={e => setHeatMapPropId(e.target.value)}
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                <option value="">Todas las propiedades</option>
+                {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
             <div className="overflow-x-auto">
               <div className="min-w-[560px]">
                 {/* Day headers */}
@@ -446,7 +588,7 @@ export default function Dashboard() {
           {/* Property profitability table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-800">
-              <h2 className="font-semibold">Rentabilidad por propiedad — {selectedYear}</h2>
+              <h2 className="font-semibold">Rentabilidad por propiedad — {viewModeLabel} {viewMode !== 'annual' ? selectedYear : ''}</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -478,7 +620,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Ranking horizontal bars */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-              <h2 className="font-semibold mb-4">Ranking por ingresos — {selectedYear}</h2>
+              <h2 className="font-semibold mb-4">Ranking por ingresos — {viewMode !== 'annual' ? selectedYear : `${FIVE_YEARS[0]}–${FIVE_YEARS[4]}`}</h2>
               {propertyProfitability.length > 0 ? (
                 <ResponsiveContainer width="100%" height={Math.max(200, propertyProfitability.length * 44)}>
                   <BarChart
@@ -498,7 +640,7 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Pie: origen reservas */}
+            {/* Pie: origen reservas — top 10 + otros */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
               <h2 className="font-semibold mb-4">Origen de reservas — {periodLabel}</h2>
               {sourcePieData.length > 0 ? (
@@ -578,7 +720,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Nationality pie */}
+          {/* Nationality pie — top 10 + otros */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <h2 className="font-semibold mb-4">Nacionalidades de huéspedes</h2>
             {nationalityPie.length > 0 ? (
