@@ -342,10 +342,10 @@ export default function Clients() {
                 </tr>
               </thead>
               <tbody>
-                {filteredSorted.map((c: Client) => {
+                {filteredSorted.map((c: Client, i: number) => {
                   const s = (summaries as any)[c.id];
                   return (
-                    <tr key={c.id} onClick={() => navigate(`/clients/${c.id}`)}
+                    <tr key={c.id} onClick={() => navigate(`/clients/${c.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
                       className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
                       <td className="px-4 py-3 font-medium">{c.firstName} {c.lastName}</td>
                       <td className="px-4 py-3 text-slate-400 font-mono text-xs">{c.dniPassport || '—'}</td>
@@ -379,10 +379,10 @@ export default function Clients() {
 
           {/* Móvil: tarjetas */}
           <div className="md:hidden space-y-3">
-            {filteredSorted.map((c: Client) => {
+            {filteredSorted.map((c: Client, i: number) => {
               const s = (summaries as any)[c.id];
               return (
-                <div key={c.id} onClick={() => navigate(`/clients/${c.id}`)}
+                <div key={c.id} onClick={() => navigate(`/clients/${c.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
                   className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:bg-slate-800/70 transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <span className="font-medium text-white">{c.firstName} {c.lastName}</span>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import BookingStatusWorkflow from '../components/BookingStatusWorkflow';
@@ -35,6 +35,8 @@ export default function BookingDetail() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const navState = (location.state as { ids: string[]; index: number } | null);
   const qc = useQueryClient();
   const [showRating, setShowRating] = useState(false);
   const [sendingCheckin, setSendingCheckin] = useState(false);
@@ -228,9 +230,28 @@ export default function BookingDetail() {
     <div className="p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <button onClick={() => navigate('/bookings')} className="text-slate-400 hover:text-white text-sm transition-colors">
-          {t('common.back')}
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/bookings')} className="text-slate-400 hover:text-white text-sm transition-colors">
+            {t('common.back')}
+          </button>
+          {navState && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => navigate(`/bookings/${navState.ids[navState.index - 1]}`, { state: { ids: navState.ids, index: navState.index - 1 } })}
+                disabled={navState.index === 0}
+                className="p-1.5 bg-slate-800 hover:bg-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-sm transition-colors">
+                ←
+              </button>
+              <span className="text-xs text-slate-500 px-2">{navState.index + 1} / {navState.ids.length}</span>
+              <button
+                onClick={() => navigate(`/bookings/${navState.ids[navState.index + 1]}`, { state: { ids: navState.ids, index: navState.index + 1 } })}
+                disabled={navState.index === navState.ids.length - 1}
+                className="p-1.5 bg-slate-800 hover:bg-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-sm transition-colors">
+                →
+              </button>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <button onClick={openEdit}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition-colors">

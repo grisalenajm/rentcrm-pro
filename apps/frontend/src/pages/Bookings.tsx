@@ -505,8 +505,8 @@ export default function Bookings() {
                 </tr>
               </thead>
               <tbody>
-                {filteredSorted.map((b: any) => (
-                  <tr key={b.id} onClick={() => navigate(`/bookings/${b.id}`)}
+                {filteredSorted.map((b: any, i: number) => (
+                  <tr key={b.id} onClick={() => navigate(`/bookings/${b.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
                     className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
                     <td className="px-4 py-3 font-medium">{b.client?.firstName} {b.client?.lastName}</td>
                     <td className="px-4 py-3 text-slate-400">{b.property?.name}</td>
@@ -526,8 +526,8 @@ export default function Bookings() {
           </div>
           {/* Móvil: tarjetas */}
           <div className="md:hidden space-y-3">
-            {filteredSorted.map((b: any) => (
-              <div key={b.id} onClick={() => navigate(`/bookings/${b.id}`)}
+            {filteredSorted.map((b: any, i: number) => (
+              <div key={b.id} onClick={() => navigate(`/bookings/${b.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
                 className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:bg-slate-800/70">
                 <div className="flex justify-between items-start mb-2">
                   <span className="font-medium text-white">{b.client?.firstName} {b.client?.lastName}</span>
