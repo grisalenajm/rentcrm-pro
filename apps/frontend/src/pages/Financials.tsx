@@ -13,31 +13,48 @@ const EXPENSE_TYPES = [
   { value: 'otros',    label: 'Otros' },
 ];
 
-const EMPTY_FORM = { propertyId: '', date: '', amount: '', type: 'otros', notes: '', deductible: false };
+const EMPTY_FORM    = { propertyId: '', date: '', amount: '', type: 'otros', notes: '', deductible: false };
+const EMPTY_FILTERS = { propertyId: '', type: '', from: '', to: '' };
+
+const inputCls = 'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500';
 
 export default function Financials() {
   const { t } = useTranslation();
   const qc = useQueryClient();
 
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedYear,     setSelectedYear]     = useState(new Date().getFullYear());
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<any>(null);
-  const [expenseForm, setExpenseForm] = useState({ ...EMPTY_FORM });
+  const [editingExpense,   setEditingExpense]   = useState<any>(null);
+  const [expenseForm,      setExpenseForm]      = useState({ ...EMPTY_FORM });
   const [showPropertyTable, setShowPropertyTable] = useState(true);
+  const [filters,          setFilters]          = useState({ ...EMPTY_FILTERS });
+  const [showFilters,      setShowFilters]      = useState(false);
 
-  const { data: incomeRecords = [] } = useQuery({
-    queryKey: ['financials-income', selectedYear],
-    queryFn: () =>
-      api
-        .get('/financials', {
-          params: { type: 'income', from: `${selectedYear}-01-01`, to: `${selectedYear}-12-31` },
-        })
-        .then((r) => r.data),
+  // Derived query params — from/to default to selected year when not set manually
+  const queryFrom = filters.from || `${selectedYear}-01-01`;
+  const queryTo   = filters.to   || `${selectedYear}-12-31`;
+
+  const financialsParams: Record<string, string> = { from: queryFrom, to: queryTo };
+  if (filters.type)       financialsParams.type       = filters.type;
+  if (filters.propertyId) financialsParams.propertyId = filters.propertyId;
+
+  const { data: allFinancials = [] } = useQuery({
+    queryKey: ['financials', filters, selectedYear],
+    queryFn: () => api.get('/financials', { params: financialsParams }).then((r) => r.data),
+    staleTime: 30_000,
+    placeholderData: (prev: any) => prev,
   });
 
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
-    queryKey: ['expenses', selectedYear],
-    queryFn: () => api.get('/expenses', { params: { year: selectedYear } }).then((r) => r.data),
+    queryKey: ['expenses', selectedYear, filters.propertyId],
+    queryFn: () =>
+      api
+        .get('/expenses', {
+          params: { year: selectedYear, ...(filters.propertyId && { propertyId: filters.propertyId }) },
+        })
+        .then((r) => r.data),
+    staleTime: 30_000,
+    placeholderData: (prev: any) => prev,
   });
 
   const { data: properties = [] } = useQuery({
@@ -47,18 +64,12 @@ export default function Financials() {
 
   const createExpense = useMutation({
     mutationFn: (data: any) => api.post('/expenses', data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['expenses'] });
-      closeModal();
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['expenses'] }); closeModal(); },
   });
 
   const updateExpense = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => api.put(`/expenses/${id}`, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['expenses'] });
-      closeModal();
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['expenses'] }); closeModal(); },
   });
 
   const deleteExpense = useMutation({
@@ -76,10 +87,10 @@ export default function Financials() {
     setEditingExpense(exp);
     setExpenseForm({
       propertyId: exp.propertyId || '',
-      date: exp.date ? exp.date.slice(0, 10) : '',
-      amount: String(exp.amount),
-      type: exp.type || 'otros',
-      notes: exp.notes || '',
+      date:       exp.date ? exp.date.slice(0, 10) : '',
+      amount:     String(exp.amount),
+      type:       exp.type || 'otros',
+      notes:      exp.notes || '',
       deductible: exp.deductible ?? false,
     });
     setShowExpenseModal(true);
@@ -94,17 +105,14 @@ export default function Financials() {
   function handleSave() {
     const payload = {
       propertyId: expenseForm.propertyId || undefined,
-      date: expenseForm.date,
-      amount: parseFloat(expenseForm.amount),
-      type: expenseForm.type,
-      notes: expenseForm.notes || undefined,
+      date:       expenseForm.date,
+      amount:     parseFloat(expenseForm.amount),
+      type:       expenseForm.type,
+      notes:      expenseForm.notes || undefined,
       deductible: expenseForm.deductible,
     };
-    if (editingExpense) {
-      updateExpense.mutate({ id: editingExpense.id, data: payload });
-    } else {
-      createExpense.mutate(payload);
-    }
+    if (editingExpense) updateExpense.mutate({ id: editingExpense.id, data: payload });
+    else                createExpense.mutate(payload);
   }
 
   const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -113,62 +121,57 @@ export default function Financials() {
   const fCheck = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setExpenseForm((prev) => ({ ...prev, [k]: e.target.checked }));
 
-  // Totals
-  const totalIncome = (incomeRecords as any[]).reduce((s: number, r: any) => s + Number(r.amount), 0);
+  const setFilter = (k: keyof typeof EMPTY_FILTERS) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setFilters((prev) => ({ ...prev, [k]: e.target.value }));
+
+  function clearFilters() { setFilters({ ...EMPTY_FILTERS }); }
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
+  // Totals — income from financial ledger, expenses from CRUD table
+  const incomeRecords = (allFinancials as any[]).filter((r: any) => r.type === 'income');
+  const totalIncome   = incomeRecords.reduce((s: number, r: any) => s + Number(r.amount), 0);
   const totalExpenses = (expenses as any[]).reduce((s: number, e: any) => s + Number(e.amount), 0);
-  const netProfit = totalIncome - totalExpenses;
+  const netProfit     = totalIncome - totalExpenses;
 
   // Per-property breakdown
   const propMap: Record<string, { name: string; income: number; expenses: number }> = {};
-
-  for (const r of incomeRecords as any[]) {
+  for (const r of incomeRecords) {
     const pid = r.propertyId || '__none__';
-    const name = r.property?.name || 'Sin propiedad';
-    if (!propMap[pid]) propMap[pid] = { name, income: 0, expenses: 0 };
+    if (!propMap[pid]) propMap[pid] = { name: r.property?.name || 'Sin propiedad', income: 0, expenses: 0 };
     propMap[pid].income += Number(r.amount);
   }
-
   for (const e of expenses as any[]) {
     const pid = e.propertyId || '__none__';
-    const name = e.property?.name || 'Sin propiedad';
-    if (!propMap[pid]) propMap[pid] = { name, income: 0, expenses: 0 };
+    if (!propMap[pid]) propMap[pid] = { name: e.property?.name || 'Sin propiedad', income: 0, expenses: 0 };
     propMap[pid].expenses += Number(e.amount);
   }
-
   const propRows = Object.entries(propMap).map(([, v]) => v).sort((a, b) => b.income - a.income);
 
-  const fmt = (n: number) =>
-    n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
+  const fmt = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const expenseTypeLabel = (val: string) => EXPENSE_TYPES.find((t) => t.value === val)?.label ?? val;
-
   const isPending = createExpense.isPending || updateExpense.isPending;
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">{t('financials.title')}</h1>
-        </div>
+        <h1 className="text-2xl font-bold">{t('financials.title')}</h1>
         <div className="flex items-center gap-3">
           {/* Year nav */}
           <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg px-1">
             <button
               onClick={() => setSelectedYear((y) => y - 1)}
               className="px-2 py-2 text-slate-400 hover:text-white transition-colors"
-            >
-              ‹
-            </button>
+            >‹</button>
             <span className="px-3 py-2 text-sm font-bold tabular-nums min-w-[4rem] text-center">
               {selectedYear}
             </span>
             <button
               onClick={() => setSelectedYear((y) => y + 1)}
               className="px-2 py-2 text-slate-400 hover:text-white transition-colors"
-            >
-              ›
-            </button>
+            >›</button>
           </div>
           <ExcelButtons entity="expenses" onImportSuccess={() => qc.invalidateQueries({ queryKey: ['expenses'] })} />
           <button
@@ -184,22 +187,102 @@ export default function Financials() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Ingresos</div>
-          <div className="text-lg md:text-2xl font-bold tabular-nums text-emerald-400">
-            €{fmt(totalIncome)}
-          </div>
+          <div className="text-lg md:text-2xl font-bold tabular-nums text-emerald-400">€{fmt(totalIncome)}</div>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Gastos</div>
-          <div className="text-lg md:text-2xl font-bold tabular-nums text-red-400">
-            €{fmt(totalExpenses)}
+          <div className="text-lg md:text-2xl font-bold tabular-nums text-red-400">€{fmt(totalExpenses)}</div>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 col-span-2">
+          <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Beneficio neto</div>
+          <div className={`text-lg md:text-2xl font-bold tabular-nums ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            {netProfit >= 0 ? '+' : ''}€{fmt(netProfit)}
           </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 col-span-2 md:col-span-2">
-          <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Beneficio neto</div>
-          <div
-            className={`text-lg md:text-2xl font-bold tabular-nums ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
-          >
-            {netProfit >= 0 ? '+' : ''}€{fmt(netProfit)}
+      </div>
+
+      {/* ── Filter bar ─────────────────────────────────────────────────── */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl mb-6 overflow-hidden">
+        {/* Mobile toggle */}
+        <button
+          onClick={() => setShowFilters((v) => !v)}
+          className="md:hidden w-full flex items-center justify-between px-4 py-3 hover:bg-slate-800/50 transition-colors"
+        >
+          <span className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+            Filtros
+            {activeFilterCount > 0 && (
+              <span className="bg-emerald-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                {activeFilterCount}
+              </span>
+            )}
+          </span>
+          <span className="text-slate-500 text-xs">{showFilters ? '▲' : '▼'}</span>
+        </button>
+
+        {/* Filter fields — always visible on md+, collapsible on mobile */}
+        <div className={`${showFilters ? 'block' : 'hidden'} md:block px-4 py-3 border-t border-slate-800 md:border-0`}>
+          <div className="flex flex-col md:flex-row gap-3 md:items-end">
+            {/* Propiedad */}
+            <div className="flex-1 min-w-0">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                Propiedad
+              </label>
+              <select value={filters.propertyId} onChange={setFilter('propertyId')} className={inputCls}>
+                <option value="">Todas</option>
+                {(properties as any[]).map((p: any) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Tipo */}
+            <div className="flex-1 min-w-0">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                Tipo
+              </label>
+              <select value={filters.type} onChange={setFilter('type')} className={inputCls}>
+                <option value="">Todos</option>
+                <option value="income">Ingresos</option>
+                <option value="expense">Gastos</option>
+              </select>
+            </div>
+
+            {/* Desde */}
+            <div className="flex-1 min-w-0">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                Desde
+              </label>
+              <input
+                type="date"
+                value={filters.from}
+                onChange={setFilter('from')}
+                className={inputCls}
+              />
+            </div>
+
+            {/* Hasta */}
+            <div className="flex-1 min-w-0">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                Hasta
+              </label>
+              <input
+                type="date"
+                value={filters.to}
+                onChange={setFilter('to')}
+                className={inputCls}
+              />
+            </div>
+
+            {/* Clear */}
+            <div className="shrink-0">
+              <button
+                onClick={clearFilters}
+                disabled={activeFilterCount === 0}
+                className="w-full md:w-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm text-slate-300 font-semibold transition-colors whitespace-nowrap"
+              >
+                Limpiar filtros
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -233,12 +316,8 @@ export default function Financials() {
                       return (
                         <tr key={i} className="border-t border-slate-800 hover:bg-slate-800/30 transition-colors">
                           <td className="px-4 py-3 font-medium">{row.name}</td>
-                          <td className="px-4 py-3 text-right tabular-nums text-emerald-400">
-                            €{fmt(row.income)}
-                          </td>
-                          <td className="px-4 py-3 text-right tabular-nums text-red-400">
-                            €{fmt(row.expenses)}
-                          </td>
+                          <td className="px-4 py-3 text-right tabular-nums text-emerald-400">€{fmt(row.income)}</td>
+                          <td className="px-4 py-3 text-right tabular-nums text-red-400">€{fmt(row.expenses)}</td>
                           <td className={`px-4 py-3 text-right tabular-nums font-semibold ${net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                             {net >= 0 ? '+' : ''}€{fmt(net)}
                           </td>
@@ -249,12 +328,8 @@ export default function Financials() {
                   <tfoot>
                     <tr className="border-t border-slate-700 bg-slate-800/40">
                       <td className="px-4 py-3 font-semibold text-slate-300">Total</td>
-                      <td className="px-4 py-3 text-right tabular-nums font-semibold text-emerald-400">
-                        €{fmt(totalIncome)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums font-semibold text-red-400">
-                        €{fmt(totalExpenses)}
-                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums font-semibold text-emerald-400">€{fmt(totalIncome)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums font-semibold text-red-400">€{fmt(totalExpenses)}</td>
                       <td className={`px-4 py-3 text-right tabular-nums font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                         {netProfit >= 0 ? '+' : ''}€{fmt(netProfit)}
                       </td>
@@ -317,13 +392,21 @@ export default function Financials() {
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
           Gastos {selectedYear} ({(expenses as any[]).length})
+          {filters.propertyId && (
+            <span className="ml-2 text-xs font-normal text-slate-500 normal-case">
+              · {(properties as any[]).find((p: any) => p.id === filters.propertyId)?.name}
+            </span>
+          )}
         </h2>
       </div>
 
       {loadingExpenses ? (
         <div className="text-slate-400 text-center py-16">{t('common.loading')}</div>
       ) : (expenses as any[]).length === 0 ? (
-        <div className="text-slate-500 text-center py-16 text-sm">No hay gastos registrados para {selectedYear}</div>
+        <div className="text-slate-500 text-center py-16 text-sm">
+          No hay gastos registrados para {selectedYear}
+          {filters.propertyId ? ' en esta propiedad' : ''}
+        </div>
       ) : (
         <>
           {/* Desktop */}
@@ -370,9 +453,7 @@ export default function Financials() {
                           Editar
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(t('common.confirm_delete'))) deleteExpense.mutate(exp.id);
-                          }}
+                          onClick={() => { if (confirm(t('common.confirm_delete'))) deleteExpense.mutate(exp.id); }}
                           className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
                         >
                           {t('common.delete')}
@@ -403,9 +484,7 @@ export default function Financials() {
                       <span className="text-xs text-slate-500 ml-2">{exp.property.name}</span>
                     )}
                   </div>
-                  <span className="font-bold tabular-nums text-red-400">
-                    €{fmt(Number(exp.amount))}
-                  </span>
+                  <span className="font-bold tabular-nums text-red-400">€{fmt(Number(exp.amount))}</span>
                 </div>
                 {exp.notes && <div className="text-sm text-white mb-2">{exp.notes}</div>}
                 <div className="flex justify-between items-center">
@@ -420,9 +499,7 @@ export default function Financials() {
                       Editar
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm(t('common.confirm_delete'))) deleteExpense.mutate(exp.id);
-                      }}
+                      onClick={() => { if (confirm(t('common.confirm_delete'))) deleteExpense.mutate(exp.id); }}
                       className="px-2 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
                     >
                       {t('common.delete')}
@@ -445,71 +522,37 @@ export default function Financials() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                    Fecha *
-                  </label>
-                  <input
-                    type="date"
-                    value={expenseForm.date}
-                    onChange={f('date')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
-                  />
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Fecha *</label>
+                  <input type="date" value={expenseForm.date} onChange={f('date')} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                    Importe (€) *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={expenseForm.amount}
-                    onChange={f('amount')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
-                  />
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Importe (€) *</label>
+                  <input type="number" step="0.01" min="0" value={expenseForm.amount} onChange={f('amount')} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                    Tipo *
-                  </label>
-                  <select
-                    value={expenseForm.type}
-                    onChange={f('type')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
-                  >
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Tipo *</label>
+                  <select value={expenseForm.type} onChange={f('type')} className={inputCls}>
                     {EXPENSE_TYPES.map((et) => (
-                      <option key={et.value} value={et.value}>
-                        {et.label}
-                      </option>
+                      <option key={et.value} value={et.value}>{et.label}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                    Propiedad
-                  </label>
-                  <select
-                    value={expenseForm.propertyId}
-                    onChange={f('propertyId')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
-                  >
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Propiedad</label>
+                  <select value={expenseForm.propertyId} onChange={f('propertyId')} className={inputCls}>
                     <option value="">—</option>
                     {(properties as any[]).map((p: any) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
+                      <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                    Notas
-                  </label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Notas</label>
                   <input
                     value={expenseForm.notes}
                     onChange={f('notes')}
                     placeholder="Descripción opcional"
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className={inputCls}
                   />
                 </div>
                 <div className="col-span-2">
