@@ -100,10 +100,10 @@ rentcrm-pro/
 │           └── pages/
 │               ├── Dashboard.tsx
 │               ├── Bookings.tsx
-│               ├── BookingDetail.tsx  ← editar reserva, checkin, evaluaciones
+│               ├── BookingDetail.tsx  ← editar reserva, checkin, evaluaciones, cambio estado manual
 │               ├── Clients.tsx
-│               ├── ClientDetail.tsx
-│               ├── Properties.tsx
+│               ├── ClientDetail.tsx   ← detalle cliente con navegación ←/→ entre registros
+│               ├── Properties.tsx     ← lista + modales detalle/crear/editar (country, postalCode)
 │               ├── Financials.tsx     ← gastos + totales anuales
 │               ├── Calendar.tsx
 │               ├── Contracts.tsx
@@ -160,6 +160,9 @@ model Property {
   name                     String
   address                  String?
   city                     String?
+  province                 String?
+  postalCode               String? @map("postal_code")
+  country                  String? @db.VarChar(5)  // ISO 3166-1 alpha-2, ej. "ES"
   photo                    String?
   icalUrl                  String?
   sesCodigoEstablecimiento String? // ← código SES por propiedad, NO en Organization
@@ -275,6 +278,18 @@ await this.translationService.translateMany([...textos], lang);
 ### Filtros y ordenación de tablas
 - Se hacen en el **frontend** sobre los datos ya cargados (no query params al backend)
 - Patrón: `useState` para filtro texto + columna/dirección ordenación, `useMemo` para derivar lista filtrada
+
+### Navegación entre registros
+- Pasar `{ state: { ids: string[], index: number } }` al navegar al detalle desde el listado
+- En el detalle: `const navState = useLocation().state` → flechas ← → con contador `index+1 / ids.length`
+- Sin state (acceso directo por URL) → no se muestran flechas
+- Los IDs provienen de `filteredSorted` (lista ya filtrada/ordenada en ese momento)
+
+### Cambio de estado manual de reserva
+- `PATCH /api/bookings/:id/status` con body `{ status: string }`
+- Transiciones válidas: created→registered|cancelled, registered→processed|error|cancelled, error→registered|processed|cancelled
+- Solo visible para `admin` y `gestor` — usar `useAuth()` para leer `user.role`
+- En BookingDetail: modal centrado con botones coloreados por estado destino
 
 ### PropertyRules — traducciones
 - `translations` es un JSON `{ "en": "...", "fr": "..." }` con los 10 idiomas como clave
