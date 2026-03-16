@@ -3,7 +3,30 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import BookingStatusWorkflow from '../components/BookingStatusWorkflow';
+import { useAuth } from '../context/AuthContext';
+
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  created:    { label: 'Creada',     color: 'bg-amber-500/10 text-amber-400' },
+  registered: { label: 'Registrada', color: 'bg-blue-500/10 text-blue-400' },
+  processed:  { label: 'Procesada',  color: 'bg-emerald-500/10 text-emerald-400' },
+  error:      { label: 'Error',      color: 'bg-red-500/10 text-red-400' },
+  cancelled:  { label: 'Cancelada',  color: 'bg-slate-500/10 text-slate-400' },
+};
+
+const TRANSITIONS: Record<string, string[]> = {
+  created:    ['registered', 'cancelled'],
+  registered: ['processed', 'error', 'cancelled'],
+  error:      ['registered', 'processed', 'cancelled'],
+  processed:  [],
+  cancelled:  [],
+};
+
+const STATUS_BTN: Record<string, string> = {
+  registered: 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-300',
+  processed:  'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300',
+  error:      'bg-red-500/10 hover:bg-red-500/20 text-red-300',
+  cancelled:  'bg-slate-700 hover:bg-slate-600 text-slate-300',
+};
 
 const LANGUAGES = [
   { code: 'es', name: 'Español' },
@@ -38,6 +61,10 @@ export default function BookingDetail() {
   const location = useLocation();
   const navState = (location.state as { ids: string[]; index: number } | null);
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const canChangeStatus = user?.role === 'admin' || user?.role === 'gestor';
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusError, setStatusError] = useState('');
   const [showRating, setShowRating] = useState(false);
   const [sendingCheckin, setSendingCheckin] = useState(false);
   const [sendingWelcome, setSendingWelcome] = useState(false);
@@ -172,6 +199,16 @@ export default function BookingDetail() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['evaluation-booking', id] }),
   });
 
+  const statusMutation = useMutation({
+    mutationFn: (newStatus: string) => api.patch(`/bookings/${id}/status`, { status: newStatus }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['booking', id] });
+      setShowStatusModal(false);
+      setStatusError('');
+    },
+    onError: (e: any) => setStatusError(e.response?.data?.message || 'Transición de estado no válida'),
+  });
+
   const handleSendWelcome = async () => {
     setSendingWelcome(true);
     try {
@@ -252,12 +289,20 @@ export default function BookingDetail() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <button onClick={openEdit}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition-colors">
             ✏️ Editar reserva
           </button>
-          <BookingStatusWorkflow booking={booking} onUpdate={() => qc.invalidateQueries({ queryKey: ['booking', id] })} />
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_CONFIG[booking.status]?.color ?? 'bg-slate-500/10 text-slate-400'}`}>
+            {STATUS_CONFIG[booking.status]?.label ?? booking.status}
+          </span>
+          {canChangeStatus && (TRANSITIONS[booking.status]?.length ?? 0) > 0 && (
+            <button onClick={() => { setShowStatusModal(true); setStatusError(''); }}
+              className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg transition-colors font-semibold">
+              Cambiar estado
+            </button>
+          )}
         </div>
       </div>
 
@@ -610,6 +655,39 @@ export default function BookingDetail() {
                 {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status change modal */}
+      {showStatusModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-white">Cambiar estado</h3>
+              <button onClick={() => { setShowStatusModal(false); setStatusError(''); }}
+                className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+            </div>
+            <div className="mb-4">
+              <p className="text-xs text-slate-400 mb-2">Estado actual</p>
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_CONFIG[booking.status]?.color}`}>
+                {STATUS_CONFIG[booking.status]?.label ?? booking.status}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mb-3">Selecciona el nuevo estado:</p>
+            <div className="space-y-2">
+              {TRANSITIONS[booking.status]?.map(newStatus => (
+                <button key={newStatus}
+                  onClick={() => statusMutation.mutate(newStatus)}
+                  disabled={statusMutation.isPending}
+                  className={`w-full px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 text-left ${STATUS_BTN[newStatus]}`}>
+                  {STATUS_CONFIG[newStatus]?.label}
+                </button>
+              ))}
+            </div>
+            {statusError && (
+              <p className="mt-4 text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">{statusError}</p>
+            )}
           </div>
         </div>
       )}
