@@ -41,6 +41,7 @@ model Organization {
   contracts           Contract[]
   propertyContents    PropertyContent[]
   propertyDocuments   PropertyDocument[]
+  recurringExpenses   RecurringExpense[]
 
   @@map("organizations")
 }
@@ -102,6 +103,7 @@ model Property {
   propertyContents   PropertyContent[]
   propertyDocuments  PropertyDocument[]
   propertyRules      PropertyRules?
+  recurringExpenses  RecurringExpense[]
 
   @@index([organizationId])
   @@map("properties")
@@ -504,4 +506,26 @@ model PropertyDocument {
 
   @@index([organizationId])
   @@map("property_documents")
+}
+
+model RecurringExpense {
+  id             String    @id @default(uuid()) @db.Uuid
+  propertyId     String    @map("property_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  type           String    @db.VarChar(20)
+  amount         Float
+  deductible     Boolean   @default(false)
+  frequency      String    @db.VarChar(20)
+  dayOfMonth     Int       @map("day_of_month")
+  notes          String?   @db.Text
+  active         Boolean   @default(true)
+  nextRunDate    DateTime  @map("next_run_date") @db.Date
+  lastRunDate    DateTime? @map("last_run_date") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  property     Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, active, nextRunDate])
+  @@map("recurring_expenses")
 }

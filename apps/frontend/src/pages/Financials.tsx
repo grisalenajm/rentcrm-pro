@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import ExcelButtons from '../components/ExcelButtons';
+import { useAuth } from '../context/AuthContext';
 
 const EXPENSE_TYPES = [
   { value: 'tasas',    label: 'Tasas' },
@@ -13,6 +14,23 @@ const EXPENSE_TYPES = [
   { value: 'otros',    label: 'Otros' },
 ];
 
+const FREQUENCIES = [
+  { value: 'monthly',   label: 'Mensual' },
+  { value: 'quarterly', label: 'Trimestral' },
+  { value: 'yearly',    label: 'Anual' },
+];
+
+const EMPTY_REC_FORM = {
+  propertyId: '',
+  type: 'otros',
+  amount: '',
+  deductible: false,
+  frequency: 'monthly',
+  dayOfMonth: '1',
+  notes: '',
+  nextRunDate: '',
+};
+
 const EMPTY_FORM    = { propertyId: '', date: '', amount: '', type: 'otros', notes: '', deductible: false };
 const EMPTY_FILTERS = { propertyId: '', type: '', from: '', to: '' };
 
@@ -20,6 +38,7 @@ const inputCls = 'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-
 
 export default function Financials() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const [selectedYear,     setSelectedYear]     = useState(new Date().getFullYear());
@@ -29,6 +48,12 @@ export default function Financials() {
   const [showPropertyTable, setShowPropertyTable] = useState(true);
   const [filters,          setFilters]          = useState({ ...EMPTY_FILTERS });
   const [showFilters,      setShowFilters]      = useState(false);
+
+  // Recurring expenses state
+  const [showRecModal,   setShowRecModal]   = useState(false);
+  const [editingRec,     setEditingRec]     = useState<any>(null);
+  const [recForm,        setRecForm]        = useState({ ...EMPTY_REC_FORM });
+  const canEditRec = user?.role === 'admin' || user?.role === 'owner';
 
   // Derived query params — from/to default to selected year when not set manually
   const queryFrom = filters.from || `${selectedYear}-01-01`;
@@ -75,6 +100,38 @@ export default function Financials() {
   const deleteExpense = useMutation({
     mutationFn: (id: number) => api.delete(`/expenses/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['expenses'] }),
+  });
+
+  // Recurring expenses queries/mutations
+  const { data: recurringExpenses = [] } = useQuery({
+    queryKey: ['recurring-expenses', filters.propertyId],
+    queryFn: () =>
+      api.get('/recurring-expenses', {
+        params: filters.propertyId ? { propertyId: filters.propertyId } : {},
+      }).then((r) => r.data),
+    staleTime: 30_000,
+    placeholderData: (prev: any) => prev,
+  });
+
+  const createRec = useMutation({
+    mutationFn: (data: any) => api.post('/recurring-expenses', data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['recurring-expenses'] }); closeRecModal(); },
+  });
+
+  const updateRec = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.put(`/recurring-expenses/${id}`, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['recurring-expenses'] }); closeRecModal(); },
+  });
+
+  const deleteRec = useMutation({
+    mutationFn: (id: string) => api.delete(`/recurring-expenses/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['recurring-expenses'] }),
+  });
+
+  const toggleRec = useMutation({
+    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+      api.put(`/recurring-expenses/${id}`, { active }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['recurring-expenses'] }),
   });
 
   function openCreate() {
@@ -127,6 +184,53 @@ export default function Financials() {
 
   function clearFilters() { setFilters({ ...EMPTY_FILTERS }); }
 
+  function openCreateRec() {
+    setEditingRec(null);
+    setRecForm({ ...EMPTY_REC_FORM });
+    setShowRecModal(true);
+  }
+
+  function openEditRec(rec: any) {
+    setEditingRec(rec);
+    setRecForm({
+      propertyId:  rec.propertyId || '',
+      type:        rec.type || 'otros',
+      amount:      String(rec.amount),
+      deductible:  rec.deductible ?? false,
+      frequency:   rec.frequency || 'monthly',
+      dayOfMonth:  String(rec.dayOfMonth),
+      notes:       rec.notes || '',
+      nextRunDate: rec.nextRunDate ? rec.nextRunDate.slice(0, 10) : '',
+    });
+    setShowRecModal(true);
+  }
+
+  function closeRecModal() {
+    setShowRecModal(false);
+    setEditingRec(null);
+    setRecForm({ ...EMPTY_REC_FORM });
+  }
+
+  function handleSaveRec() {
+    const payload: any = {
+      propertyId:  recForm.propertyId,
+      type:        recForm.type,
+      amount:      parseFloat(recForm.amount),
+      deductible:  recForm.deductible,
+      frequency:   recForm.frequency,
+      dayOfMonth:  parseInt(recForm.dayOfMonth, 10),
+      notes:       recForm.notes || undefined,
+      nextRunDate: recForm.nextRunDate,
+    };
+    if (editingRec) updateRec.mutate({ id: editingRec.id, data: payload });
+    else            createRec.mutate(payload);
+  }
+
+  const rf = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setRecForm((prev) => ({ ...prev, [k]: e.target.value }));
+  const rfCheck = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setRecForm((prev) => ({ ...prev, [k]: e.target.checked }));
+
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
   // Totals — income from financial ledger, expenses from CRUD table
@@ -151,7 +255,9 @@ export default function Financials() {
 
   const fmt = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const expenseTypeLabel = (val: string) => EXPENSE_TYPES.find((t) => t.value === val)?.label ?? val;
+  const freqLabel = (val: string) => FREQUENCIES.find((f) => f.value === val)?.label ?? val;
   const isPending = createExpense.isPending || updateExpense.isPending;
+  const isRecPending = createRec.isPending || updateRec.isPending;
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
@@ -510,6 +616,244 @@ export default function Financials() {
             ))}
           </div>
         </>
+      )}
+
+      {/* ── Gastos recurrentes ───────────────────────────────────────────── */}
+      <div className="mt-10">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+            Gastos recurrentes ({(recurringExpenses as any[]).length})
+          </h2>
+          {canEditRec && (
+            <button
+              onClick={openCreateRec}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
+            >
+              + Nuevo gasto recurrente
+            </button>
+          )}
+        </div>
+
+        {(recurringExpenses as any[]).length === 0 ? (
+          <div className="text-slate-500 text-center py-10 text-sm">
+            No hay gastos recurrentes configurados
+          </div>
+        ) : (
+          <>
+            {/* Desktop */}
+            <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800">
+                    <th className="text-left px-4 py-3 text-slate-400 font-semibold">Propiedad</th>
+                    <th className="text-left px-4 py-3 text-slate-400 font-semibold">Tipo</th>
+                    <th className="text-right px-4 py-3 text-slate-400 font-semibold">Importe</th>
+                    <th className="text-left px-4 py-3 text-slate-400 font-semibold">Frecuencia</th>
+                    <th className="text-center px-4 py-3 text-slate-400 font-semibold">Día</th>
+                    <th className="text-left px-4 py-3 text-slate-400 font-semibold">Próxima gen.</th>
+                    <th className="text-center px-4 py-3 text-slate-400 font-semibold">Activo</th>
+                    <th className="px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(recurringExpenses as any[]).map((rec: any) => (
+                    <tr key={rec.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                      <td className="px-4 py-3 text-slate-300">{rec.property?.name || '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-semibold px-2 py-1 rounded-full bg-slate-800 text-slate-300">
+                          {expenseTypeLabel(rec.type)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums font-semibold text-red-400">
+                        €{fmt(Number(rec.amount))}
+                      </td>
+                      <td className="px-4 py-3 text-slate-400">{freqLabel(rec.frequency)}</td>
+                      <td className="px-4 py-3 text-center text-slate-400">{rec.dayOfMonth}</td>
+                      <td className="px-4 py-3 tabular-nums text-slate-300">
+                        {rec.nextRunDate ? new Date(rec.nextRunDate).toLocaleDateString('es-ES') : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {canEditRec ? (
+                          <button
+                            onClick={() => toggleRec.mutate({ id: rec.id, active: !rec.active })}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${rec.active ? 'bg-emerald-600' : 'bg-slate-700'}`}
+                          >
+                            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${rec.active ? 'translate-x-4' : 'translate-x-1'}`} />
+                          </button>
+                        ) : (
+                          <span className={rec.active ? 'text-emerald-400' : 'text-slate-600'}>
+                            {rec.active ? '✓' : '—'}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {canEditRec && (
+                          <div className="flex items-center gap-1 justify-end">
+                            <button
+                              onClick={() => openEditRec(rec)}
+                              className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => { if (confirm(t('common.confirm_delete'))) deleteRec.mutate(rec.id); }}
+                              className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                            >
+                              {t('common.delete')}
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile */}
+            <div className="md:hidden space-y-3">
+              {(recurringExpenses as any[]).map((rec: any) => (
+                <div key={rec.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-slate-800 text-slate-300">
+                        {expenseTypeLabel(rec.type)}
+                      </span>
+                      {rec.property?.name && (
+                        <span className="text-xs text-slate-500 ml-2">{rec.property.name}</span>
+                      )}
+                    </div>
+                    <span className="font-bold tabular-nums text-red-400">€{fmt(Number(rec.amount))}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-slate-400 mb-3">
+                    <div><span className="text-slate-500">Frecuencia:</span> {freqLabel(rec.frequency)}</div>
+                    <div><span className="text-slate-500">Día:</span> {rec.dayOfMonth}</div>
+                    <div><span className="text-slate-500">Próxima:</span> {rec.nextRunDate ? new Date(rec.nextRunDate).toLocaleDateString('es-ES') : '—'}</div>
+                  </div>
+                  {rec.notes && <div className="text-sm text-white mb-2">{rec.notes}</div>}
+                  <div className="flex justify-between items-center">
+                    {canEditRec ? (
+                      <button
+                        onClick={() => toggleRec.mutate({ id: rec.id, active: !rec.active })}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${rec.active ? 'bg-emerald-600' : 'bg-slate-700'}`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${rec.active ? 'translate-x-4' : 'translate-x-1'}`} />
+                      </button>
+                    ) : (
+                      <span className={`text-xs ${rec.active ? 'text-emerald-400' : 'text-slate-600'}`}>
+                        {rec.active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    )}
+                    {canEditRec && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => openEditRec(rec)}
+                          className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => { if (confirm(t('common.confirm_delete'))) deleteRec.mutate(rec.id); }}
+                          className="px-2 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                        >
+                          {t('common.delete')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Recurring expense modal */}
+      {showRecModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
+            <h2 className="text-lg font-bold mb-5">
+              {editingRec ? 'Editar gasto recurrente' : 'Nuevo gasto recurrente'}
+            </h2>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Propiedad *</label>
+                  <select value={recForm.propertyId} onChange={rf('propertyId')} className={inputCls}>
+                    <option value="">— Selecciona propiedad —</option>
+                    {(properties as any[]).map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Tipo *</label>
+                  <select value={recForm.type} onChange={rf('type')} className={inputCls}>
+                    {EXPENSE_TYPES.map((et) => (
+                      <option key={et.value} value={et.value}>{et.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Importe (€) *</label>
+                  <input type="number" step="0.01" min="0" value={recForm.amount} onChange={rf('amount')} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Frecuencia *</label>
+                  <select value={recForm.frequency} onChange={rf('frequency')} className={inputCls}>
+                    {FREQUENCIES.map((fr) => (
+                      <option key={fr.value} value={fr.value}>{fr.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Día del mes (1-28) *</label>
+                  <input type="number" min="1" max="28" value={recForm.dayOfMonth} onChange={rf('dayOfMonth')} className={inputCls} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Primera generación *</label>
+                  <input type="date" value={recForm.nextRunDate} onChange={rf('nextRunDate')} className={inputCls} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Notas</label>
+                  <textarea
+                    value={recForm.notes}
+                    onChange={rf('notes')}
+                    rows={2}
+                    placeholder="Descripción opcional"
+                    className={inputCls + ' resize-none'}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={recForm.deductible}
+                      onChange={rfCheck('deductible')}
+                      className="w-4 h-4 accent-emerald-500 rounded"
+                    />
+                    <span className="text-sm text-slate-300">Deducible (100% factura)</span>
+                  </label>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={closeRecModal}
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  onClick={handleSaveRec}
+                  disabled={!recForm.propertyId || !recForm.amount || !recForm.nextRunDate || isRecPending}
+                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors"
+                >
+                  {isRecPending ? t('common.saving') : editingRec ? 'Guardar cambios' : 'Crear gasto recurrente'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Expense modal */}

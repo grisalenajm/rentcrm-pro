@@ -20,6 +20,7 @@ import { ExcelModule } from './excel/excel.module';
 import { TranslationModule } from './translation/translation.module';
 import { PropertyContentModule } from './property-content/property-content.module';
 import { PropertyRulesModule } from './property-rules/property-rules.module';
+import { RecurringExpensesModule } from './recurring-expenses/recurring-expenses.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { PropertyRulesModule } from './property-rules/property-rules.module';
     TranslationModule,
     PropertyContentModule,
     PropertyRulesModule,
+    RecurringExpensesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
