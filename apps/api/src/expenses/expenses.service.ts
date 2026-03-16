@@ -21,7 +21,7 @@ export class ExpensesService {
     });
   }
 
-  async create(data: { propertyId: string; date: string; amount: number; type: string; notes?: string }, organizationId: string) {
+  async create(data: { propertyId: string; date: string; amount: number; type: string; notes?: string; deductible?: boolean }, organizationId: string) {
     const property = await this.prisma.property.findFirst({
       where: { id: data.propertyId, organizationId },
     });
@@ -33,11 +33,12 @@ export class ExpensesService {
         amount: data.amount,
         type: data.type,
         notes: data.notes,
+        deductible: data.deductible ?? false,
       },
     });
   }
 
-  async update(id: number, data: { date?: string; amount?: number; type?: string; notes?: string }, organizationId: string) {
+  async update(id: number, data: { date?: string; amount?: number; type?: string; notes?: string; deductible?: boolean }, organizationId: string) {
     const expense = await this.prisma.expense.findFirst({
       where: { id, property: { organizationId } },
     });
@@ -49,6 +50,7 @@ export class ExpensesService {
         ...(data.amount !== undefined && { amount: data.amount }),
         ...(data.type && { type: data.type }),
         ...(data.notes !== undefined && { notes: data.notes }),
+        ...(data.deductible !== undefined && { deductible: data.deductible }),
       },
     });
   }

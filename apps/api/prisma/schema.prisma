@@ -115,6 +115,7 @@ model Expense {
   amount     Float
   type       String
   notes      String?
+  deductible Boolean  @default(false)
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
@@ -462,6 +463,7 @@ model PropertyContent {
   organizationId String    @map("organization_id") @db.Uuid
   propertyId     String?   @map("property_id") @db.Uuid
   template       String?   @db.Text
+  translations   Json      @default("{}") @map("translations")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)

@@ -13,7 +13,7 @@ const EXPENSE_TYPES = [
   { value: 'otros',    label: 'Otros' },
 ];
 
-const EMPTY_FORM = { propertyId: '', date: '', amount: '', type: 'otros', notes: '' };
+const EMPTY_FORM = { propertyId: '', date: '', amount: '', type: 'otros', notes: '', deductible: false };
 
 export default function Financials() {
   const { t } = useTranslation();
@@ -80,6 +80,7 @@ export default function Financials() {
       amount: String(exp.amount),
       type: exp.type || 'otros',
       notes: exp.notes || '',
+      deductible: exp.deductible ?? false,
     });
     setShowExpenseModal(true);
   }
@@ -97,6 +98,7 @@ export default function Financials() {
       amount: parseFloat(expenseForm.amount),
       type: expenseForm.type,
       notes: expenseForm.notes || undefined,
+      deductible: expenseForm.deductible,
     };
     if (editingExpense) {
       updateExpense.mutate({ id: editingExpense.id, data: payload });
@@ -107,6 +109,9 @@ export default function Financials() {
 
   const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setExpenseForm((prev) => ({ ...prev, [k]: e.target.value }));
+
+  const fCheck = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setExpenseForm((prev) => ({ ...prev, [k]: e.target.checked }));
 
   // Totals
   const totalIncome = (incomeRecords as any[]).reduce((s: number, r: any) => s + Number(r.amount), 0);
@@ -330,6 +335,7 @@ export default function Financials() {
                   <th className="text-left px-4 py-3 text-slate-400 font-semibold">Tipo</th>
                   <th className="text-left px-4 py-3 text-slate-400 font-semibold">Propiedad</th>
                   <th className="text-left px-4 py-3 text-slate-400 font-semibold">Notas</th>
+                  <th className="text-center px-4 py-3 text-slate-400 font-semibold">Ded.</th>
                   <th className="text-right px-4 py-3 text-slate-400 font-semibold">Importe</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -347,6 +353,11 @@ export default function Financials() {
                     </td>
                     <td className="px-4 py-3 text-slate-400">{exp.property?.name || '—'}</td>
                     <td className="px-4 py-3 text-slate-400 max-w-xs truncate">{exp.notes || '—'}</td>
+                    <td className="px-4 py-3 text-center">
+                      {exp.deductible
+                        ? <span className="text-emerald-400 font-bold">✓</span>
+                        : <span className="text-slate-600">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-right tabular-nums font-semibold text-red-400">
                       €{fmt(Number(exp.amount))}
                     </td>
@@ -383,6 +394,11 @@ export default function Financials() {
                     <span className="text-xs font-semibold px-2 py-1 rounded-full bg-slate-800 text-slate-300">
                       {expenseTypeLabel(exp.type)}
                     </span>
+                    {exp.deductible && (
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 ml-1">
+                        Deducible
+                      </span>
+                    )}
                     {exp.property?.name && (
                       <span className="text-xs text-slate-500 ml-2">{exp.property.name}</span>
                     )}
@@ -495,6 +511,17 @@ export default function Financials() {
                     placeholder="Descripción opcional"
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
                   />
+                </div>
+                <div className="col-span-2">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={expenseForm.deductible}
+                      onChange={fCheck('deductible')}
+                      className="w-4 h-4 accent-emerald-500 rounded"
+                    />
+                    <span className="text-sm text-slate-300">Deducible (100% factura)</span>
+                  </label>
                 </div>
               </div>
               <div className="flex gap-3 pt-2">

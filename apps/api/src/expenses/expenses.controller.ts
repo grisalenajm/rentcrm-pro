@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
-import { IsEnum, IsNumber, IsOptional, IsString, Min, MaxLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min, MaxLength } from 'class-validator';
 import { ExpensesService } from './expenses.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -13,6 +13,7 @@ class CreateExpenseDto {
   @IsNumber() @Min(0) amount: number;
   @IsEnum(EXPENSE_TYPES, { message: 'Tipo de gasto no válido' }) type: string;
   @IsOptional() @IsString() @MaxLength(500) notes?: string;
+  @IsOptional() @IsBoolean() deductible?: boolean;
 }
 
 class UpdateExpenseDto {
@@ -20,6 +21,7 @@ class UpdateExpenseDto {
   @IsOptional() @IsNumber() @Min(0) amount?: number;
   @IsOptional() @IsEnum(EXPENSE_TYPES, { message: 'Tipo de gasto no válido' }) type?: string;
   @IsOptional() @IsString() @MaxLength(500) notes?: string;
+  @IsOptional() @IsBoolean() deductible?: boolean;
 }
 
 @UseGuards(JwtAuthGuard)
