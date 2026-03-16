@@ -7,6 +7,7 @@ import { CreateBookingGuestSesDto } from './dto/booking-guest-ses.dto';
 import { TranslationService } from '../translation/translation.service';
 import { PropertyContentService } from '../property-content/property-content.service';
 import { PropertyRulesService } from '../property-rules/property-rules.service';
+import { renderEmailTemplate } from '../translation/ui-translations';
 import { randomUUID } from 'crypto';
 import * as nodemailer from 'nodemailer';
 
@@ -318,21 +319,17 @@ export class BookingsService {
     const lang = language || (booking.client as any).language || 'es';
     const checkinUrl = `${process.env.FRONTEND_URL}/checkin/${token}`;
     const propertyName = booking.property.name;
+    const date = new Date(booking.checkInDate).toLocaleDateString('es-ES');
 
-    const [
-      greeting,
-      bodyText,
-      buttonText,
-      footerText,
-    ] = await this.translationService.translateMany([
-      `¡Hola ${booking.client.firstName}!`,
-      `Tu reserva en ${propertyName} comienza el ${new Date(booking.checkInDate).toLocaleDateString('es-ES')}. Por favor completa tu checkin online antes de tu llegada:`,
+    // Use pre-translated templates — no LibreTranslate call needed
+    const greeting  = renderEmailTemplate('checkinGreeting', lang, { name: booking.client.firstName });
+    const finalBodyText = renderEmailTemplate('checkinBody', lang, { property: propertyName, date });
+    const [buttonText, footerText] = await this.translationService.translateMany([
       'Completar checkin',
       'Este enlace es personal e intransferible.',
     ], lang);
 
     const subject = `Checkin online — ${propertyName}`;
-    const finalBodyText = bodyText.replace(new RegExp(propertyName, 'gi'), propertyName);
 
     await this.sendEmail(organizationId, {
       to: booking.client.email,
@@ -700,25 +697,36 @@ export class BookingsService {
     const content = await this.propertyContentService.getContent(organizationId, booking.property.id);
     const docs    = await this.propertyContentService.getDocumentsWithData(organizationId, booking.property.id);
 
-    // Replace variables in template
-    let templateHtml = content.template || '';
-    templateHtml = templateHtml
-      .replace(/\{\{guest_name\}\}/g, guestName)
-      .replace(/\{\{property_name\}\}/g, propertyName);
-
-    // Translate subject and fallback texts
+    // Translate subject using static cache — no LibreTranslate call needed
     const [stayAt, arrivalInfo] = await this.translationService.translateMany(
       ['Tu estancia en', 'Información de llegada'],
       lang,
     );
     const subject = `${stayAt} ${propertyName} — ${arrivalInfo}`;
 
-    // If template exists, translate it (LibreTranslate generally preserves HTML tags)
-    let bodyHtml = templateHtml;
-    if (bodyHtml && lang !== 'es') {
-      const [translated] = await this.translationService.translateMany([bodyHtml], lang);
-      bodyHtml = translated || bodyHtml;
+    // Determine which PropertyContent record owns the active template
+    const rawTemplate = content.template || '';
+    const ownerRecord = content._specific?.template ? content._specific : content._global;
+
+    // Translate template BEFORE variable substitution so the result is cacheable per property+language
+    let translatedTemplate = rawTemplate;
+    if (rawTemplate && lang !== 'es') {
+      const cached = this.propertyContentService.getCachedTemplateTranslation(ownerRecord, lang);
+      if (cached !== null) {
+        translatedTemplate = cached;
+      } else {
+        const [translated] = await this.translationService.translateMany([rawTemplate], lang);
+        translatedTemplate = translated || rawTemplate;
+        if (ownerRecord?.id) {
+          await this.propertyContentService.cacheTemplateTranslation(ownerRecord.id, lang, translatedTemplate);
+        }
+      }
     }
+
+    // Substitute variables after translation
+    let bodyHtml = translatedTemplate
+      .replace(/\{\{guest_name\}\}/g, guestName)
+      .replace(/\{\{property_name\}\}/g, propertyName);
 
     // Wrap in email shell
     const html = `

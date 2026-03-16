@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { FinancialsService } from './financials.service';
 import { CreateFinancialDto } from './dto/create-financial.dto';
 import { UpdateFinancialDto } from './dto/update-financial.dto';
@@ -25,6 +25,15 @@ export class FinancialsController {
   @Get('summary')
   summary(@Request() req, @Query('from') from?: string, @Query('to') to?: string) {
     return this.financialsService.summary(req.user.organizationId, from, to);
+  }
+
+  @Get('property/:propertyId/report')
+  getPropertyReport(
+    @Request() req,
+    @Param('propertyId') propertyId: string,
+    @Query('year', new DefaultValuePipe(new Date().getFullYear()), ParseIntPipe) year: number,
+  ) {
+    return this.financialsService.getPropertyReport(req.user.organizationId, propertyId, year);
   }
 
   @Get('categories')

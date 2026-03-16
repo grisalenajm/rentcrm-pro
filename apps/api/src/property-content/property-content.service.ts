@@ -33,9 +33,14 @@ export class PropertyContentService {
       where: { organizationId, propertyId: propertyId ?? null },
     });
     if (existing) {
+      // If template changed, invalidate translation cache
+      const templateChanged = existing.template !== dto.template;
       return this.prisma.propertyContent.update({
         where: { id: existing.id },
-        data: { template: dto.template },
+        data: {
+          template: dto.template,
+          ...(templateChanged ? { translations: {} } : {}),
+        },
       });
     }
     return this.prisma.propertyContent.create({
@@ -44,6 +49,30 @@ export class PropertyContentService {
         propertyId: propertyId ?? null,
         template: dto.template,
       },
+    });
+  }
+
+  /**
+   * Returns the cached translated template for a given language, or null if not cached.
+   * The ownerRecord is whichever PropertyContent record provides the active template.
+   */
+  getCachedTemplateTranslation(ownerRecord: any, lang: string): string | null {
+    if (!ownerRecord) return null;
+    const translations = ownerRecord.translations as Record<string, string> | null;
+    return translations?.[lang] ?? null;
+  }
+
+  /**
+   * Stores a translated template in the PropertyContent record's translations cache.
+   */
+  async cacheTemplateTranslation(recordId: string, lang: string, translatedHtml: string): Promise<void> {
+    const record = await this.prisma.propertyContent.findUnique({ where: { id: recordId } });
+    if (!record) return;
+    const translations = (record.translations as Record<string, string>) ?? {};
+    translations[lang] = translatedHtml;
+    await this.prisma.propertyContent.update({
+      where: { id: recordId },
+      data: { translations },
     });
   }
 

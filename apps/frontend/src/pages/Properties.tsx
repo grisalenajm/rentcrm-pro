@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
@@ -43,6 +44,7 @@ const labelCls = "block text-xs font-semibold text-slate-400 uppercase tracking-
 export default function Properties() {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Property | null>(null);
   const [form, setForm] = useState<any>(emptyForm);
@@ -343,6 +345,10 @@ export default function Properties() {
                   <span>{p.rooms} {t('properties.rooms')}</span>
                 </div>
                 <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => navigate(`/properties/${p.id}/financials`)}
+                    className="flex-1 py-1.5 text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors text-center">
+                    💰 Finanzas
+                  </button>
                   <button onClick={() => openIcal(p)}
                     className="flex-1 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg transition-colors text-center">
                     📅 iCal
@@ -369,6 +375,10 @@ export default function Properties() {
                 <button onClick={() => { setDetailProperty(null); openEdit(detailProperty); }}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
                   {t('common.edit')}
+                </button>
+                <button onClick={() => { setDetailProperty(null); navigate(`/properties/${detailProperty.id}/financials`); }}
+                  className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-semibold transition-colors">
+                  💰 Ver finanzas
                 </button>
                 <button onClick={() => { setDetailProperty(null); openIcal(detailProperty); }}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg text-sm font-semibold transition-colors">

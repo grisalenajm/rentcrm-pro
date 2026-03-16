@@ -1,5 +1,6 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { getStaticTranslation } from './ui-translations';
 
 export const SUPPORTED_LANGUAGES = [
   { code: 'es', name: 'Español' },
@@ -15,89 +16,20 @@ export const SUPPORTED_LANGUAGES = [
 ];
 
 @Injectable()
-export class TranslationService implements OnModuleInit {
+export class TranslationService {
   private readonly logger = new Logger(TranslationService.name);
   private readonly baseUrl = process.env.LIBRETRANSLATE_URL || 'http://libretranslate:5000';
 
-  async onModuleInit() {
-    this.logger.log('Pre-calentando caché de traducciones...');
-    const textos = [
-      'Checkin online',
-      'Por favor completa tus datos antes de tu llegada',
-      'Nombre',
-      'Apellidos',
-      'Tipo de documento',
-      'Número de documento',
-      'País del documento',
-      'Teléfono (opcional)',
-      'Completar checkin',
-      '¡Checkin completado!',
-      'Tus datos han sido registrados. ¡Que disfrutes tu estancia!',
-      'Enlace no válido o expirado',
-      'Este checkin ya fue completado',
-      'Por favor completa todos los campos obligatorios',
-      'Entrada',
-      'Salida',
-      'ID nacional',
-      'Pasaporte',
-      'NIE / ID extranjero',
-      'Otro',
-      'España',
-      'Reino Unido',
-      'Francia',
-      'Alemania',
-      'Italia',
-      'Portugal',
-      'Estados Unidos',
-      'Tus datos',
-      'Enviando...',
-      'Dinamarca',
-      'Noruega',
-      'Suecia',
-      'Países Bajos',
-      'Bélgica',
-      'Suiza',
-      'Austria',
-      'Polonia',
-      'República Checa',
-      'Hungría',
-      'Rumanía',
-      'Bulgaria',
-      'Grecia',
-      'Croacia',
-      'México',
-      'Argentina',
-      'Colombia',
-      'Brasil',
-      'China',
-      'Japón',
-      'Australia',
-      'Canadá',
-      'Rusia',
-      'Marruecos',
-      'Argelia',
-      'Turquía',
-      'Israel',
-      'Emiratos Árabes Unidos',
-      'Otros huéspedes (mayores de 14 años)',
-      'Es obligatorio registrar todos los huéspedes mayores de 14 años según la normativa de hospedaje.',
-      'Añadir huésped',
-      'Huésped',
-      'Fecha de nacimiento',
-    ];
-
-    const idiomas = ['en', 'fr', 'de', 'it', 'pt', 'nl', 'da', 'nb', 'sv'];
-
-    for (const lang of idiomas) {
-      await Promise.all(textos.map(t => this.translate(t, lang, 'es')));
-      this.logger.log(`Caché calentada para idioma: ${lang}`);
-    }
-
-    this.logger.log('Caché de traducciones lista.');
-  }
-
   async translate(text: string, targetLang: string, sourceLang = 'es'): Promise<string> {
     if (!text || targetLang === sourceLang) return text;
+
+    // Check static cache first — no network call needed
+    if (sourceLang === 'es') {
+      const cached = getStaticTranslation(text, targetLang);
+      if (cached !== null) return cached;
+    }
+
+    // Fall back to LibreTranslate for dynamic content (e.g. welcome package HTML)
     try {
       const response = await axios.post(`${this.baseUrl}/translate`, {
         q: text,
@@ -107,7 +39,7 @@ export class TranslationService implements OnModuleInit {
       }, { timeout: 10000 });
       return response.data.translatedText || text;
     } catch (error) {
-      this.logger.warn(`Error traduciendo a ${targetLang}: ${error.message}. Usando texto original.`);
+      this.logger.warn(`LibreTranslate unavailable for ${targetLang}: ${error.message}. Using original text.`);
       return text;
     }
   }

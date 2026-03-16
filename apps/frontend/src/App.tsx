@@ -19,6 +19,7 @@ import Police from './pages/Police';
 import OccupancyCalendar from './pages/OccupancyCalendar';
 import Settings from './pages/Settings';
 import UserManagement from './pages/UserManagement';
+import PropertyFinancialDetail from './pages/PropertyFinancialDetail';
 import { UserPreferencesProvider } from './context/UserPreferencesContext';
 
 const qc = new QueryClient();
@@ -40,7 +41,8 @@ export default function App() {
             <Route path="/checkin/:token" element={<CheckinPage />} />
             <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
               <Route index element={<Dashboard />} />
-              <Route path="properties"          element={<Properties />} />
+              <Route path="properties"                       element={<Properties />} />
+              <Route path="properties/:id/financials"     element={<PropertyFinancialDetail />} />
               <Route path="clients"             element={<Clients />} />
               <Route path="clients/:id"         element={<ClientDetail />} />
               <Route path="bookings"            element={<Bookings />} />

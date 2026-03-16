@@ -75,4 +75,85 @@ export class FinancialsService {
     if (!record) throw new NotFoundException('Registro no encontrado');
     return this.prisma.financial.delete({ where: { id } });
   }
+
+  async getPropertyReport(organizationId: string, propertyId: string, year: number) {
+    const from = new Date(`${year}-01-01`);
+    const to   = new Date(`${year}-12-31`);
+
+    const property = await this.prisma.property.findFirst({
+      where: { id: propertyId, organizationId },
+      select: { id: true, name: true },
+    });
+    if (!property) throw new NotFoundException('Propiedad no encontrada');
+
+    const records = await this.prisma.financial.findMany({
+      where: { organizationId, propertyId, date: { gte: from, lte: to } },
+      include: {
+        category: { select: { name: true } },
+        booking:  { select: { source: true } },
+      },
+    });
+
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        propertyId,
+        checkInDate: { lte: to },
+        checkOutDate: { gte: from },
+        status: { not: 'cancelled' },
+      },
+      select: { checkInDate: true, checkOutDate: true },
+    });
+
+    // Occupancy days clipped to the year
+    let occupancyDays = 0;
+    for (const b of bookings) {
+      const start = b.checkInDate > from ? b.checkInDate : from;
+      const end   = b.checkOutDate < to  ? b.checkOutDate : to;
+      const days  = Math.ceil((end.getTime() - start.getTime()) / 86400000);
+      if (days > 0) occupancyDays += days;
+    }
+
+    // Monthly aggregation
+    const months = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, income: 0, expenses: 0, profit: 0 }));
+    for (const r of records) {
+      const m = new Date(r.date).getMonth(); // 0-based
+      const amt = Number(r.amount);
+      if (r.type === 'income')  { months[m].income   += amt; }
+      else                      { months[m].expenses += amt; }
+    }
+    for (const m of months) m.profit = m.income - m.expenses;
+
+    // Totals
+    const totalIncome  = records.filter(r => r.type === 'income' ).reduce((s, r) => s + Number(r.amount), 0);
+    const totalExpense = records.filter(r => r.type === 'expense').reduce((s, r) => s + Number(r.amount), 0);
+
+    // Expenses by category type
+    const byType: Record<string, number> = {};
+    for (const r of records.filter(r => r.type === 'expense')) {
+      const key = r.category?.name ?? 'otros';
+      byType[key] = (byType[key] ?? 0) + Number(r.amount);
+    }
+
+    // Deductible total
+    const deductibleTotal = records
+      .filter(r => r.type === 'expense' && (r as any).deductible)
+      .reduce((s, r) => s + Number(r.amount), 0);
+
+    // Income by channel (booking source)
+    const byChannel: Record<string, number> = {};
+    for (const r of records.filter(r => r.type === 'income')) {
+      const key = r.booking?.source ?? 'directo';
+      byChannel[key] = (byChannel[key] ?? 0) + Number(r.amount);
+    }
+
+    return {
+      property,
+      year,
+      months,
+      totals: { income: totalIncome, expenses: totalExpense, profit: totalIncome - totalExpense, occupancyDays },
+      byType,
+      deductibleTotal,
+      byChannel,
+    };
+  }
 }
