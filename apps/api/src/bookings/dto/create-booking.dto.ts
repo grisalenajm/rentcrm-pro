@@ -28,7 +28,7 @@ export class CreateBookingDto {
   totalAmount: number;
 
   @IsOptional()
-  @IsIn(['pending', 'confirmed', 'cancelled', 'completed'])
+  @IsIn(['created', 'registered', 'processed', 'error', 'cancelled'])
   status?: string;
 
   @IsOptional()

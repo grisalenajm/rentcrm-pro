@@ -77,9 +77,6 @@ const statusColor: Record<string, string> = {
   processed:  'bg-emerald-500/10 text-emerald-400',
   error:      'bg-red-500/10 text-red-400',
   cancelled:  'bg-slate-500/10 text-slate-400',
-  confirmed:  'bg-emerald-500/10 text-emerald-400',
-  pending:    'bg-amber-500/10 text-amber-400',
-  completed:  'bg-slate-500/10 text-slate-400',
 };
 
 const emptyGuest = () => ({
@@ -327,7 +324,7 @@ export default function Bookings() {
   });
 
   const resetForm = () => {
-    setForm({ clientId: '', propertyId: '', checkInDate: '', checkOutDate: '', totalAmount: '', source: 'direct', status: 'confirmed', notes: '' });
+    setForm({ clientId: '', propertyId: '', checkInDate: '', checkOutDate: '', totalAmount: '', source: 'direct', status: 'created', notes: '' });
     setDateError('');
     setOverlapError('');
     setClientSearch('');
@@ -443,19 +440,25 @@ export default function Bookings() {
   const applyBulk = async () => {
     if (!bulkAction || !bulkValue || bulkLoading) return;
     setBulkLoading(true); setBulkResult(null);
-    const results = await Promise.allSettled(
-      Array.from(selectedIds).map(id =>
-        bulkAction === 'status'
-          ? api.patch(`/bookings/${id}/status`, { status: bulkValue })
-          : api.patch(`/bookings/${id}`, { source: bulkValue })
-      )
-    );
-    const ok = results.filter(r => r.status === 'fulfilled').length;
-    const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
-    const errors = [...new Set(rejected.map(r => r.reason?.response?.data?.message || r.reason?.message || 'Error desconocido'))];
-    setBulkLoading(false); setBulkResult({ ok, fail: rejected.length, errors });
+    let ok = 0;
+    const errors: string[] = [];
+    for (const id of Array.from(selectedIds)) {
+      try {
+        if (bulkAction === 'status') {
+          await api.patch(`/bookings/${id}/status`, { status: bulkValue });
+        } else {
+          await api.patch(`/bookings/${id}`, { source: bulkValue });
+        }
+        ok++;
+      } catch (err: any) {
+        errors.push(err?.response?.data?.message || err?.message || 'Error desconocido');
+      }
+      await new Promise(r => setTimeout(r, 300));
+    }
+    const uniqueErrors = [...new Set(errors)];
+    setBulkLoading(false); setBulkResult({ ok, fail: errors.length, errors: uniqueErrors });
     qc.invalidateQueries({ queryKey: ['bookings'] });
-    if (rejected.length === 0) cancelBulk();
+    if (errors.length === 0) cancelBulk();
   };
 
   return (
