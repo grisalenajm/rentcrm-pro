@@ -38,6 +38,7 @@ export default function Contracts() {
   const [signatureView, setSignatureView] = useState<Contract | null>(null);
   const [linkModal, setLinkModal] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
 
   const { data: contracts = [], isLoading } = useQuery({
     queryKey: ['contracts'],
@@ -73,17 +74,19 @@ export default function Contracts() {
     },
   });
 
-  const sendMutation = useMutation({
-    mutationFn: (id: string) => api.post(`/contracts/${id}/send`),
-    onSuccess: () => {
-      setSendError(null);
+  const handleSend = async (id: string) => {
+    setSendingId(id);
+    setSendError(null);
+    try {
+      await api.post(`/contracts/${id}/send`);
       qc.invalidateQueries({ queryKey: ['contracts'] });
-    },
-    onError: (err: any) => {
+    } catch (err: any) {
       console.error('Error enviando contrato:', err.response?.data);
       setSendError(err.response?.data?.message || err.message || 'Error al enviar el contrato');
-    },
-  });
+    } finally {
+      setSendingId(null);
+    }
+  };
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/contracts/${id}`),
@@ -161,17 +164,17 @@ export default function Contracts() {
                           {t('contracts.viewContract')}
                         </button>
                         {c.status === 'draft' && (
-                          <button onClick={() => sendMutation.mutate(c.id)}
-                            disabled={sendMutation.isPending && sendMutation.variables === c.id}
+                          <button onClick={() => handleSend(c.id)}
+                            disabled={sendingId === c.id}
                             className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors disabled:opacity-50">
-                            {sendMutation.isPending && sendMutation.variables === c.id ? '⏳' : t('common.send')}
+                            {sendingId === c.id ? '⏳' : t('common.send')}
                           </button>
                         )}
                         {c.status === 'sent' && (
-                          <button onClick={() => sendMutation.mutate(c.id)}
-                            disabled={sendMutation.isPending && sendMutation.variables === c.id}
+                          <button onClick={() => handleSend(c.id)}
+                            disabled={sendingId === c.id}
                             className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors disabled:opacity-50">
-                            {sendMutation.isPending && sendMutation.variables === c.id ? '⏳' : t('contracts.resend')}
+                            {sendingId === c.id ? '⏳' : t('contracts.resend')}
                           </button>
                         )}
                         {(c.status === 'draft' || c.status === 'sent') && (
@@ -236,17 +239,17 @@ export default function Contracts() {
                     {t('contracts.viewContract')}
                   </button>
                   {c.status === 'draft' && (
-                    <button onClick={() => sendMutation.mutate(c.id)}
-                      disabled={sendMutation.isPending && sendMutation.variables === c.id}
+                    <button onClick={() => handleSend(c.id)}
+                      disabled={sendingId === c.id}
                       className="px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors disabled:opacity-50">
-                      {sendMutation.isPending && sendMutation.variables === c.id ? '⏳' : t('common.send')}
+                      {sendingId === c.id ? '⏳' : t('common.send')}
                     </button>
                   )}
                   {c.status === 'sent' && (
-                    <button onClick={() => sendMutation.mutate(c.id)}
-                      disabled={sendMutation.isPending && sendMutation.variables === c.id}
+                    <button onClick={() => handleSend(c.id)}
+                      disabled={sendingId === c.id}
                       className="px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors disabled:opacity-50">
-                      {sendMutation.isPending && sendMutation.variables === c.id ? '⏳' : t('contracts.resend')}
+                      {sendingId === c.id ? '⏳' : t('contracts.resend')}
                     </button>
                   )}
                   {(c.status === 'draft' || c.status === 'sent') && (
