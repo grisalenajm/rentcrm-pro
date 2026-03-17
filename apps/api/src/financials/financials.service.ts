@@ -29,6 +29,81 @@ export class FinancialsService {
     });
   }
 
+  async combinedSummary(organizationId: string, from?: string, to?: string) {
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate   = to   ? new Date(to)   : undefined;
+
+    // Ingresos financieros (Financial type=income)
+    const financialRecords = await this.prisma.financial.findMany({
+      where: {
+        organizationId,
+        type: 'income',
+        ...(fromDate || toDate ? { date: { ...(fromDate ? { gte: fromDate } : {}), ...(toDate ? { lte: toDate } : {}) } } : {}),
+      },
+    });
+
+    // Ingresos de reservas (Booking.totalAmount, status != cancelled)
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        organizationId,
+        status: { not: 'cancelled' },
+        ...(fromDate || toDate ? { checkInDate: { ...(fromDate ? { gte: fromDate } : {}), ...(toDate ? { lte: toDate } : {}) } } : {}),
+      },
+      select: { totalAmount: true, checkInDate: true },
+    });
+
+    // Gastos financieros (Financial type=expense)
+    const financialExpenses = await this.prisma.financial.findMany({
+      where: {
+        organizationId,
+        type: 'expense',
+        ...(fromDate || toDate ? { date: { ...(fromDate ? { gte: fromDate } : {}), ...(toDate ? { lte: toDate } : {}) } } : {}),
+      },
+    });
+
+    // Gastos de la tabla Expense
+    const expenses = await this.prisma.expense.findMany({
+      where: {
+        property: { organizationId },
+        ...(fromDate || toDate ? { date: { ...(fromDate ? { gte: fromDate } : {}), ...(toDate ? { lte: toDate } : {}) } } : {}),
+      },
+    });
+
+    // Totales
+    const totalIncome  = financialRecords.reduce((s, r) => s + Number(r.amount), 0)
+                       + bookings.reduce((s, b) => s + Number(b.totalAmount), 0);
+    const totalExpense = financialExpenses.reduce((s, r) => s + Number(r.amount), 0)
+                       + expenses.reduce((s, e) => s + Number(e.amount), 0);
+
+    // Desglose mensual
+    const months: Record<number, { month: number; ingresos: number; gastos: number }> = {};
+    for (let m = 0; m < 12; m++) months[m] = { month: m + 1, ingresos: 0, gastos: 0 };
+
+    for (const r of financialRecords) {
+      const m = new Date(r.date).getMonth();
+      months[m].ingresos += Number(r.amount);
+    }
+    for (const b of bookings) {
+      const m = new Date(b.checkInDate).getMonth();
+      months[m].ingresos += Number(b.totalAmount);
+    }
+    for (const r of financialExpenses) {
+      const m = new Date(r.date).getMonth();
+      months[m].gastos += Number(r.amount);
+    }
+    for (const e of expenses) {
+      const m = new Date(e.date).getMonth();
+      months[m].gastos += Number(e.amount);
+    }
+
+    return {
+      totalIncome: Math.round(totalIncome * 100) / 100,
+      totalExpense: Math.round(totalExpense * 100) / 100,
+      profit: Math.round((totalIncome - totalExpense) * 100) / 100,
+      monthly: Object.values(months),
+    };
+  }
+
   async summary(organizationId: string, from?: string, to?: string) {
     const records = await this.findAll(organizationId, { from, to });
     const income  = records.filter(r => r.type === 'income' ).reduce((s, r) => s + Number(r.amount), 0);

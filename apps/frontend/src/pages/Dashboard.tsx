@@ -77,12 +77,17 @@ export default function Dashboard() {
     return properties.length > 0 ? Math.round(occupied.size / properties.length * 100) : 0;
   }, [bookings, properties, todayStr]);
 
-  const monthIncome = useMemo(() =>
-    financials.filter((f: any) => {
+  const monthIncome = useMemo(() => {
+    const financialIncome = financials.filter((f: any) => {
       const d = new Date(f.date);
       return f.type === 'income' && d.getFullYear() === CURRENT_YEAR && d.getMonth() === NOW.getMonth();
-    }).reduce((s: number, f: any) => s + Number(f.amount), 0),
-    [financials]);
+    }).reduce((s: number, f: any) => s + Number(f.amount), 0);
+    const bookingIncome = bookings.filter((b: any) => {
+      const d = new Date(b.checkInDate);
+      return b.status !== 'cancelled' && d.getFullYear() === CURRENT_YEAR && d.getMonth() === NOW.getMonth();
+    }).reduce((s: number, b: any) => s + Number(b.totalAmount || 0), 0);
+    return financialIncome + bookingIncome;
+  }, [financials, bookings]);
 
   const activeBookings = useMemo(() =>
     bookings.filter((b: any) =>
@@ -96,12 +101,18 @@ export default function Dashboard() {
     ).length,
     [bookings, todayStr]);
 
-  // Helpers para extraer ingresos/gastos por año+mes
-  const getIncome = (yr: number, mo?: number) =>
-    financials.filter((f: any) => {
+  // Helpers para extraer ingresos/gastos por año+mes (ingresos = financials + bookings)
+  const getIncome = (yr: number, mo?: number) => {
+    const financialIncome = financials.filter((f: any) => {
       const d = new Date(f.date);
       return f.type === 'income' && d.getFullYear() === yr && (mo === undefined || d.getMonth() === mo);
     }).reduce((s: number, f: any) => s + Number(f.amount), 0);
+    const bookingIncome = bookings.filter((b: any) => {
+      const d = new Date(b.checkInDate);
+      return b.status !== 'cancelled' && d.getFullYear() === yr && (mo === undefined || d.getMonth() === mo);
+    }).reduce((s: number, b: any) => s + Number(b.totalAmount || 0), 0);
+    return financialIncome + bookingIncome;
+  };
 
   const getExpense = (yr: number, mo?: number) =>
     expenses.filter((e: any) => {
@@ -215,19 +226,24 @@ export default function Dashboard() {
 
   const propertyProfitability = useMemo(() => {
     return properties.map((p: any) => {
-      const income = financials.filter((f: any) => {
+      const financialIncome = financials.filter((f: any) => {
         const d = new Date(f.date);
         return f.propertyId === p.id && f.type === 'income' && d.getFullYear() === selectedYear;
       }).reduce((s: number, f: any) => s + Number(f.amount), 0);
+      const bookingIncome = bookings.filter((b: any) => {
+        const d = new Date(b.checkInDate);
+        return b.propertyId === p.id && b.status !== 'cancelled' && d.getFullYear() === selectedYear;
+      }).reduce((s: number, b: any) => s + Number(b.totalAmount || 0), 0);
+      const income = financialIncome + bookingIncome;
       const expense = expenses.filter((e: any) => {
         const d = new Date(e.date);
         return e.propertyId === p.id && d.getFullYear() === selectedYear;
       }).reduce((s: number, e: any) => s + Number(e.amount), 0);
       const net = income - expense;
-      const roi = expense > 0 ? Math.round(net / expense * 100) : 0;
+      const roi = p.purchasePrice ? Math.round(net / Number(p.purchasePrice) * 100) : null;
       return { id: p.id, name: p.name, income: Math.round(income), expense: Math.round(expense), net: Math.round(net), roi };
     }).sort((a: any, b: any) => b.income - a.income);
-  }, [properties, financials, expenses, selectedYear]);
+  }, [properties, financials, bookings, expenses, selectedYear]);
 
   const sourcePieData = useMemo(() => {
     const { from, to } = getBizRange(bizPeriod);
@@ -358,52 +374,8 @@ export default function Dashboard() {
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 mb-6">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Año selector */}
-          {viewMode !== 'annual' && (
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400 text-sm">{viewMode === 'compare' ? 'Año A:' : 'Año:'}</span>
-              <select
-                value={selectedYear}
-                onChange={e => setSelectedYear(Number(e.target.value))}
-                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
-          )}
-
-          {/* Año B — solo en comparativa */}
-          {viewMode === 'compare' && (
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400 text-sm">Año B:</span>
-              <select
-                value={compareYearB}
-                onChange={e => setCompareYearB(Number(e.target.value))}
-                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
-          )}
-
-          {/* Vista selector */}
-          <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
-            {(['monthly', 'annual', 'compare'] as ViewMode[]).map(mode => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === mode ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {mode === 'monthly' ? 'Mensual' : mode === 'annual' ? 'Anual' : 'Comparativa'}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Tabs */}
@@ -425,12 +397,53 @@ export default function Dashboard() {
       {/* ── TAB 1: RESUMEN ── */}
       {activeTab === 0 && (
         <div className="space-y-6">
-          {/* KPIs */}
+          {/* KPIs — siempre del mes en curso */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {kpiCard('Ocupación actual', `${occupancyToday}%`, `${properties.length} propiedades`)}
             {kpiCard('Ingresos del mes', `€${monthIncome.toLocaleString('es-ES', { maximumFractionDigits: 0 })}`, MONTHS[NOW.getMonth()])}
             {kpiCard('Reservas activas', activeBookings, 'en curso o próximas')}
             {kpiCard('Checkins hoy', checkinsPendingToday, 'pendientes de completar')}
+          </div>
+
+          {/* Selector de periodo para los gráficos */}
+          <div className="flex flex-wrap items-center gap-3">
+            {viewMode !== 'annual' && (
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 text-sm">{viewMode === 'compare' ? 'Año A:' : 'Año:'}</span>
+                <select
+                  value={selectedYear}
+                  onChange={e => setSelectedYear(Number(e.target.value))}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+            )}
+            {viewMode === 'compare' && (
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 text-sm">Año B:</span>
+                <select
+                  value={compareYearB}
+                  onChange={e => setCompareYearB(Number(e.target.value))}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+            )}
+            <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+              {(['monthly', 'annual', 'compare'] as ViewMode[]).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    viewMode === mode ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {mode === 'monthly' ? 'Mensual' : mode === 'annual' ? 'Anual' : 'Comparativa'}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Bar: ingresos vs gastos */}
@@ -544,7 +557,7 @@ export default function Dashboard() {
       {activeTab === 1 && (
         <div className="space-y-6">
           {/* Period selector */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-slate-400 text-sm">Periodo:</span>
             {(['month','quarter','year'] as const).map(p => (
               <button
@@ -558,6 +571,13 @@ export default function Dashboard() {
               </button>
             ))}
             <span className="text-slate-500 text-sm">· {periodLabel}</span>
+            <select
+              value={selectedYear}
+              onChange={e => setSelectedYear(Number(e.target.value))}
+              className="ml-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            >
+              {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
           </div>
 
           {/* Metrics row */}
@@ -606,7 +626,12 @@ export default function Dashboard() {
                       <td className="px-5 py-3 text-emerald-400">€{p.income.toLocaleString('es-ES')}</td>
                       <td className="px-5 py-3 text-red-400">€{p.expense.toLocaleString('es-ES')}</td>
                       <td className={`px-5 py-3 font-semibold ${p.net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>€{p.net.toLocaleString('es-ES')}</td>
-                      <td className={`px-5 py-3 font-semibold ${p.roi >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{p.roi}%</td>
+                      <td className={`px-5 py-3 font-semibold ${p.roi !== null ? (p.roi >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-slate-500'}`}>
+                        {p.roi !== null
+                          ? `${p.roi}%`
+                          : <span title="Añade el precio de compra en la propiedad">—</span>
+                        }
+                      </td>
                     </tr>
                   ))}
                   {propertyProfitability.length === 0 && (

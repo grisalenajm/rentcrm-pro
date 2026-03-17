@@ -19,6 +19,7 @@ interface Property {
   bathrooms?: number;
   maxGuests?: number;
   pricePerNight?: number;
+  purchasePrice?: number;
   status: string;
   sesCodigoEstablecimiento?: string;
   photo?: string;
@@ -33,7 +34,7 @@ interface Feed {
   lastSyncStatus: string;
 }
 
-const emptyForm = { name:'', address:'', city:'', province:'', postalCode:'', country:'ES', rooms:'1', bathrooms:'', maxGuests:'', pricePerNight:'', status: 'active', sesCodigoEstablecimiento:'' };
+const emptyForm = { name:'', address:'', city:'', province:'', postalCode:'', country:'ES', rooms:'1', bathrooms:'', maxGuests:'', pricePerNight:'', purchasePrice:'', status: 'active', sesCodigoEstablecimiento:'' };
 
 const fmtEur = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
@@ -119,6 +120,7 @@ export default function Properties() {
       bathrooms: p.bathrooms ? String(p.bathrooms) : '',
       maxGuests: p.maxGuests ? String(p.maxGuests) : '',
       pricePerNight: p.pricePerNight ? String(p.pricePerNight) : '',
+      purchasePrice: p.purchasePrice ? String(p.purchasePrice) : '',
       status: p.status || 'active',
       sesCodigoEstablecimiento: p.sesCodigoEstablecimiento || '',
     });
@@ -133,6 +135,7 @@ export default function Properties() {
       bathrooms: form.bathrooms ? Number(form.bathrooms) : undefined,
       maxGuests: form.maxGuests ? Number(form.maxGuests) : undefined,
       pricePerNight: form.pricePerNight ? Number(form.pricePerNight) : undefined,
+      purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
       postalCode: form.postalCode || undefined,
       country: form.country || undefined,
     };
@@ -475,6 +478,12 @@ export default function Properties() {
                         <p className="text-white text-sm">{fmtEur(Number(detailProperty.pricePerNight))}</p>
                       </div>
                     )}
+                    {detailProperty.purchasePrice && (
+                      <div>
+                        <p className="text-xs text-slate-400">Precio de compra</p>
+                        <p className="text-white text-sm">{fmtEur(Number(detailProperty.purchasePrice))}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -661,6 +670,10 @@ export default function Properties() {
                   <div>
                     <label className={labelCls}>Precio/noche €</label>
                     <input type="number" min="0" step="0.01" value={form.pricePerNight} onChange={f('pricePerNight')} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Precio de compra (€)</label>
+                    <input type="number" min="0" step="1" value={form.purchasePrice} onChange={f('purchasePrice')} placeholder="Opcional — para cálculo ROI" className={inputCls} />
                   </div>
                 </div>
               </div>

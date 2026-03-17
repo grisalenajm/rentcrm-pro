@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsOptional, IsDecimal, IsIn, Min } from 'class-validator';
+import { IsString, IsInt, IsOptional, IsNumber, IsDecimal, IsIn, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreatePropertyDto {
@@ -42,6 +42,11 @@ export class CreatePropertyDto {
   @IsOptional()
   @Type(() => Number)
   pricePerNight?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  purchasePrice?: number;
 
   @IsOptional()
   @IsIn(['active', 'maintenance', 'inactive'])

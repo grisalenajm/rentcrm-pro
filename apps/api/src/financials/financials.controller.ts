@@ -27,6 +27,11 @@ export class FinancialsController {
     return this.financialsService.summary(req.user.organizationId, from, to);
   }
 
+  @Get('combined-summary')
+  combinedSummary(@Request() req, @Query('from') from?: string, @Query('to') to?: string) {
+    return this.financialsService.combinedSummary(req.user.organizationId, from, to);
+  }
+
   @Get('property/:propertyId/report')
   getPropertyReport(
     @Request() req,
