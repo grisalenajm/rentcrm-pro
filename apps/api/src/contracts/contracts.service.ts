@@ -101,6 +101,7 @@ export class ContractsService {
   }
 
   async send(id: string, organizationId: string, baseUrl: string) {
+    this.logger.log('Iniciando envío contrato id: ' + id);
     const contract = await this.findOne(id, organizationId);
     if (contract.status !== 'draft' && contract.status !== 'sent') {
       throw new BadRequestException('Solo se pueden enviar contratos en estado borrador o enviado');
@@ -109,36 +110,45 @@ export class ContractsService {
     const clientEmail = (contract.booking.client as any).email;
     if (!clientEmail) throw new BadRequestException('El cliente no tiene email registrado');
 
+    this.logger.log('Destinatario: ' + clientEmail);
+
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
+    if (!org?.smtpHost) {
+      throw new BadRequestException('SMTP no configurado. Configúralo en Settings → Organización');
+    }
+
+    const smtpPort = Number(org.smtpPort) || 587;
+    this.logger.log('SMTP config: ' + org.smtpHost + ':' + smtpPort + ' user:' + org.smtpUser);
+
+    const transporter = nodemailer.createTransport({
+      host: org.smtpHost as string,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: org.smtpUser as string, pass: org.smtpPass as string },
+    });
+
     const signUrl = `${baseUrl}/sign/${contract.token}`;
 
-    if (process.env.SMTP_HOST) {
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT) || 587,
-        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    try {
+      await transporter.sendMail({
+        from: (org as any).smtpFrom || org.smtpUser,
+        to: clientEmail,
+        subject: `Contrato de alquiler - ${(contract.booking.property as any).name}`,
+        html: `
+          <h2>Contrato de alquiler</h2>
+          <p>Hola ${(contract.booking.client as any).firstName},</p>
+          <p>Te enviamos el contrato de alquiler para tu reserva en <strong>${(contract.booking.property as any).name}</strong>.</p>
+          <p>Por favor, revisa y firma el contrato haciendo clic en el siguiente enlace:</p>
+          <a href="${signUrl}" style="background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0">
+            Revisar y firmar contrato
+          </a>
+        `,
       });
-
-      try {
-        await transporter.sendMail({
-          from: process.env.SMTP_FROM || 'noreply@rentcrm.com',
-          to: clientEmail,
-          subject: `Contrato de alquiler - ${(contract.booking.property as any).name}`,
-          html: `
-            <h2>Contrato de alquiler</h2>
-            <p>Hola ${(contract.booking.client as any).firstName},</p>
-            <p>Te enviamos el contrato de alquiler para tu reserva en <strong>${(contract.booking.property as any).name}</strong>.</p>
-            <p>Por favor, revisa y firma el contrato haciendo clic en el siguiente enlace:</p>
-            <a href="${signUrl}" style="background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0">
-              Revisar y firmar contrato
-            </a>
-          `,
-        });
-      } catch (err: any) {
-        this.logger.error(`Error enviando email contrato ${id}: ${err.message}`, err.stack);
-        throw new BadRequestException(`Error al enviar el email: ${err.message}`);
-      }
-    } else {
-      this.logger.warn(`SMTP no configurado — contrato ${id} marcado como enviado sin email`);
+      this.logger.log('Email enviado correctamente');
+    } catch (err: any) {
+      this.logger.error('Error enviando email: ' + err.message);
+      this.logger.error('SMTP error detail: ' + JSON.stringify(err));
+      throw new BadRequestException(`Error al enviar el email: ${err.message}`);
     }
 
     return this.prisma.contract.update({ where: { id }, data: { status: 'sent', sentAt: new Date() } });
