@@ -19,6 +19,10 @@ export class PaperlessService {
 
     const url = `${paperlessUrl.replace(/\/$/, '')}/api/documents/post_document/`;
 
+    const tagIds = await Promise.all(
+      tags.map(t => this.resolveTagId(paperlessUrl, paperlessToken, t)),
+    );
+
     const formData = new FormData();
     const arrayBuf: ArrayBuffer = pdfBuffer.buffer instanceof ArrayBuffer
       ? pdfBuffer.buffer.slice(pdfBuffer.byteOffset, pdfBuffer.byteOffset + pdfBuffer.byteLength) as ArrayBuffer
@@ -29,9 +33,7 @@ export class PaperlessService {
       `${title}.pdf`,
     );
     formData.append('title', title);
-    for (const tag of tags) {
-      formData.append('tags', tag);
-    }
+    tagIds.forEach(id => formData.append('tags', String(id)));
 
     const response = await fetch(url, {
       method: 'POST',
@@ -51,6 +53,43 @@ export class PaperlessService {
     if (typeof data === 'number') return data;
     if (typeof data === 'object' && data !== null && typeof data.id === 'number') return data.id;
     return null;
+  }
+
+  private async resolveTagId(
+    paperlessUrl: string,
+    paperlessToken: string,
+    tagName: string,
+  ): Promise<number> {
+    const base = paperlessUrl.replace(/\/$/, '');
+    const headers = {
+      Authorization: `Token ${paperlessToken}`,
+      'Content-Type': 'application/json',
+    };
+
+    const searchRes = await fetch(
+      `${base}/api/tags/?name=${encodeURIComponent(tagName)}`,
+      { headers },
+    );
+    if (!searchRes.ok) {
+      throw new Error(`Paperless tags search respondió ${searchRes.status}`);
+    }
+    const searchData: any = await searchRes.json();
+    if (searchData.results?.length > 0) {
+      return searchData.results[0].id as number;
+    }
+
+    const createRes = await fetch(`${base}/api/tags/`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name: tagName }),
+    });
+    if (!createRes.ok) {
+      const body = await createRes.text();
+      throw new Error(`Paperless tags create respondió ${createRes.status}: ${body}`);
+    }
+    const created: any = await createRes.json();
+    this.logger.log(`Paperless tag creado: "${tagName}" → id ${created.id}`);
+    return created.id as number;
   }
 
   async testConnection(
