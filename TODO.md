@@ -5,9 +5,6 @@
 
 ## Pendiente (priorizado)
 
-### Financials
-- [ ] Reportes avanzados: precio medio noche, ocupación vs ingresos, comparativa entre propiedades, estacionalidad, tendencia año a año, ingresos por canal (airbnb/booking/direct), valor medio por reserva por canal, gastos por categoría, gastos fijos vs variables, alertas de gastos inusuales, resumen fiscal anual
-
 ### UX
 - [ ] Mass update de precios de reservas desde Excel: modo 1 por ID de reserva, modo 2 por nombre de propiedad + fecha de entrada
 
@@ -32,6 +29,7 @@
 ## Completado
 
 ### Sesión 17/03/2026
+- [x] Reportes avanzados: precio medio noche, ocupación vs ingresos, comparativa entre propiedades, estacionalidad, tendencia año a año, ingresos por canal (airbnb/booking/direct), valor medio por reserva por canal, gastos por categoría, gastos fijos vs variables, alertas de gastos inusuales, resumen fiscal anual
 - [x] Campo `deductible` (boolean) en gastos — resumen fiscal reporta 100% del importe de la factura
 - [x] Filtros por columna, propiedad y fecha en página Financials
 - [x] Página detalle financiero por propiedad: ingresos/gastos mensuales y anuales con selector de periodo + reportes ROI (con precio de compra)
