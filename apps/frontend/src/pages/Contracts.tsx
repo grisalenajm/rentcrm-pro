@@ -37,6 +37,7 @@ export default function Contracts() {
   const [form, setForm] = useState({ bookingId: '', templateId: '', depositAmount: '' });
   const [signatureView, setSignatureView] = useState<Contract | null>(null);
   const [linkModal, setLinkModal] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const { data: contracts = [], isLoading } = useQuery({
     queryKey: ['contracts'],
@@ -74,7 +75,14 @@ export default function Contracts() {
 
   const sendMutation = useMutation({
     mutationFn: (id: string) => api.post(`/contracts/${id}/send`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['contracts'] }),
+    onSuccess: () => {
+      setSendError(null);
+      qc.invalidateQueries({ queryKey: ['contracts'] });
+    },
+    onError: (err: any) => {
+      console.error('Error enviando contrato:', err.response?.data);
+      setSendError(err.response?.data?.message || err.message || 'Error al enviar el contrato');
+    },
   });
 
   const cancelMutation = useMutation({
@@ -85,14 +93,8 @@ export default function Contracts() {
   const getSignUrl = (token: string) =>
     `${window.location.protocol}//${window.location.hostname}:3000/sign/${token}`;
 
-  const viewContract = async (id: string) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`http://${window.location.hostname}:3001/api/contracts/view/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const html = await res.text();
-    const blob = new Blob([html], { type: 'text/html' });
-    window.open(URL.createObjectURL(blob), '_blank');
+  const viewContract = (id: string) => {
+    window.open(`${window.location.protocol}//${window.location.hostname}:3001/api/contracts/view/${id}`, '_blank');
   };
 
   return (
@@ -107,6 +109,13 @@ export default function Contracts() {
           + {t('contracts.new')}
         </button>
       </div>
+
+      {sendError && (
+        <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm flex justify-between items-center">
+          <span>⚠️ {sendError}</span>
+          <button onClick={() => setSendError(null)} className="ml-4 text-red-400 hover:text-red-300">✕</button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="text-slate-400 text-center py-20">{t('common.loading')}</div>
@@ -153,8 +162,16 @@ export default function Contracts() {
                         </button>
                         {c.status === 'draft' && (
                           <button onClick={() => sendMutation.mutate(c.id)}
-                            className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
-                            {t('common.send')}
+                            disabled={sendMutation.isPending && sendMutation.variables === c.id}
+                            className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors disabled:opacity-50">
+                            {sendMutation.isPending && sendMutation.variables === c.id ? '⏳' : t('common.send')}
+                          </button>
+                        )}
+                        {c.status === 'sent' && (
+                          <button onClick={() => sendMutation.mutate(c.id)}
+                            disabled={sendMutation.isPending && sendMutation.variables === c.id}
+                            className="px-3 py-1 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors disabled:opacity-50">
+                            {sendMutation.isPending && sendMutation.variables === c.id ? '⏳' : t('contracts.resend')}
                           </button>
                         )}
                         {(c.status === 'draft' || c.status === 'sent') && (
@@ -220,8 +237,16 @@ export default function Contracts() {
                   </button>
                   {c.status === 'draft' && (
                     <button onClick={() => sendMutation.mutate(c.id)}
-                      className="px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors">
-                      {t('common.send')}
+                      disabled={sendMutation.isPending && sendMutation.variables === c.id}
+                      className="px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors disabled:opacity-50">
+                      {sendMutation.isPending && sendMutation.variables === c.id ? '⏳' : t('common.send')}
+                    </button>
+                  )}
+                  {c.status === 'sent' && (
+                    <button onClick={() => sendMutation.mutate(c.id)}
+                      disabled={sendMutation.isPending && sendMutation.variables === c.id}
+                      className="px-3 py-1.5 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors disabled:opacity-50">
+                      {sendMutation.isPending && sendMutation.variables === c.id ? '⏳' : t('contracts.resend')}
                     </button>
                   )}
                   {(c.status === 'draft' || c.status === 'sent') && (

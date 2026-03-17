@@ -7,6 +7,7 @@ import { SignContractDto } from './dto/sign-contract.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { Public } from '../auth/public.decorator';
 
 @Controller('contracts')
 export class ContractsController {
@@ -51,11 +52,11 @@ export class ContractsController {
     return this.contractsService.sign(token, dto, ip);
   }
 
-  // ── VISTA HTML (antes de /:id) ────────────────────────
+  // ── VISTA HTML pública (antes de /:id) ───────────────
+  @Public()
   @Get('view/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  async viewContract(@Param('id') id: string, @Request() req, @Res() res: Response) {
-    const html = await this.contractsService.renderContractHtml(id, req.user.organizationId);
+  async viewContract(@Param('id') id: string, @Res() res: Response) {
+    const html = await this.contractsService.renderContractHtml(id);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   }

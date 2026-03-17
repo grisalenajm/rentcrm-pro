@@ -102,7 +102,9 @@ export class ContractsService {
 
   async send(id: string, organizationId: string, baseUrl: string) {
     const contract = await this.findOne(id, organizationId);
-    if (contract.status !== 'draft') throw new BadRequestException('Solo se pueden enviar contratos en estado borrador');
+    if (contract.status !== 'draft' && contract.status !== 'sent') {
+      throw new BadRequestException('Solo se pueden enviar contratos en estado borrador o enviado');
+    }
 
     const clientEmail = (contract.booking.client as any).email;
     if (!clientEmail) throw new BadRequestException('El cliente no tiene email registrado');
@@ -116,20 +118,27 @@ export class ContractsService {
         auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
       });
 
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || 'noreply@rentcrm.com',
-        to: clientEmail,
-        subject: `Contrato de alquiler - ${(contract.booking.property as any).name}`,
-        html: `
-          <h2>Contrato de alquiler</h2>
-          <p>Hola ${(contract.booking.client as any).firstName},</p>
-          <p>Te enviamos el contrato de alquiler para tu reserva en <strong>${(contract.booking.property as any).name}</strong>.</p>
-          <p>Por favor, revisa y firma el contrato haciendo clic en el siguiente enlace:</p>
-          <a href="${signUrl}" style="background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0">
-            Revisar y firmar contrato
-          </a>
-        `,
-      });
+      try {
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || 'noreply@rentcrm.com',
+          to: clientEmail,
+          subject: `Contrato de alquiler - ${(contract.booking.property as any).name}`,
+          html: `
+            <h2>Contrato de alquiler</h2>
+            <p>Hola ${(contract.booking.client as any).firstName},</p>
+            <p>Te enviamos el contrato de alquiler para tu reserva en <strong>${(contract.booking.property as any).name}</strong>.</p>
+            <p>Por favor, revisa y firma el contrato haciendo clic en el siguiente enlace:</p>
+            <a href="${signUrl}" style="background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0">
+              Revisar y firmar contrato
+            </a>
+          `,
+        });
+      } catch (err: any) {
+        this.logger.error(`Error enviando email contrato ${id}: ${err.message}`, err.stack);
+        throw new BadRequestException(`Error al enviar el email: ${err.message}`);
+      }
+    } else {
+      this.logger.warn(`SMTP no configurado — contrato ${id} marcado como enviado sin email`);
     }
 
     return this.prisma.contract.update({ where: { id }, data: { status: 'sent', sentAt: new Date() } });
@@ -246,8 +255,12 @@ export class ContractsService {
       .replace(/\{\{fechaFirma\}\}/g, contract.signedAt ? new Date(contract.signedAt).toLocaleDateString('es-ES') : '—');
   }
 
-  async renderContractHtml(id: string, organizationId: string): Promise<string> {
-    const contract = await this.findOne(id, organizationId);
+  async renderContractHtml(id: string): Promise<string> {
+    const contract = await this.prisma.contract.findFirst({
+      where: { id },
+      include: { template: true, booking: { include: { client: true, property: true } } },
+    });
+    if (!contract) throw new NotFoundException('Contrato no encontrado');
     const content = this.fillVariables(contract.template.content, contract);
     const lines = content.split('\n').map(l => `<p>${l || '&nbsp;'}</p>`).join('');
 

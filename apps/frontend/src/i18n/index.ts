@@ -84,7 +84,7 @@ const es = {
   },
   contracts: {
     title: "Contratos", new: "Nuevo contrato", template: "Template", signed: "Firmado",
-    pending: "Pendiente de firma", signLink: "Link de firma", viewContract: "📄 Ver",
+    pending: "Pendiente de firma", signLink: "Link de firma", viewContract: "📄 Ver", resend: "Reenviar",
     registered: "contratos registrados",
     statuses: { draft: "Borrador", sent: "Enviado", signed: "Firmado", cancelled: "Cancelado" }
   },
@@ -235,7 +235,7 @@ const en = {
   },
   contracts: {
     title: "Contracts", new: "New contract", template: "Template", signed: "Signed",
-    pending: "Pending signature", signLink: "Sign link", viewContract: "📄 View",
+    pending: "Pending signature", signLink: "Sign link", viewContract: "📄 View", resend: "Resend",
     registered: "contracts registered",
     statuses: { draft: "Draft", sent: "Sent", signed: "Signed", cancelled: "Cancelled" }
   },
