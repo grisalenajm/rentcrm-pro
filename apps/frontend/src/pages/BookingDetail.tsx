@@ -206,7 +206,11 @@ export default function BookingDetail() {
       setShowStatusModal(false);
       setStatusError('');
     },
-    onError: (e: any) => setStatusError(e.response?.data?.message || 'Transición de estado no válida'),
+    onError: (e: any) => {
+      console.error('Status change error:', e.response?.data);
+      const msg = e.response?.data?.message || e.message || 'Transición de estado no válida';
+      setStatusError(`Error al cambiar estado: ${msg}`);
+    },
   });
 
   const handleSendWelcome = async () => {
