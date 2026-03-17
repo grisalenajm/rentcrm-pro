@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, BadRequestException } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min, MaxLength } from 'class-validator';
 import { ExpensesService } from './expenses.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -51,6 +52,7 @@ export class ExpensesController {
   }
 
   @Put(':id')
+  @SkipThrottle()
   @UseGuards(RolesGuard)
   @Roles('admin', 'owner')
   update(@Request() req, @Param('id') id: string, @Body() body: UpdateExpenseDto) {

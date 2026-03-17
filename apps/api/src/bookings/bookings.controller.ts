@@ -44,6 +44,7 @@ export class BookingsController {
   }
 
   @Patch(':id/status')
+  @SkipThrottle()
   @Roles('admin', 'gestor')
   updateStatus(@Param('id') id: string, @Body() body: { status: string }, @Request() req) {
     return this.bookingsService.updateStatus(id, body.status, req.user.organizationId);
@@ -61,6 +62,7 @@ export class BookingsController {
   }
 
   @Put(':id')
+  @SkipThrottle()
   @Roles('admin', 'gestor')
   update(@Param('id') id: string, @Body() dto: UpdateBookingDto, @Request() req) {
     return this.bookingsService.update(id, dto, req.user.organizationId);

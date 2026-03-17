@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
@@ -28,6 +29,7 @@ export class ClientsController {
   }
 
   @Put(':id')
+  @SkipThrottle()
   @Roles('admin', 'gestor')
   update(@Param('id') id: string, @Body() dto: UpdateClientDto, @Request() req) {
     return this.clientsService.update(id, dto, req.user.organizationId);
