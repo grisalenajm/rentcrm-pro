@@ -99,6 +99,9 @@ export default function ClientDetail() {
     : null;
   const totalBookings = bookings.length;
   const totalSpent = bookings.reduce((s: number, b: any) => s + Number(b.totalAmount || 0), 0);
+  const lastStay = bookings.length
+    ? bookings.reduce((latest: any, b: any) => new Date(b.checkOutDate) > new Date(latest.checkOutDate) ? b : latest, bookings[0])
+    : null;
 
   return (
     <div className="p-6">
@@ -128,10 +131,10 @@ export default function ClientDetail() {
       </div>
 
       {/* Layout dos columnas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="flex flex-col md:flex-row gap-6">
 
         {/* ── Columna izquierda: datos del cliente + resumen ─────────── */}
-        <div className="space-y-6">
+        <div className="md:w-1/3 space-y-6">
 
           {/* Datos cliente */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
@@ -198,6 +201,12 @@ export default function ClientDetail() {
               <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.totalSpent')}</div>
               <div className="text-2xl font-bold text-emerald-400">€{Number(totalSpent).toLocaleString('es-ES')}</div>
             </div>
+            {lastStay && (
+              <div>
+                <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.lastStay')}</div>
+                <div className="text-base font-semibold">{new Date(lastStay.checkOutDate).toLocaleDateString('es-ES')}</div>
+              </div>
+            )}
             <div>
               <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.avgRating')}</div>
               {avgScore ? (
@@ -213,7 +222,7 @@ export default function ClientDetail() {
         </div>
 
         {/* ── Columna derecha: historial de reservas ─────────────────── */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="md:w-2/3 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-800">
             <h3 className="font-semibold">{t('bookings.title')}</h3>
           </div>

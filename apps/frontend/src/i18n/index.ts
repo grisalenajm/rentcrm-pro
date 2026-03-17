@@ -117,7 +117,7 @@ const es = {
     score: "Puntuación", comment: "Comentario", commentPlaceholder: "Ej: Cliente muy cuidadoso, dejó la casa perfecta",
     scores: ["", "Muy malo", "Malo", "Normal", "Bueno", "Excelente"],
     save: "Guardar valoración", noRating: "Sin valoraciones", avgRating: "Valoración media",
-    totalBookings: "Reservas totales", totalSpent: "Total gastado"
+    totalBookings: "Reservas totales", totalSpent: "Total gastado", lastStay: "Última estancia"
   },
   calendar: {
     title: "Calendario de ocupacion",
@@ -279,7 +279,7 @@ const en = {
     score: "Score", comment: "Comment", commentPlaceholder: "E.g: Very careful client, left the house spotless",
     scores: ["", "Very bad", "Bad", "Average", "Good", "Excellent"],
     save: "Save rating", noRating: "No ratings", avgRating: "Average rating",
-    totalBookings: "Total bookings", totalSpent: "Total spent"
+    totalBookings: "Total bookings", totalSpent: "Total spent", lastStay: "Last stay"
   },
   calendar: {
     title: "Occupancy Calendar",
