@@ -6,24 +6,10 @@
 ## Pendiente (priorizado)
 
 ### Financials
-- [ ] Filtros por columna, propiedad y fecha en página Financials
-- [ ] Página detalle financiero por propiedad: ingresos/gastos mensuales y anuales con selector de periodo
-- [ ] Reportes: rentabilidad y ROI por propiedad, precio medio noche, ocupación vs ingresos, comparativa entre propiedades, estacionalidad, tendencia año a año, ingresos por canal (airbnb/booking/direct), valor medio por reserva por canal, gastos por categoría, gastos fijos vs variables, alertas de gastos inusuales, resumen fiscal anual
-- [ ] Campo `deducible` (boolean) en gastos — resumen fiscal reporta 100% del importe de la factura
-- [ ] Gastos recurrentes por propiedad: frecuencia (mensual/trimestral/anual), día del mes, fecha inicio y fin opcionales, email automático al gestor cuando se contabiliza
-
-### Dashboard
-- [ ] Selector mensual/anual/comparativa por año en todos los gráficos
-- [ ] Gráficas circulares: top 10 individual + resto agrupado en "Otros"
-- [ ] Mapa de calor de días ocupados con selector de propiedad
+- [ ] Reportes avanzados: precio medio noche, ocupación vs ingresos, comparativa entre propiedades, estacionalidad, tendencia año a año, ingresos por canal (airbnb/booking/direct), valor medio por reserva por canal, gastos por categoría, gastos fijos vs variables, alertas de gastos inusuales, resumen fiscal anual
 
 ### UX
-- [ ] Mass edit desde página general de clientes, reservas y propiedades
 - [ ] Mass update de precios de reservas desde Excel: modo 1 por ID de reserva, modo 2 por nombre de propiedad + fecha de entrada
-
-### Git
-- [ ] Configurar rama `develop` para desarrollo, `main` para producción
-- [ ] Tags semánticos v1.0.0, v1.1.0 en cada release
 
 ### Rebranding
 - [ ] Integrar logo e icono SVG de RentalSuite en la app (pendiente de tener los SVG exportados)
@@ -44,6 +30,17 @@
 - [ ] CSV NRUA/VAU para Depósito de Arrendamientos Comunidad Valenciana (pendiente especificación técnica)
 
 ## Completado
+
+### Sesión 17/03/2026
+- [x] Campo `deductible` (boolean) en gastos — resumen fiscal reporta 100% del importe de la factura
+- [x] Filtros por columna, propiedad y fecha en página Financials
+- [x] Página detalle financiero por propiedad: ingresos/gastos mensuales y anuales con selector de periodo + reportes ROI (con precio de compra)
+- [x] Gastos recurrentes por propiedad: módulo `recurring-expenses` con frecuencia (monthly/quarterly/yearly), dayOfMonth, cron diario y notificación email cuando se contabiliza
+- [x] Mejoras dashboard: selector vistas mensual/anual/comparativa, gráficas circulares top 10 + "Otros", mapa de calor de ocupación por propiedad
+- [x] Edición masiva en reservas, clientes y gastos: selección múltiple, acciones en bloque, throttle con @SkipThrottle en bulk endpoints
+- [x] Integración Paperless-ngx para contratos firmados: módulo `paperless`, upload automático tras firma digital
+- [x] Contratos: view público por token (@Public()), error visible en frontend, SMTP leído desde Organization, firma PDF con columnas arrendatario/arrendador
+- [x] Git workflow: rama `develop` para desarrollo, `main` para producción, tags semánticos (v1.2.0)
 
 ### Sesión 16/03/2026
 - [x] Propiedades: campos `country` y `postalCode` (ya en schema/DTOs, sincronizado con `db push`) + rediseño modales crear/editar/ver con patrón visual consistente (cards `bg-slate-800/40 border border-slate-700 rounded-xl`, `inputCls`/`labelCls` constants)

@@ -71,3 +71,11 @@
 ## Catch de error sin información útil
 - ❌ Catch genérico sin `err.response?.data`
 - ✅ Loguear siempre `err.message` Y `err.response?.data`
+
+## Rate limit en operaciones bulk
+- ❌ Endpoints de edición masiva sin `@SkipThrottle()` → throttle error al actualizar muchos registros
+- ✅ Añadir `@SkipThrottle()` en métodos bulk del controlador
+
+## Gastos recurrentes: campo deductible vs deducible
+- ❌ `deducible` en el modelo (sin t)
+- ✅ `deductible` (con t) — nombre en inglés consistente con el resto del schema

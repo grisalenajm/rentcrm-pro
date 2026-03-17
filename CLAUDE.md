@@ -71,8 +71,12 @@ rentcrm-pro/
 │   │       ├── clients/
 │   │       ├── properties/
 │   │       ├── expenses/              ← CRUD gastos por propiedad
+│   │       ├── recurring-expenses/    ← gastos recurrentes (cron diario, email notificación)
+│   │       ├── financials/            ← movimientos financieros + resumen anual
 │   │       ├── excel/                 ← exportar/importar Excel
+│   │       ├── paperless/             ← integración Paperless-ngx (upload contratos firmados)
 │   │       ├── organization/          ← config SMTP, SES, logo
+│   │       ├── property-content/      ← contenido público propiedad (descripción + documentos)
 │   │       ├── translation/
 │   │       │   ├── translation.service.ts  ← caché + precalentamiento
 │   │       │   └── translation.module.ts
@@ -104,11 +108,11 @@ rentcrm-pro/
 │               ├── Clients.tsx
 │               ├── ClientDetail.tsx   ← detalle cliente con navegación ←/→ entre registros
 │               ├── Properties.tsx     ← lista + modales detalle/crear/editar (country, postalCode)
-│               ├── Financials.tsx     ← gastos + totales anuales
 │               ├── Calendar.tsx
 │               ├── Contracts.tsx
 │               ├── Police.tsx         ← partes SES
-│               ├── Settings.tsx       ← config org, SMTP, SES (botón test conexión)
+│               ├── Settings.tsx       ← config org, SMTP, SES, Paperless-ngx (botón test conexión)
+│               ├── Financials.tsx     ← gastos + totales anuales + filtros + detalle por propiedad
 │               └── CheckinPage.tsx    ← página PÚBLICA /checkin/:token
 ```
 
@@ -291,6 +295,23 @@ await this.translationService.translateMany([...textos], lang);
 - Solo visible para `admin` y `gestor` — usar `useAuth()` para leer `user.role`
 - En BookingDetail: modal centrado con botones coloreados por estado destino
 
+### Edición masiva (bulk)
+- Disponible en Bookings, Clients y Expenses
+- Selección múltiple con checkbox → barra de acciones masivas
+- Endpoints bulk usan `@SkipThrottle()` para evitar rate limit en operaciones de muchos registros
+- Errores detallados devueltos al frontend para mostrar qué registros fallaron
+
+### Gastos recurrentes
+- Módulo `recurring-expenses` → `GET/POST/PUT/DELETE /api/recurring-expenses`
+- Campos: `propertyId`, `type`, `amount`, `deductible`, `frequency` (monthly|quarterly|yearly), `dayOfMonth`, `nextRunDate`, `active`
+- Cron diario comprueba `nextRunDate` y crea el gasto + notificación email + actualiza `nextRunDate`
+
+### Paperless-ngx
+- Módulo `paperless` → servicio interno, sin endpoints públicos directos
+- Se activa automáticamente tras firma digital de contrato
+- Configuración en Organization: `paperlessUrl`, `paperlessToken`
+- Sube el PDF firmado a Paperless con tags automáticos (propiedad, cliente, fecha)
+
 ### PropertyRules — traducciones
 - `translations` es un JSON `{ "en": "...", "fr": "..." }` con los 10 idiomas como clave
 - `translationsEdited` es un array de códigos de idioma editados manualmente
@@ -306,7 +327,7 @@ https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion
 - ⚠️ `/ws/v1/comunicacion` → 404 (incorrecto aunque aparezca en la doc)
 - `/ws/comunicacion` → 500 con body vacío = endpoint existe ✅
 
-### Estado (12/03/2026)
+### Estado (17/03/2026)
 - Endpoint actualizado en BD a `/ws/comunicacion`
 - Sigue dando 404 con XML completo — causa probable: cuenta no activada en el Ministerio
 - **Pendiente**: darse de alta en https://hospedajes.ses.mir.es

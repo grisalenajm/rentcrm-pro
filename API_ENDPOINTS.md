@@ -60,7 +60,7 @@ Roles: `admin` > `gestor` > `owner` (viewer = solo lectura)
 | DELETE | `/properties/:id` | admin | Eliminar propiedad |
 
 **CreatePropertyDto** (requeridos: name, address, city, province, rooms):
-`name`, `address`, `city`, `province`, `postalCode?`, `rooms`, `bathrooms?`, `maxGuests?`,
+`name`, `address`, `city`, `province`, `postalCode?`, `country?` (ISO alpha-2), `rooms`, `bathrooms?`, `maxGuests?`,
 `pricePerNight?`, `status?` (active|maintenance|inactive), `sesCodigoEstablecimiento?`, `photo?` (base64)
 
 ---
@@ -68,7 +68,7 @@ Roles: `admin` > `gestor` > `owner` (viewer = solo lectura)
 ## Bookings
 | Método | Ruta | Roles | Descripción |
 |--------|------|-------|-------------|
-| GET | `/bookings` | any | Listar reservas (`?propertyId=`) |
+| GET | `/bookings` | any | Listar reservas (`?propertyId=&clientId=`) |
 | GET | `/bookings/:id` | any | Ver reserva (incluye client, property, guests, guestsSes, policeReports, evaluation) |
 | POST | `/bookings` | admin, gestor | Crear reserva |
 | PUT | `/bookings/:id` | admin, gestor | Actualizar reserva |
@@ -91,6 +91,42 @@ Roles: `admin` > `gestor` > `owner` (viewer = solo lectura)
 `docType` (dni|passport|nie|other), `docNumber`, `docCountry`, `firstName`, `lastName`, `birthDate?`, `phone?`
 
 ⚠️ **IMPORTANTE**: Rutas con path fijo (`checkin/:token`) deben ir ANTES de `/:id` en el controlador.
+
+---
+
+## PropertyRules (reglas de la casa)
+| Método | Ruta | Roles | Descripción |
+|--------|------|-------|-------------|
+| GET | `/properties/:id/rules` | any | Obtener reglas de la propiedad |
+| PUT | `/properties/:id/rules` | admin, gestor | Crear/actualizar reglas |
+| POST | `/properties/:id/rules/translate` | admin, gestor | Traducir reglas a todos los idiomas (respeta `translationsEdited`) |
+
+**UpsertPropertyRulesDto**: `baseContent` (texto original), `baseLanguage?` (default "es"), `translations?` (JSON), `translationsEdited?` (string[])
+
+---
+
+## Recurring Expenses (gastos recurrentes)
+| Método | Ruta | Roles | Descripción |
+|--------|------|-------|-------------|
+| GET | `/recurring-expenses` | any | Listar (`?propertyId=`) |
+| POST | `/recurring-expenses` | admin, owner | Crear gasto recurrente |
+| PUT | `/recurring-expenses/:id` | admin, owner | Actualizar |
+| DELETE | `/recurring-expenses/:id` | admin, owner | Eliminar |
+
+**CreateRecurringExpenseDto** (requeridos: propertyId, type, amount, frequency, dayOfMonth, nextRunDate):
+`type` (tasas|agua|luz|internet|limpieza|otros), `amount`, `deductible?`, `frequency` (monthly|quarterly|yearly), `dayOfMonth` (1-28), `notes?`, `nextRunDate`
+
+---
+
+## Property Content (contenido público)
+| Método | Ruta | Roles | Descripción |
+|--------|------|-------|-------------|
+| GET | `/property-content` | any | Obtener contenido (`?propertyId=`) |
+| PUT | `/property-content` | admin, gestor | Actualizar contenido (`?propertyId=`) |
+| GET | `/property-content/documents` | any | Listar documentos (`?propertyId=`) |
+| POST | `/property-content/documents` | admin, gestor | Añadir documento (`?propertyId=`) |
+| DELETE | `/property-content/documents/:id` | admin, gestor | Eliminar documento |
+| PUT | `/property-content/documents/reorder` | admin, gestor | Reordenar documentos |
 
 ---
 
@@ -127,6 +163,8 @@ Roles: `admin` > `gestor` > `owner` (viewer = solo lectura)
 | DELETE | `/expenses/:id` | admin, owner | Eliminar gasto |
 
 Tipos de gasto válidos: `tasas`, `agua`, `luz`, `internet`, `limpieza`, `otros`
+
+Campo `deductible` (boolean, default false): si true, el gasto es deducible fiscalmente — se incluye al 100% en el resumen fiscal anual.
 
 ---
 
