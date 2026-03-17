@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -24,6 +24,7 @@ export default function PropertyFinancialDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [year, setYear] = useState(new Date().getFullYear());
+  const [chartPeriod, setChartPeriod] = useState<'monthly'|'quarterly'>('monthly');
 
   useEffect(() => {
     console.log('[PropertyFinancialDetail] propertyId from params:', id);
@@ -46,11 +47,24 @@ export default function PropertyFinancialDetail() {
     if (isError) console.error('[PropertyFinancialDetail] error:', error);
   }, [isError, error]);
 
-  const chartData = (data?.months ?? []).map(m => ({
-    name: MONTH_NAMES[m.month - 1],
-    Ingresos: +m.income.toFixed(2),
-    Gastos: +m.expenses.toFixed(2),
-  }));
+  const chartData = useMemo(() => {
+    const months = data?.months ?? [];
+    if (chartPeriod === 'quarterly') {
+      return [0,1,2,3].map(q => {
+        const qMonths = months.filter(m => Math.floor((m.month - 1) / 3) === q);
+        return {
+          name: `T${q + 1}`,
+          Ingresos: +qMonths.reduce((s, m) => s + m.income, 0).toFixed(2),
+          Gastos: +qMonths.reduce((s, m) => s + m.expenses, 0).toFixed(2),
+        };
+      });
+    }
+    return months.map(m => ({
+      name: MONTH_NAMES[m.month - 1],
+      Ingresos: +m.income.toFixed(2),
+      Gastos: +m.expenses.toFixed(2),
+    }));
+  }, [data, chartPeriod]);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -80,19 +94,39 @@ export default function PropertyFinancialDetail() {
       {isError  && <p className="text-red-400 text-sm bg-red-500/10 px-4 py-3 rounded-lg">Error al cargar el informe. Verifica que la propiedad existe y tienes permisos.</p>}
 
       {data && <>
-        {/* Sección 1 — KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KpiCard label="Ingresos totales"   value={fmtEur(data.totals.income)}    color="emerald" />
-          <KpiCard label="Gastos totales"     value={fmtEur(data.totals.expenses)}  color="red"     />
-          <KpiCard label="Beneficio neto"     value={fmtEur(data.totals.profit)}    color={data.totals.profit >= 0 ? 'emerald' : 'red'} />
-          <KpiCard label="Gastos deducibles"  value={fmtEur(data.deductibleTotal)}  color="amber"   />
+        {/* Sección 1 — KPIs anuales (siempre encima del selector de periodo) */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+            Resumen anual {year}
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <KpiCard label="Ingresos totales"   value={fmtEur(data.totals.income)}    color="emerald" />
+            <KpiCard label="Gastos totales"     value={fmtEur(data.totals.expenses)}  color="red"     />
+            <KpiCard label="Beneficio neto"     value={fmtEur(data.totals.profit)}    color={data.totals.profit >= 0 ? 'emerald' : 'red'} />
+            <KpiCard label="Gastos deducibles"  value={fmtEur(data.deductibleTotal)}  color="amber"   />
+          </div>
         </div>
 
-        {/* Sección 2 — Gráfico mensual */}
+        {/* Sección 2 — Gráfico con selector de periodo */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">
-            Ingresos vs Gastos mensuales — {year}
-          </h2>
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+              Ingresos vs Gastos — {year}
+            </h2>
+            <div className="flex gap-1">
+              {(['monthly','quarterly'] as const).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setChartPeriod(p)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                    chartPeriod === p ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  {p === 'monthly' ? 'Mensual' : 'Trimestral'}
+                </button>
+              ))}
+            </div>
+          </div>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />

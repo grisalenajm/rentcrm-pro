@@ -143,6 +143,8 @@ export default function Dashboard() {
   const [occupancyPropId, setOccupancyPropId] = useState('');
   const [heatMapPropId, setHeatMapPropId] = useState('');
   const [bizPeriod, setBizPeriod] = useState<'month'|'quarter'|'year'>('year');
+  const [bizMonth, setBizMonth] = useState(NOW.getMonth());
+  const [bizQuarter, setBizQuarter] = useState(Math.floor(NOW.getMonth() / 3));
 
   const { data: bookings = [] }   = useQuery({ queryKey: ['bookings'],    queryFn: () => api.get('/bookings').then(r => r.data) });
   const { data: properties = [] } = useQuery({ queryKey: ['properties'],  queryFn: () => api.get('/properties').then(r => r.data) });
@@ -316,10 +318,9 @@ export default function Dashboard() {
 
   const getBizRange = (period: 'month'|'quarter'|'year') => {
     if (period === 'month') {
-      return { from: new Date(selectedYear, NOW.getMonth(), 1), to: new Date(selectedYear, NOW.getMonth() + 1, 0, 23, 59, 59) };
+      return { from: new Date(selectedYear, bizMonth, 1), to: new Date(selectedYear, bizMonth + 1, 0, 23, 59, 59) };
     } else if (period === 'quarter') {
-      const q = Math.floor(NOW.getMonth() / 3);
-      return { from: new Date(selectedYear, q * 3, 1), to: new Date(selectedYear, q * 3 + 3, 0, 23, 59, 59) };
+      return { from: new Date(selectedYear, bizQuarter * 3, 1), to: new Date(selectedYear, bizQuarter * 3 + 3, 0, 23, 59, 59) };
     }
     return { from: new Date(selectedYear, 0, 1), to: new Date(selectedYear, 11, 31, 23, 59, 59) };
   };
@@ -356,7 +357,7 @@ export default function Dashboard() {
       counts[src] = (counts[src] || 0) + 1;
     });
     return toTop10WithOthers(counts);
-  }, [bookings, bizPeriod, selectedYear]);
+  }, [bookings, bizPeriod, selectedYear, bizMonth, bizQuarter]);
 
   const bizMetrics = useMemo(() => {
     const { from, to } = getBizRange(bizPeriod);
@@ -384,7 +385,7 @@ export default function Dashboard() {
       prevAvgPrice: avgPrice(prevBkgs),
       prevAvgNights: avgNights(prevBkgs),
     };
-  }, [bookings, bizPeriod, selectedYear]);
+  }, [bookings, bizPeriod, selectedYear, bizMonth, bizQuarter]);
 
   // ── TAB 3: CLIENTES ───────────────────────────────────────────────────────
 
@@ -449,7 +450,8 @@ export default function Dashboard() {
     return { signed, unsigned };
   }, [contracts]);
 
-  const periodLabel = bizPeriod === 'month' ? MONTHS[NOW.getMonth()] : bizPeriod === 'quarter' ? `Q${Math.floor(NOW.getMonth() / 3) + 1}` : 'Año completo';
+  const BIZ_MONTHS_LONG = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const periodLabel = bizPeriod === 'month' ? `${BIZ_MONTHS_LONG[bizMonth]} ${selectedYear}` : bizPeriod === 'quarter' ? `T${bizQuarter + 1} ${selectedYear}` : `${selectedYear}`;
   const delta = (curr: number, prev: number) => {
     if (prev === 0) return null;
     const pct = Math.round((curr - prev) / prev * 100);
@@ -656,17 +658,43 @@ export default function Dashboard() {
                   bizPeriod === p ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                 }`}
               >
-                {p === 'month' ? 'Mes' : p === 'quarter' ? 'Trimestre' : 'Año'}
+                {p === 'month' ? 'Mensual' : p === 'quarter' ? 'Trimestral' : 'Anual'}
               </button>
             ))}
-            <span className="text-slate-500 text-sm">· {periodLabel}</span>
+            {bizPeriod === 'month' && (
+              <select
+                value={bizMonth}
+                onChange={e => setBizMonth(Number(e.target.value))}
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                {['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'].map((m, i) => (
+                  <option key={i} value={i}>{m}</option>
+                ))}
+              </select>
+            )}
+            {bizPeriod === 'quarter' && (
+              <div className="flex gap-1">
+                {[0,1,2,3].map(q => (
+                  <button
+                    key={q}
+                    onClick={() => setBizQuarter(q)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      bizQuarter === q ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    T{q + 1}
+                  </button>
+                ))}
+              </div>
+            )}
             <select
               value={selectedYear}
               onChange={e => setSelectedYear(Number(e.target.value))}
-              className="ml-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
               {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
+            <span className="text-slate-500 text-sm">· {periodLabel}</span>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
