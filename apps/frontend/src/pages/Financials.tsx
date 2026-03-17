@@ -49,6 +49,13 @@ export default function Financials() {
   const [filters,          setFilters]          = useState({ ...EMPTY_FILTERS });
   const [showFilters,      setShowFilters]      = useState(false);
 
+  // ── Edición masiva (gastos) ────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkAction, setBulkAction] = useState('');
+  const [bulkValue, setBulkValue] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ ok: number; fail: number } | null>(null);
+
   // Recurring expenses state
   const [showRecModal,   setShowRecModal]   = useState(false);
   const [editingRec,     setEditingRec]     = useState<any>(null);
@@ -253,6 +260,42 @@ export default function Financials() {
   }
   const propRows = Object.entries(propMap).map(([, v]) => v).sort((a, b) => b.income - a.income);
 
+  // ── Bulk helpers (expenses) ────────────────────────────────────────────
+  const visibleExpenses = expenses as any[];
+  const allVisibleSelected = visibleExpenses.length > 0 && visibleExpenses.every((e: any) => selectedIds.has(e.id));
+  const toggleAll = () => {
+    if (allVisibleSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(visibleExpenses.map((e: any) => e.id)));
+  };
+  const toggleOne = (id: number) => setSelectedIds(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
+  const cancelBulk = () => { setSelectedIds(new Set()); setBulkAction(''); setBulkValue(''); setBulkResult(null); };
+  const applyBulk = async () => {
+    if (!bulkAction || !bulkValue || bulkLoading) return;
+    setBulkLoading(true); setBulkResult(null);
+    const results = await Promise.allSettled(
+      Array.from(selectedIds).map(id => {
+        const exp = visibleExpenses.find((e: any) => e.id === id);
+        if (!exp) return Promise.reject('Not found');
+        const payload = {
+          propertyId: exp.propertyId || undefined,
+          date: exp.date,
+          amount: Number(exp.amount),
+          type: bulkAction === 'type' ? bulkValue : exp.type,
+          notes: exp.notes || undefined,
+          deductible: bulkAction === 'deductible' ? bulkValue === 'true' : exp.deductible,
+        };
+        return api.put(`/expenses/${id}`, payload);
+      })
+    );
+    const ok = results.filter(r => r.status === 'fulfilled').length;
+    const fail = results.filter(r => r.status === 'rejected').length;
+    setBulkLoading(false); setBulkResult({ ok, fail });
+    qc.invalidateQueries({ queryKey: ['expenses'] });
+    if (fail === 0) cancelBulk();
+  };
+
   const fmt = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const expenseTypeLabel = (val: string) => EXPENSE_TYPES.find((t) => t.value === val)?.label ?? val;
   const freqLabel = (val: string) => FREQUENCIES.find((f) => f.value === val)?.label ?? val;
@@ -260,7 +303,7 @@ export default function Financials() {
   const isRecPending = createRec.isPending || updateRec.isPending;
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
+    <div className={`p-4 md:p-6 max-w-6xl mx-auto${selectedIds.size > 0 ? ' pb-24' : ''}`}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold">{t('financials.title')}</h1>
@@ -520,6 +563,10 @@ export default function Financials() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-800">
+                  <th className="pl-4 py-3 w-10">
+                    <input type="checkbox" checked={allVisibleSelected} onChange={toggleAll}
+                      className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+                  </th>
                   <th className="text-left px-4 py-3 text-slate-400 font-semibold">Fecha</th>
                   <th className="text-left px-4 py-3 text-slate-400 font-semibold">Tipo</th>
                   <th className="text-left px-4 py-3 text-slate-400 font-semibold">Propiedad</th>
@@ -532,6 +579,10 @@ export default function Financials() {
               <tbody>
                 {(expenses as any[]).map((exp: any) => (
                   <tr key={exp.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                    <td className="pl-4 py-3">
+                      <input type="checkbox" checked={selectedIds.has(exp.id)} onChange={() => toggleOne(exp.id)}
+                        className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+                    </td>
                     <td className="px-4 py-3 tabular-nums text-slate-300">
                       {new Date(exp.date).toLocaleDateString('es-ES')}
                     </td>
@@ -577,7 +628,9 @@ export default function Financials() {
             {(expenses as any[]).map((exp: any) => (
               <div key={exp.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
                 <div className="flex justify-between items-start mb-2">
-                  <div>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={selectedIds.has(exp.id)} onChange={() => toggleOne(exp.id)}
+                      className="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0" />
                     <span className="text-xs font-semibold px-2 py-1 rounded-full bg-slate-800 text-slate-300">
                       {expenseTypeLabel(exp.type)}
                     </span>
@@ -616,6 +669,52 @@ export default function Financials() {
             ))}
           </div>
         </>
+      )}
+
+      {/* ── Barra de edición masiva (gastos) ── */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-700 px-4 py-3 flex flex-wrap items-center gap-3 shadow-2xl">
+          <span className="text-sm font-semibold text-white whitespace-nowrap">
+            {selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+          </span>
+          <div className="hidden sm:block h-4 w-px bg-slate-600" />
+          <select value={bulkAction} onChange={e => { setBulkAction(e.target.value); setBulkValue(''); setBulkResult(null); }}
+            className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+            <option value="">— Acción —</option>
+            <option value="type">Cambiar tipo</option>
+            <option value="deductible">Marcar deducible</option>
+          </select>
+          {bulkAction === 'type' && (
+            <select value={bulkValue} onChange={e => { setBulkValue(e.target.value); setBulkResult(null); }}
+              className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+              <option value="">— Tipo —</option>
+              {EXPENSE_TYPES.map(et => <option key={et.value} value={et.value}>{et.label}</option>)}
+            </select>
+          )}
+          {bulkAction === 'deductible' && (
+            <select value={bulkValue} onChange={e => { setBulkValue(e.target.value); setBulkResult(null); }}
+              className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+              <option value="">— Valor —</option>
+              <option value="true">Sí (deducible)</option>
+              <option value="false">No (no deducible)</option>
+            </select>
+          )}
+          {bulkResult && (
+            <span className={`text-xs font-semibold ${bulkResult.fail > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+              {bulkResult.fail > 0 ? `✓ ${bulkResult.ok} OK · ✗ ${bulkResult.fail} error` : `✓ ${bulkResult.ok} actualizados`}
+            </span>
+          )}
+          <div className="flex gap-2 ml-auto">
+            <button onClick={applyBulk} disabled={!bulkAction || !bulkValue || bulkLoading}
+              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors">
+              {bulkLoading ? '...' : 'Aplicar'}
+            </button>
+            <button onClick={cancelBulk}
+              className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-semibold transition-colors">
+              Cancelar
+            </button>
+          </div>
+        </div>
       )}
 
       {/* ── Gastos recurrentes ───────────────────────────────────────────── */}

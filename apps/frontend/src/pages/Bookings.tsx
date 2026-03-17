@@ -181,6 +181,13 @@ export default function Bookings() {
   const [dateError, setDateError] = useState('');
   const [overlapError, setOverlapError] = useState('');
 
+  // ── Edición masiva ─────────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState('');
+  const [bulkValue, setBulkValue] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ ok: number; fail: number } | null>(null);
+
   // Validación local de fechas (inmediata)
   useEffect(() => {
     if (form.checkInDate && form.checkOutDate) {
@@ -423,8 +430,35 @@ export default function Bookings() {
 
   const hasFilters = filterSearch || filterProperty || filterStatus || filterDateFrom || filterDateTo;
 
+  // ── Bulk helpers ───────────────────────────────────────────────────────
+  const allVisibleSelected = filteredSorted.length > 0 && filteredSorted.every((b: any) => selectedIds.has(b.id));
+  const toggleAll = () => {
+    if (allVisibleSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filteredSorted.map((b: any) => b.id)));
+  };
+  const toggleOne = (id: string) => setSelectedIds(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
+  const cancelBulk = () => { setSelectedIds(new Set()); setBulkAction(''); setBulkValue(''); setBulkResult(null); };
+  const applyBulk = async () => {
+    if (!bulkAction || !bulkValue || bulkLoading) return;
+    setBulkLoading(true); setBulkResult(null);
+    const results = await Promise.allSettled(
+      Array.from(selectedIds).map(id =>
+        bulkAction === 'status'
+          ? api.patch(`/bookings/${id}/status`, { status: bulkValue })
+          : api.patch(`/bookings/${id}`, { source: bulkValue })
+      )
+    );
+    const ok = results.filter(r => r.status === 'fulfilled').length;
+    const fail = results.filter(r => r.status === 'rejected').length;
+    setBulkLoading(false); setBulkResult({ ok, fail });
+    qc.invalidateQueries({ queryKey: ['bookings'] });
+    if (fail === 0) cancelBulk();
+  };
+
   return (
-    <div className="p-4 md:p-6">
+    <div className={`p-4 md:p-6${selectedIds.size > 0 ? ' pb-24' : ''}`}>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">{t('bookings.title')}</h1>
@@ -495,6 +529,10 @@ export default function Bookings() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-800">
+                  <th className="pl-4 py-3 w-10">
+                    <input type="checkbox" checked={allVisibleSelected} onChange={toggleAll}
+                      className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+                  </th>
                   {thSort(t('bookings.client'), 'client')}
                   {thSort(t('bookings.property'), 'property')}
                   {thSort(t('bookings.checkIn'), 'checkin')}
@@ -508,6 +546,10 @@ export default function Bookings() {
                 {filteredSorted.map((b: any, i: number) => (
                   <tr key={b.id} onClick={() => navigate(`/bookings/${b.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
                     className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
+                    <td className="pl-4 py-3" onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" checked={selectedIds.has(b.id)} onChange={() => toggleOne(b.id)}
+                        className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+                    </td>
                     <td className="px-4 py-3 font-medium">{b.client?.firstName} {b.client?.lastName}</td>
                     <td className="px-4 py-3 text-slate-400">{b.property?.name}</td>
                     <td className="px-4 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
@@ -530,7 +572,12 @@ export default function Bookings() {
               <div key={b.id} onClick={() => navigate(`/bookings/${b.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
                 className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:bg-slate-800/70">
                 <div className="flex justify-between items-start mb-2">
-                  <span className="font-medium text-white">{b.client?.firstName} {b.client?.lastName}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input type="checkbox" checked={selectedIds.has(b.id)} onChange={() => toggleOne(b.id)}
+                      onClick={e => e.stopPropagation()}
+                      className="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0" />
+                    <span className="font-medium text-white truncate">{b.client?.firstName} {b.client?.lastName}</span>
+                  </div>
                   <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[b.status] || 'bg-slate-500/10 text-slate-400'}`}>
                     {t(`bookings.statuses.${b.status}`) || b.status}
                   </span>
@@ -544,6 +591,55 @@ export default function Bookings() {
             ))}
           </div>
         </>
+      )}
+
+      {/* ── Barra de edición masiva ── */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-700 px-4 py-3 flex flex-wrap items-center gap-3 shadow-2xl">
+          <span className="text-sm font-semibold text-white whitespace-nowrap">
+            {selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+          </span>
+          <div className="hidden sm:block h-4 w-px bg-slate-600" />
+          <select value={bulkAction} onChange={e => { setBulkAction(e.target.value); setBulkValue(''); setBulkResult(null); }}
+            className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+            <option value="">— Acción —</option>
+            <option value="status">Cambiar estado</option>
+            <option value="source">Cambiar origen</option>
+          </select>
+          {bulkAction === 'status' && (
+            <select value={bulkValue} onChange={e => { setBulkValue(e.target.value); setBulkResult(null); }}
+              className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+              <option value="">— Estado —</option>
+              {['created','registered','processed','error','cancelled'].map(s => (
+                <option key={s} value={s}>{t(`bookings.statuses.${s}`)}</option>
+              ))}
+            </select>
+          )}
+          {bulkAction === 'source' && (
+            <select value={bulkValue} onChange={e => { setBulkValue(e.target.value); setBulkResult(null); }}
+              className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+              <option value="">— Origen —</option>
+              {['direct','airbnb','booking','vrbo','manual_block'].map(s => (
+                <option key={s} value={s}>{t(`bookings.sources.${s}`)}</option>
+              ))}
+            </select>
+          )}
+          {bulkResult && (
+            <span className={`text-xs font-semibold ${bulkResult.fail > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+              {bulkResult.fail > 0 ? `✓ ${bulkResult.ok} OK · ✗ ${bulkResult.fail} error` : `✓ ${bulkResult.ok} actualizados`}
+            </span>
+          )}
+          <div className="flex gap-2 ml-auto">
+            <button onClick={applyBulk} disabled={!bulkAction || !bulkValue || bulkLoading}
+              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors">
+              {bulkLoading ? '...' : 'Aplicar'}
+            </button>
+            <button onClick={cancelBulk}
+              className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-semibold transition-colors">
+              Cancelar
+            </button>
+          </div>
+        </div>
       )}
 
       {showForm && (

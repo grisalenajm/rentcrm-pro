@@ -112,6 +112,13 @@ export default function Clients() {
   // ── Formulario ────────────────────────────────────────────────────────
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
+
+  // ── Edición masiva ─────────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState('');
+  const [bulkValue, setBulkValue] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ ok: number; fail: number } | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [docWarning, setDocWarning] = useState('');
   const validationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -275,8 +282,33 @@ export default function Clients() {
 
   const hasFilters = filterSearch || filterNationality || filterLanguage;
 
+  // ── Bulk helpers ───────────────────────────────────────────────────────
+  const allVisibleSelected = filteredSorted.length > 0 && filteredSorted.every((c: Client) => selectedIds.has(c.id));
+  const toggleAll = () => {
+    if (allVisibleSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filteredSorted.map((c: Client) => c.id)));
+  };
+  const toggleOne = (id: string) => setSelectedIds(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
+  const cancelBulk = () => { setSelectedIds(new Set()); setBulkAction(''); setBulkValue(''); setBulkResult(null); };
+  const applyBulk = async () => {
+    if (!bulkAction || !bulkValue || bulkLoading) return;
+    setBulkLoading(true); setBulkResult(null);
+    const results = await Promise.allSettled(
+      Array.from(selectedIds).map(id =>
+        api.put(`/clients/${id}`, { [bulkAction]: bulkValue })
+      )
+    );
+    const ok = results.filter(r => r.status === 'fulfilled').length;
+    const fail = results.filter(r => r.status === 'rejected').length;
+    setBulkLoading(false); setBulkResult({ ok, fail });
+    qc.invalidateQueries({ queryKey: ['clients'] });
+    if (fail === 0) cancelBulk();
+  };
+
   return (
-    <div className="p-6">
+    <div className={`p-6${selectedIds.size > 0 ? ' pb-24' : ''}`}>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">{t('clients.title')}</h1>
@@ -331,6 +363,10 @@ export default function Clients() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-800">
+                  <th className="pl-4 py-3 w-10">
+                    <input type="checkbox" checked={allVisibleSelected} onChange={toggleAll}
+                      className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+                  </th>
                   {thSort(t('common.name'), 'name')}
                   {thSort(t('clients.dni'), 'dni')}
                   {thSort(t('common.email'), 'email')}
@@ -347,6 +383,10 @@ export default function Clients() {
                   return (
                     <tr key={c.id} onClick={() => navigate(`/clients/${c.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
                       className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
+                      <td className="pl-4 py-3" onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleOne(c.id)}
+                          className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+                      </td>
                       <td className="px-4 py-3 font-medium">{c.firstName} {c.lastName}</td>
                       <td className="px-4 py-3 text-slate-400 font-mono text-xs">{c.dniPassport || '—'}</td>
                       <td className="px-4 py-3 text-slate-400">{c.email || '—'}</td>
@@ -385,7 +425,12 @@ export default function Clients() {
                 <div key={c.id} onClick={() => navigate(`/clients/${c.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
                   className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:bg-slate-800/70 transition-colors">
                   <div className="flex justify-between items-start mb-2">
-                    <span className="font-medium text-white">{c.firstName} {c.lastName}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleOne(c.id)}
+                        onClick={e => e.stopPropagation()}
+                        className="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0" />
+                      <span className="font-medium text-white truncate">{c.firstName} {c.lastName}</span>
+                    </div>
                     {s?.avgScore
                       ? <Stars score={s.avgScore} />
                       : <span className="text-xs text-slate-500">{t('clients.noRating')}</span>}
@@ -420,6 +465,51 @@ export default function Clients() {
             })}
           </div>
         </>
+      )}
+
+      {/* ── Barra de edición masiva ── */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-700 px-4 py-3 flex flex-wrap items-center gap-3 shadow-2xl">
+          <span className="text-sm font-semibold text-white whitespace-nowrap">
+            {selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+          </span>
+          <div className="hidden sm:block h-4 w-px bg-slate-600" />
+          <select value={bulkAction} onChange={e => { setBulkAction(e.target.value); setBulkValue(''); setBulkResult(null); }}
+            className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+            <option value="">— Acción —</option>
+            <option value="language">Cambiar idioma</option>
+            <option value="country">Cambiar país</option>
+          </select>
+          {bulkAction === 'language' && (
+            <select value={bulkValue} onChange={e => { setBulkValue(e.target.value); setBulkResult(null); }}
+              className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+              <option value="">— Idioma —</option>
+              {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+            </select>
+          )}
+          {bulkAction === 'country' && (
+            <select value={bulkValue} onChange={e => { setBulkValue(e.target.value); setBulkResult(null); }}
+              className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+              <option value="">— País —</option>
+              {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+            </select>
+          )}
+          {bulkResult && (
+            <span className={`text-xs font-semibold ${bulkResult.fail > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+              {bulkResult.fail > 0 ? `✓ ${bulkResult.ok} OK · ✗ ${bulkResult.fail} error` : `✓ ${bulkResult.ok} actualizados`}
+            </span>
+          )}
+          <div className="flex gap-2 ml-auto">
+            <button onClick={applyBulk} disabled={!bulkAction || !bulkValue || bulkLoading}
+              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors">
+              {bulkLoading ? '...' : 'Aplicar'}
+            </button>
+            <button onClick={cancelBulk}
+              className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-semibold transition-colors">
+              Cancelar
+            </button>
+          </div>
+        </div>
       )}
 
       {showForm && (
