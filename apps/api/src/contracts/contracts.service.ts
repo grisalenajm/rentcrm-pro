@@ -238,6 +238,11 @@ export class ContractsService {
         if (contract.signedAt) {
           doc.text(`Fecha: ${new Date(contract.signedAt).toLocaleString('es-ES')}`);
         }
+        if (contract.signatureImage) {
+          const base64Data = contract.signatureImage.replace(/^data:image\/\w+;base64,/, '');
+          const signatureBuffer = Buffer.from(base64Data, 'base64');
+          doc.image(signatureBuffer, { width: 200 });
+        }
       }
 
       doc.end();
