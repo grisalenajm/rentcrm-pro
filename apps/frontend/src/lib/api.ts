@@ -20,7 +20,9 @@ api.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       authToken = null;
-      window.location.href = '/login';
+      // Notify AuthContext so it can show the "session expired" modal
+      // before redirecting — avoids a hard navigation that loses React state.
+      window.dispatchEvent(new CustomEvent('rentcrm:session-expired'));
     }
     return Promise.reject(err);
   }

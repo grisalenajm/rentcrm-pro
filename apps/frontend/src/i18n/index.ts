@@ -149,6 +149,17 @@ const es = {
     newUser: "Nuevo usuario",
     confirmDeactivate: "¿Desactivar este usuario?",
     confirmActivate: "¿Activar este usuario?",
+  },
+  session: {
+    expiredTitle: "Sesión expirada",
+    expiredMessage: "Tu sesión ha expirado. Por favor, inicia sesión de nuevo.",
+    redirecting: "Redirigiendo al login en {{seconds}} segundos...",
+    loginAgain: "Iniciar sesión ahora",
+    idleTitle: "¿Sigues ahí?",
+    idleMessage: "Tu sesión está a punto de expirar por inactividad.",
+    idleCountdown: "Cierre de sesión automático en {{seconds}} segundos.",
+    continueSession: "Continuar",
+    logoutNow: "Cerrar sesión",
   }
 };
 
@@ -300,6 +311,17 @@ const en = {
     newUser: "New user",
     confirmDeactivate: "Deactivate this user?",
     confirmActivate: "Activate this user?",
+  },
+  session: {
+    expiredTitle: "Session expired",
+    expiredMessage: "Your session has expired. Please log in again.",
+    redirecting: "Redirecting to login in {{seconds}} seconds...",
+    loginAgain: "Log in now",
+    idleTitle: "Still there?",
+    idleMessage: "Your session is about to expire due to inactivity.",
+    idleCountdown: "Automatic logout in {{seconds}} seconds.",
+    continueSession: "Continue",
+    logoutNow: "Log out",
   }
 };
 
