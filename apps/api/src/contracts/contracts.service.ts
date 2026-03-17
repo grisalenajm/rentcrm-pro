@@ -243,6 +243,13 @@ export class ContractsService {
           const signatureBuffer = Buffer.from(base64Data, 'base64');
           doc.image(signatureBuffer, { width: 200 });
         }
+        doc.moveDown(2);
+        doc.fontSize(10).text(`Firma del arrendador: ${contract.template.ownerName}`);
+        if (contract.template.ownerSignature) {
+          const base64Data = contract.template.ownerSignature.replace(/^data:image\/\w+;base64,/, '');
+          const ownerSignatureBuffer = Buffer.from(base64Data, 'base64');
+          doc.image(ownerSignatureBuffer, { width: 200 });
+        }
       }
 
       doc.end();
