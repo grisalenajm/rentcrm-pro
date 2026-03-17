@@ -54,7 +54,7 @@ export default function Financials() {
   const [bulkAction, setBulkAction] = useState('');
   const [bulkValue, setBulkValue] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{ ok: number; fail: number } | null>(null);
+  const [bulkResult, setBulkResult] = useState<{ ok: number; fail: number; errors: string[] } | null>(null);
 
   // Recurring expenses state
   const [showRecModal,   setShowRecModal]   = useState(false);
@@ -290,10 +290,11 @@ export default function Financials() {
       })
     );
     const ok = results.filter(r => r.status === 'fulfilled').length;
-    const fail = results.filter(r => r.status === 'rejected').length;
-    setBulkLoading(false); setBulkResult({ ok, fail });
+    const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+    const errors = [...new Set(rejected.map(r => r.reason?.response?.data?.message || r.reason?.message || 'Error desconocido'))];
+    setBulkLoading(false); setBulkResult({ ok, fail: rejected.length, errors });
     qc.invalidateQueries({ queryKey: ['expenses'] });
-    if (fail === 0) cancelBulk();
+    if (rejected.length === 0) cancelBulk();
   };
 
   const fmt = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -700,9 +701,18 @@ export default function Financials() {
             </select>
           )}
           {bulkResult && (
-            <span className={`text-xs font-semibold ${bulkResult.fail > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-              {bulkResult.fail > 0 ? `✓ ${bulkResult.ok} OK · ✗ ${bulkResult.fail} error` : `✓ ${bulkResult.ok} actualizados`}
-            </span>
+            <div className="flex flex-col gap-1 text-xs font-semibold">
+              <span className={bulkResult.fail > 0 ? 'text-amber-400' : 'text-emerald-400'}>
+                {bulkResult.fail > 0 ? `✓ ${bulkResult.ok} OK · ✗ ${bulkResult.fail} error` : `✓ ${bulkResult.ok} actualizados`}
+              </span>
+              {bulkResult.errors.length > 0 && (
+                <ul className="max-h-16 overflow-y-auto space-y-0.5">
+                  {bulkResult.errors.map((e, i) => (
+                    <li key={i} className="text-red-400 font-normal">{e}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
           <div className="flex gap-2 ml-auto">
             <button onClick={applyBulk} disabled={!bulkAction || !bulkValue || bulkLoading}
