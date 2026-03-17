@@ -1,10 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import ExcelButtons from '../components/ExcelButtons';
-import ContentEditor from '../components/ContentEditor';
 import { WORLD_COUNTRIES } from '../data/countries';
 
 interface Property {
@@ -49,13 +48,6 @@ export default function Properties() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Property | null>(null);
   const [form, setForm] = useState<any>(emptyForm);
-  const [detailProperty, setDetailProperty] = useState<Property | null>(null);
-  const [photoUploading, setPhotoUploading] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
-
-  // detail tab
-  const [detailTab, setDetailTab] = useState<'info'|'contenido'>('info');
-
   // iCal state
   const [icalProperty, setIcalProperty] = useState<Property | null>(null);
   const [icalFeeds, setIcalFeeds] = useState<Feed[]>([]);
@@ -70,25 +62,6 @@ export default function Properties() {
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ['properties'],
     queryFn: () => api.get('/properties').then(r => r.data),
-  });
-
-  // Global content for placeholder reference in ContentEditor
-  const { data: globalContent } = useQuery({
-    queryKey: ['property-content', 'global'],
-    queryFn: () => api.get('/property-content').then(r => r.data),
-  });
-
-  // Financial data for detail panel
-  const { data: financialRecords = [] } = useQuery({
-    queryKey: ['financials-property', detailProperty?.id],
-    queryFn: () => api.get(`/financials?propertyId=${detailProperty!.id}`).then(r => r.data),
-    enabled: !!detailProperty,
-  });
-
-  const { data: expensesSummary = {} } = useQuery({
-    queryKey: ['expenses-summary-property', detailProperty?.id],
-    queryFn: () => api.get(`/expenses/summary?propertyId=${detailProperty!.id}`).then(r => r.data),
-    enabled: !!detailProperty,
   });
 
   const createMutation = useMutation({
@@ -145,46 +118,6 @@ export default function Properties() {
 
   const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm({ ...form, [k]: e.target.value });
-
-  // Photo upload
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !detailProperty) return;
-    if (file.size > 2 * 1024 * 1024) {
-      alert('La imagen no puede superar 2MB');
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      alert('Solo se permiten imágenes');
-      return;
-    }
-    setPhotoUploading(true);
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const base64 = ev.target?.result as string;
-      try {
-        await api.put(`/properties/${detailProperty.id}`, { photo: base64 });
-        await qc.invalidateQueries({ queryKey: ['properties'] });
-        setDetailProperty({ ...detailProperty, photo: base64 });
-      } finally {
-        setPhotoUploading(false);
-        if (photoInputRef.current) photoInputRef.current.value = '';
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Financial summary by year
-  const incomeSummary: Record<number, number> = {};
-  for (const r of financialRecords as any[]) {
-    if (r.type === 'income') {
-      const year = new Date(r.date).getFullYear();
-      incomeSummary[year] = (incomeSummary[year] || 0) + Number(r.amount);
-    }
-  }
-  const expYears = Object.keys(expensesSummary as Record<string, number>).map(Number);
-  const incYears = Object.keys(incomeSummary).map(Number);
-  const allYears = [...new Set([...expYears, ...incYears])].sort((a, b) => b - a);
 
   // iCal helpers
   const exportUrl = (propertyId: string) =>
@@ -296,7 +229,7 @@ export default function Properties() {
               </thead>
               <tbody>
                 {properties.map((p: Property) => (
-                  <tr key={p.id} className="border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => { setDetailProperty(p); setDetailTab('info'); }}>
+                  <tr key={p.id} className="border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => navigate(`/properties/${p.id}`)}>
                     <td className="px-4 py-3">
                       <span className="font-medium text-white">
                         {p.name}
@@ -332,7 +265,7 @@ export default function Properties() {
           {/* Móvil: tarjetas */}
           <div className="md:hidden space-y-3">
             {properties.map((p: Property) => (
-              <div key={p.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer" onClick={() => { setDetailProperty(p); setDetailTab('info'); }}>
+              <div key={p.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer" onClick={() => navigate(`/properties/${p.id}`)}>
                 <div className="flex justify-between items-start mb-2">
                   <span className="font-medium text-white hover:text-emerald-400 transition-colors">
                     {p.name}
@@ -365,244 +298,6 @@ export default function Properties() {
             ))}
           </div>
         </>
-      )}
-
-      {/* Property detail modal */}
-      {detailProperty && (
-        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-2xl max-h-[95vh] md:max-h-[90vh] flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
-              <h2 className="text-lg font-bold">{detailProperty.name}</h2>
-              <div className="flex items-center gap-3">
-                <button onClick={() => { setDetailProperty(null); openEdit(detailProperty); }}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
-                  {t('common.edit')}
-                </button>
-                <button onClick={() => { setDetailProperty(null); navigate(`/properties/${detailProperty.id}/financials`); }}
-                  className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-semibold transition-colors">
-                  💰 Ver finanzas
-                </button>
-                <button onClick={() => { setDetailProperty(null); openIcal(detailProperty); }}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg text-sm font-semibold transition-colors">
-                  📅 iCal
-                </button>
-                <button onClick={() => setDetailProperty(null)}
-                  className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
-              </div>
-            </div>
-
-            {/* Pestañas */}
-            <div className="flex border-b border-slate-800 px-6">
-              {(['info', 'contenido'] as const).map(tab => (
-                <button key={tab} onClick={() => setDetailTab(tab)}
-                  className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
-                    detailTab === tab
-                      ? 'border-emerald-500 text-emerald-400'
-                      : 'border-transparent text-slate-400 hover:text-white'
-                  }`}>
-                  {tab === 'info' ? '📋 Info' : '📄 Contenido'}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex-1 overflow-y-auto">
-              {/* Pestaña Contenido */}
-              {detailTab === 'contenido' && (
-                <div className="p-6">
-                  <ContentEditor
-                    propertyId={detailProperty.id}
-                    globalContent={globalContent}
-                  />
-                </div>
-              )}
-
-              {/* Pestaña Info */}
-              {detailTab === 'info' && <>
-              {/* Bloque superior: foto + datos */}
-              <div className="flex gap-4 p-6">
-                {/* Foto pequeña izquierda */}
-                <div className="shrink-0 w-32 h-32 rounded-xl overflow-hidden bg-slate-800 flex items-center justify-center">
-                  {detailProperty.photo
-                    ? <img src={detailProperty.photo} alt={detailProperty.name} className="w-full h-full object-cover" />
-                    : <span className="text-3xl">🏠</span>
-                  }
-                </div>
-
-                {/* Datos derecha */}
-                <div className="flex-1 min-w-0 space-y-2">
-                  <div>
-                    <p className="text-xs text-slate-400">Dirección</p>
-                    <p className="text-white text-sm">{detailProperty.address}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <p className="text-xs text-slate-400">Ciudad</p>
-                      <p className="text-white text-sm">{detailProperty.city}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Provincia</p>
-                      <p className="text-white text-sm">{detailProperty.province || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">País</p>
-                      <p className="text-white text-sm">
-                        {detailProperty.country
-                          ? (WORLD_COUNTRIES.find(c => c.code === detailProperty.country)?.name || detailProperty.country)
-                          : '—'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Código Postal</p>
-                      <p className="text-white text-sm">{detailProperty.postalCode || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Habitaciones</p>
-                      <p className="text-white text-sm">{detailProperty.rooms}{detailProperty.bathrooms ? ` · ${detailProperty.bathrooms} baños` : ''}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Estado</p>
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusClass(detailProperty.status)}`}>
-                        {statusLabel(detailProperty.status)}
-                      </span>
-                    </div>
-                    {detailProperty.maxGuests && (
-                      <div>
-                        <p className="text-xs text-slate-400">Máx. huéspedes</p>
-                        <p className="text-white text-sm">{detailProperty.maxGuests}</p>
-                      </div>
-                    )}
-                    {detailProperty.pricePerNight && (
-                      <div>
-                        <p className="text-xs text-slate-400">Precio/noche</p>
-                        <p className="text-white text-sm">{fmtEur(Number(detailProperty.pricePerNight))}</p>
-                      </div>
-                    )}
-                    {detailProperty.purchasePrice && (
-                      <div>
-                        <p className="text-xs text-slate-400">Precio de compra</p>
-                        <p className="text-white text-sm">{fmtEur(Number(detailProperty.purchasePrice))}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Botón cambiar foto */}
-              <div className="px-6 pb-4">
-                <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
-                <button onClick={() => photoInputRef.current?.click()} disabled={photoUploading}
-                  className="text-xs text-slate-400 hover:text-emerald-400 transition-colors">
-                  {photoUploading ? 'Subiendo...' : '📷 Cambiar foto'}
-                </button>
-              </div>
-
-              {/* iCal + SES */}
-              <div className="px-6 pb-4 space-y-3">
-                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-3">
-                  <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">iCal</p>
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">URL exportación</p>
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs text-emerald-400 bg-slate-800 px-2 py-1 rounded flex-1 truncate">
-                        {exportUrl(detailProperty.id)}
-                      </code>
-                      <button onClick={() => navigator.clipboard.writeText(exportUrl(detailProperty.id))}
-                        className="text-xs text-slate-400 hover:text-white px-2 py-1 bg-slate-800 rounded transition-colors">
-                        Copiar
-                      </button>
-                    </div>
-                  </div>
-                  <button onClick={() => { setDetailProperty(null); openIcal(detailProperty); }}
-                    className="text-xs text-slate-400 hover:text-emerald-400 transition-colors">
-                    ⚙️ Gestionar feeds iCal
-                  </button>
-                </div>
-
-                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4">
-                  <p className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">SES Hospedajes</p>
-                  <p className="text-xs text-slate-400">Código establecimiento</p>
-                  <p className="text-white text-sm font-mono mt-1">
-                    {detailProperty.sesCodigoEstablecimiento || <span className="text-slate-500">No configurado</span>}
-                  </p>
-                </div>
-              </div>
-
-              {/* Financial summary */}
-              <div className="px-6 pb-6">
-                <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3">Resumen financiero</h3>
-
-                {allYears.length === 0 ? (
-                  <div className="text-center py-8 border border-dashed border-slate-700 rounded-xl text-slate-500 text-sm">
-                    Sin datos financieros
-                  </div>
-                ) : (
-                  <>
-                    {/* Desktop table */}
-                    <div className="hidden md:block bg-slate-800 rounded-xl overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-slate-700">
-                            <th className="text-left px-4 py-3 text-slate-400 font-semibold">Año</th>
-                            <th className="text-right px-4 py-3 text-slate-400 font-semibold">Ingresos</th>
-                            <th className="text-right px-4 py-3 text-slate-400 font-semibold">Gastos</th>
-                            <th className="text-right px-4 py-3 text-slate-400 font-semibold">Neto</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {allYears.map(year => {
-                            const income = incomeSummary[year] || 0;
-                            const expenses = (expensesSummary as Record<string, number>)[year] || 0;
-                            const net = income - expenses;
-                            return (
-                              <tr key={year} className="border-b border-slate-700/50 last:border-0">
-                                <td className="px-4 py-3 font-semibold">{year}</td>
-                                <td className="px-4 py-3 text-right text-emerald-400">{fmtEur(income)}</td>
-                                <td className="px-4 py-3 text-right text-red-400">{fmtEur(expenses)}</td>
-                                <td className={`px-4 py-3 text-right font-semibold ${net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                  {fmtEur(net)}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Mobile cards */}
-                    <div className="md:hidden space-y-3">
-                      {allYears.map(year => {
-                        const income = incomeSummary[year] || 0;
-                        const expenses = (expensesSummary as Record<string, number>)[year] || 0;
-                        const net = income - expenses;
-                        return (
-                          <div key={year} className="bg-slate-800 rounded-xl p-4">
-                            <p className="font-bold text-white mb-3">{year}</p>
-                            <div className="grid grid-cols-3 gap-2 text-center">
-                              <div>
-                                <p className="text-xs text-slate-500 mb-1">Ingresos</p>
-                                <p className="text-sm font-semibold text-emerald-400">{fmtEur(income)}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-slate-500 mb-1">Gastos</p>
-                                <p className="text-sm font-semibold text-red-400">{fmtEur(expenses)}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-slate-500 mb-1">Neto</p>
-                                <p className={`text-sm font-semibold ${net >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmtEur(net)}</p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-              </>}
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Property create/edit modal */}

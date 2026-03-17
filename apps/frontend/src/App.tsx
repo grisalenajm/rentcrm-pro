@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Properties from './pages/Properties';
+import PropertyDetail from './pages/PropertyDetail';
 import Clients from './pages/Clients';
 import ClientDetail from './pages/ClientDetail';
 import Bookings from './pages/Bookings';
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="properties"                       element={<Properties />} />
+              <Route path="properties/:id"               element={<PropertyDetail />} />
               <Route path="properties/:id/financials"     element={<PropertyFinancialDetail />} />
               <Route path="clients"             element={<Clients />} />
               <Route path="clients/:id"         element={<ClientDetail />} />

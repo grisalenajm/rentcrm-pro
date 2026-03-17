@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -25,11 +25,26 @@ export default function PropertyFinancialDetail() {
   const navigate = useNavigate();
   const [year, setYear] = useState(new Date().getFullYear());
 
-  const { data, isLoading, isError } = useQuery<ReportData>({
+  useEffect(() => {
+    console.log('[PropertyFinancialDetail] propertyId from params:', id);
+  }, [id]);
+
+  const { data, isPending, isFetching, isError, error } = useQuery<ReportData>({
     queryKey: ['property-financial-report', id, year],
-    queryFn: () => api.get(`/financials/property/${id}/report?year=${year}`).then(r => r.data),
+    queryFn: async () => {
+      console.log('[PropertyFinancialDetail] fetching report for propertyId:', id, 'year:', year);
+      const res = await api.get(`/financials/property/${id}/report?year=${year}`);
+      console.log('[PropertyFinancialDetail] response:', res.data);
+      return res.data;
+    },
     enabled: !!id,
   });
+
+  const isLoading = isPending && isFetching;
+
+  useEffect(() => {
+    if (isError) console.error('[PropertyFinancialDetail] error:', error);
+  }, [isError, error]);
 
   const chartData = (data?.months ?? []).map(m => ({
     name: MONTH_NAMES[m.month - 1],
@@ -42,12 +57,12 @@ export default function PropertyFinancialDetail() {
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <button
-          onClick={() => navigate('/properties')}
+          onClick={() => navigate(`/properties/${id}`)}
           className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-sm rounded-lg transition-colors text-slate-300">
           ← Volver
         </button>
         <h1 className="text-xl font-bold flex-1">
-          {data ? `Finanzas · ${data.property.name}` : 'Cargando…'}
+          {data ? `Finanzas · ${data.property.name}` : 'Finanzas'}
         </h1>
         <select
           value={year}
@@ -59,8 +74,10 @@ export default function PropertyFinancialDetail() {
         </select>
       </div>
 
+      {!id && <p className="text-red-400 text-sm">Error: ID de propiedad no encontrado en la URL.</p>}
       {isLoading && <p className="text-slate-400 text-sm">Cargando informe…</p>}
-      {isError  && <p className="text-red-400 text-sm">Error al cargar el informe.</p>}
+      {!isLoading && isPending && !isError && <p className="text-slate-400 text-sm">Cargando informe…</p>}
+      {isError  && <p className="text-red-400 text-sm bg-red-500/10 px-4 py-3 rounded-lg">Error al cargar el informe. Verifica que la propiedad existe y tienes permisos.</p>}
 
       {data && <>
         {/* Sección 1 — KPIs */}
