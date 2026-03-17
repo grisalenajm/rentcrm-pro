@@ -234,21 +234,27 @@ export class ContractsService {
         doc.moveDown(2);
         doc.moveTo(60, doc.y).lineTo(doc.page.width - 60, doc.y).stroke();
         doc.moveDown(1);
-        doc.fontSize(10).text(`Firmado por: ${contract.signerName}`);
+
+        const sigY = doc.y;
+        const colLeft = 60;
+        const colRight = 320;
+        const colWidth = 220;
+
+        // Columna izquierda: arrendatario
+        doc.fontSize(10).text(`Firmado por: ${contract.signerName}`, colLeft, sigY, { width: colWidth });
         if (contract.signedAt) {
-          doc.text(`Fecha: ${new Date(contract.signedAt).toLocaleString('es-ES')}`);
+          doc.text(`Fecha: ${new Date(contract.signedAt).toLocaleString('es-ES')}`, colLeft, doc.y, { width: colWidth });
         }
         if (contract.signatureImage) {
           const base64Data = contract.signatureImage.replace(/^data:image\/\w+;base64,/, '');
-          const signatureBuffer = Buffer.from(base64Data, 'base64');
-          doc.image(signatureBuffer, { width: 200 });
+          doc.image(Buffer.from(base64Data, 'base64'), colLeft, doc.y + 4, { width: 180 });
         }
-        doc.moveDown(2);
-        doc.fontSize(10).text(`Firma del arrendador: ${contract.template.ownerName}`);
+
+        // Columna derecha: arrendador (mismo sigY)
+        doc.fontSize(10).text(`Firma del arrendador: ${contract.template.ownerName}`, colRight, sigY, { width: colWidth });
         if (contract.template.ownerSignature) {
           const base64Data = contract.template.ownerSignature.replace(/^data:image\/\w+;base64,/, '');
-          const ownerSignatureBuffer = Buffer.from(base64Data, 'base64');
-          doc.image(ownerSignatureBuffer, { width: 200 });
+          doc.image(Buffer.from(base64Data, 'base64'), colRight, sigY + 16, { width: 180 });
         }
       }
 
