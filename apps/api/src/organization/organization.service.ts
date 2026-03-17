@@ -9,13 +9,13 @@ export class OrganizationService {
   async findOne(id: string) {
     const org = await this.prisma.organization.findUnique({ where: { id } });
     if (!org) throw new NotFoundException('Organización no encontrada');
-    const { smtpPass, ...rest } = org as any;
-    return { ...rest, smtpPassSet: !!smtpPass };
+    const { smtpPass, paperlessToken, ...rest } = org as any;
+    return { ...rest, smtpPassSet: !!smtpPass, paperlessTokenSet: !!paperlessToken };
   }
 
   async update(id: string, dto: any) {
     const data: any = {};
-    const stringFields = ['name','nif','address','phone','email','logo','smtpHost','smtpUser','smtpFrom','currency','dateFormat','sesUsuarioWs','sesPasswordWs','sesCodigoArrendador','sesEndpoint'];
+    const stringFields = ['name','nif','address','phone','email','logo','smtpHost','smtpUser','smtpFrom','currency','dateFormat','sesUsuarioWs','sesPasswordWs','sesCodigoArrendador','sesEndpoint','paperlessUrl','paperlessToken'];
     stringFields.forEach(f => { if (dto[f] !== undefined) data[f] = dto[f]; });
     if (dto.smtpPass) data.smtpPass = dto.smtpPass;
 
@@ -26,6 +26,25 @@ export class OrganizationService {
     }
 
     return this.prisma.organization.update({ where: { id }, data });
+  }
+
+  async testPaperless(id: string) {
+    const org = await this.prisma.organization.findUnique({ where: { id } });
+    if (!org) throw new NotFoundException('Organización no encontrada');
+    const { paperlessUrl, paperlessToken } = org as any;
+    if (!paperlessUrl || !paperlessToken) {
+      throw new BadRequestException('Configure URL y token de Paperless-ngx primero');
+    }
+    try {
+      const url = `${(paperlessUrl as string).replace(/\/$/, '')}/api/documents/?page_size=1`;
+      const res = await fetch(url, { headers: { Authorization: `Token ${paperlessToken}` } });
+      if (!res.ok) {
+        return { ok: false, message: `Error ${res.status} al conectar con Paperless-ngx` };
+      }
+      return { ok: true, message: 'Conexión correcta con Paperless-ngx' };
+    } catch (err: any) {
+      return { ok: false, message: `No se pudo conectar: ${err.message}` };
+    }
   }
 
   async testSmtp(id: string, toEmail: string) {

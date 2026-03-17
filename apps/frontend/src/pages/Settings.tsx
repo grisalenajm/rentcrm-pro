@@ -17,13 +17,15 @@ export default function Settings() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<'usuario'|'general'|'fiscal'|'email'|'ses'|'preferences'|'contenido'>('usuario');
+  const [activeTab, setActiveTab] = useState<'usuario'|'general'|'fiscal'|'email'|'ses'|'paperless'|'preferences'|'contenido'>('usuario');
   const [smtpPass, setSmtpPass] = useState('');
   const [testEmail, setTestEmail] = useState('');
   const [testResult, setTestResult] = useState<{ok: boolean; message: string} | null>(null);
   const [testing, setTesting] = useState(false);
   const [sesTestResult, setSesTestResult] = useState<{ok: boolean; message: string} | null>(null);
   const [sesTesting, setSesTesting] = useState(false);
+  const [paperlessTestResult, setPaperlessTestResult] = useState<{ok: boolean; message: string} | null>(null);
+  const [paperlessTesting, setPaperlessTesting] = useState(false);
   const [form, setForm] = useState<any>({});
   const { theme, language, setTheme, setLanguage } = useUserPreferences();
 
@@ -72,6 +74,19 @@ export default function Settings() {
     }
   };
 
+  const handleTestPaperless = async () => {
+    setPaperlessTesting(true);
+    setPaperlessTestResult(null);
+    try {
+      const res = await api.post('/organization/test-paperless');
+      setPaperlessTestResult({ ok: res.data.ok, message: res.data.message });
+    } catch (err: any) {
+      setPaperlessTestResult({ ok: false, message: err.response?.data?.message || 'Error desconocido' });
+    } finally {
+      setPaperlessTesting(false);
+    }
+  };
+
   const handleTestSmtp = async () => {
     if (!testEmail) return;
     setTesting(true);
@@ -95,6 +110,7 @@ export default function Settings() {
     { id: 'fiscal',      label: t('settings.tabs.fiscal') },
     { id: 'email',       label: t('settings.tabs.email') },
     { id: 'ses',         label: '🚔 SES Hospedajes' },
+    { id: 'paperless',   label: '📦 Paperless' },
     { id: 'contenido',   label: '📄 Contenido' },
     { id: 'preferences', label: t('settings.tabs.preferences') },
   ];
@@ -369,6 +385,68 @@ export default function Settings() {
               <p>{language === 'es'
                 ? 'Las credenciales se guardan cifradas. El código de establecimiento se configura por propiedad en la ficha de cada alojamiento.'
                 : 'Credentials are stored encrypted. The establishment code is configured per property in each accommodation settings.'}</p>
+            </div>
+          </>
+        )}
+
+        {/* PAPERLESS */}
+        {activeTab === 'paperless' && (
+          <>
+            <div className="bg-slate-800 rounded-xl p-4 text-sm text-slate-400 mb-2">
+              <p className="font-semibold text-white mb-1">📦 Paperless-ngx — Gestión documental</p>
+              <p>{language === 'es'
+                ? 'Los contratos firmados se subirán automáticamente a tu instancia de Paperless-ngx.'
+                : 'Signed contracts will be automatically uploaded to your Paperless-ngx instance.'}</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                URL de Paperless-ngx
+              </label>
+              <input
+                value={currentValue('paperlessUrl')}
+                onChange={f('paperlessUrl')}
+                placeholder="http://192.168.1.50:8000"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                {language === 'es' ? 'URL base de tu servidor Paperless (sin slash final)' : 'Base URL of your Paperless server (no trailing slash)'}
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                API Token {org?.paperlessTokenSet && <span className="text-emerald-400 font-normal">✓ guardado</span>}
+              </label>
+              <input
+                type="password"
+                value={currentValue('paperlessToken')}
+                onChange={f('paperlessToken')}
+                placeholder={org?.paperlessTokenSet ? '••••••••' : 'Token de la API de Paperless-ngx'}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                {language === 'es'
+                  ? 'Perfil → API Token en tu Paperless-ngx'
+                  : 'Profile → API Token in your Paperless-ngx'}
+              </p>
+            </div>
+            <div className="border-t border-slate-700 pt-4">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                {language === 'es' ? 'Probar conexión' : 'Test connection'}
+              </label>
+              <p className="text-xs text-slate-500 mb-3">
+                {language === 'es' ? 'Guarda los cambios antes de probar.' : 'Save changes before testing.'}
+              </p>
+              <button
+                onClick={handleTestPaperless}
+                disabled={!org?.paperlessUrl || paperlessTesting}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-lg text-sm font-semibold transition-colors">
+                {paperlessTesting ? '⏳' : '🔌'} {language === 'es' ? 'Probar conexión' : 'Test connection'}
+              </button>
+              {paperlessTestResult && (
+                <div className={`mt-3 p-3 rounded-lg text-sm ${paperlessTestResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                  {paperlessTestResult.ok ? '✅' : '❌'} {paperlessTestResult.message}
+                </div>
+              )}
             </div>
           </>
         )}

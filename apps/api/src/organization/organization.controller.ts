@@ -30,6 +30,12 @@ export class OrganizationController {
     return this.organizationService.testSmtp(req.user.organizationId, body.email);
   }
 
+  @Post('test-paperless')
+  @Roles('admin')
+  testPaperless(@Request() req) {
+    return this.organizationService.testPaperless(req.user.organizationId);
+  }
+
   @Post('test-ses')
   @Roles('admin')
   async testSes(@Request() req) {

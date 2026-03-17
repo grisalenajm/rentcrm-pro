@@ -26,6 +26,8 @@ model Organization {
   sesCodigoArrendador String?  @map("ses_codigo_arrendador") @db.VarChar(20)
   sesCodigoEstablecimiento String? @map("ses_codigo_establecimiento") @db.VarChar(20)
   sesEndpoint         String?  @map("ses_endpoint") @db.VarChar(255)
+  paperlessUrl        String?  @map("paperless_url") @db.VarChar(255)
+  paperlessToken      String?  @map("paperless_token") @db.VarChar(500)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -411,6 +413,7 @@ model Contract {
   signerIp       String?   @map("signer_ip") @db.VarChar(45)
   signerName     String?   @map("signer_name") @db.VarChar(255)
   depositAmount  Decimal?  @map("deposit_amount") @db.Decimal(10, 2)
+  paperlessDocumentId Int?      @map("paperless_document_id")
   sentAt         DateTime? @map("sent_at")
   signedAt       DateTime? @map("signed_at")
   createdAt      DateTime  @default(now()) @map("created_at")

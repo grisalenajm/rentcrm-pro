@@ -1,15 +1,20 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { PaperlessService } from '../paperless/paperless.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { SignContractDto } from './dto/sign-contract.dto';
 import * as crypto from 'crypto';
 import * as nodemailer from 'nodemailer';
+import PDFDocument from 'pdfkit';
 
 @Injectable()
 export class ContractsService {
   private readonly logger = new Logger(ContractsService.name);
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private paperlessService: PaperlessService,
+  ) {}
 
   async findAllTemplates(organizationId: string) {
     return this.prisma.contractTemplate.findMany({
@@ -141,6 +146,10 @@ export class ContractsService {
       contractId: contract.id,
       timestamp: new Date().toISOString(),
     }));
+    // Fire and forget — la firma se completa aunque Paperless falle
+    this.doUploadToPaperless(result.id, result.organizationId).catch(err =>
+      this.logger.warn(`Paperless upload omitido: ${err.message}`),
+    );
     return result;
   }
 
@@ -148,6 +157,72 @@ export class ContractsService {
     const contract = await this.findOne(id, organizationId);
     if (contract.status === 'signed') throw new BadRequestException('No se puede cancelar un contrato firmado');
     return this.prisma.contract.update({ where: { id }, data: { status: 'cancelled' } });
+  }
+
+  async uploadToPaperless(id: string, organizationId: string) {
+    const contract = await this.findOne(id, organizationId);
+    if (contract.status !== 'signed') {
+      throw new BadRequestException('Solo se pueden subir contratos firmados a Paperless');
+    }
+    await this.doUploadToPaperless(id, organizationId);
+    return this.findOne(id, organizationId);
+  }
+
+  private async doUploadToPaperless(contractId: string, organizationId: string): Promise<void> {
+    const contract = await this.findOne(contractId, organizationId);
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
+    if (!org) return;
+
+    const b = (contract as any).booking;
+    const year = new Date(b.checkInDate).getFullYear();
+    const clientName = `${b.client.firstName} ${b.client.lastName}`;
+    const propertyName = b.property.name;
+    const title = `Contrato ${propertyName} - ${clientName} - ${year}`;
+    const tags = ['contrato', propertyName, String(year)];
+
+    const pdfBuffer = await this.generateContractPdf(contract);
+    const docId = await this.paperlessService.uploadDocument(
+      (org as any).paperlessUrl,
+      (org as any).paperlessToken,
+      pdfBuffer,
+      title,
+      tags,
+    );
+
+    if (docId !== null) {
+      await this.prisma.contract.update({
+        where: { id: contractId },
+        data: { paperlessDocumentId: docId },
+      });
+      this.logger.log(`Contrato ${contractId} subido a Paperless con ID ${docId}`);
+    }
+  }
+
+  private async generateContractPdf(contract: any): Promise<Buffer> {
+    const content = this.fillVariables(contract.template.content, contract);
+    const doc = new PDFDocument({ margin: 60 });
+    const chunks: Buffer[] = [];
+
+    return new Promise((resolve) => {
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+
+      doc.fontSize(16).font('Helvetica-Bold').text(contract.template.name.toUpperCase(), { align: 'center' });
+      doc.moveDown(2);
+      doc.fontSize(11).font('Helvetica').text(content, { lineGap: 4 });
+
+      if (contract.status === 'signed' && contract.signerName) {
+        doc.moveDown(2);
+        doc.moveTo(60, doc.y).lineTo(doc.page.width - 60, doc.y).stroke();
+        doc.moveDown(1);
+        doc.fontSize(10).text(`Firmado por: ${contract.signerName}`);
+        if (contract.signedAt) {
+          doc.text(`Fecha: ${new Date(contract.signedAt).toLocaleString('es-ES')}`);
+        }
+      }
+
+      doc.end();
+    });
   }
 
   private fillVariables(content: string, contract: any): string {

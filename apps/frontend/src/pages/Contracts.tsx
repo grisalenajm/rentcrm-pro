@@ -12,6 +12,7 @@ interface Contract {
   signedAt?: string;
   signerName?: string;
   signatureImage?: string;
+  paperlessDocumentId?: number | null;
   createdAt: string;
   template: { name: string; type: string };
   booking: {
@@ -50,6 +51,16 @@ export default function Contracts() {
   const { data: templates = [] } = useQuery({
     queryKey: ['contract-templates'],
     queryFn: () => api.get('/contracts/templates').then(r => r.data),
+  });
+
+  const { data: org } = useQuery({
+    queryKey: ['organization'],
+    queryFn: () => api.get('/organization').then(r => r.data),
+  });
+
+  const paperlessUploadMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/contracts/${id}/paperless/upload`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contracts'] }),
   });
 
   const createMutation = useMutation({
@@ -158,6 +169,19 @@ export default function Contracts() {
                             {t('contracts.signed')}
                           </button>
                         )}
+                        {c.status === 'signed' && c.paperlessDocumentId && org?.paperlessUrl && (
+                          <a href={`${org.paperlessUrl}/documents/${c.paperlessDocumentId}`} target="_blank" rel="noopener noreferrer"
+                            className="px-3 py-1 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors">
+                            📦 Paperless
+                          </a>
+                        )}
+                        {c.status === 'signed' && !c.paperlessDocumentId && org?.paperlessUrl && (
+                          <button onClick={() => paperlessUploadMutation.mutate(c.id)}
+                            disabled={paperlessUploadMutation.isPending}
+                            className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-50">
+                            {paperlessUploadMutation.isPending ? '⏳' : '📤'} Subir
+                          </button>
+                        )}
                         {c.status !== 'signed' && c.status !== 'cancelled' && (
                           <button onClick={() => { if(confirm(t('common.confirm_delete'))) cancelMutation.mutate(c.id); }}
                             className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
@@ -210,6 +234,19 @@ export default function Contracts() {
                     <button onClick={() => setSignatureView(c)}
                       className="px-3 py-1.5 text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors">
                       {t('contracts.signed')}
+                    </button>
+                  )}
+                  {c.status === 'signed' && c.paperlessDocumentId && org?.paperlessUrl && (
+                    <a href={`${org.paperlessUrl}/documents/${c.paperlessDocumentId}`} target="_blank" rel="noopener noreferrer"
+                      className="px-3 py-1.5 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors">
+                      📦 Paperless
+                    </a>
+                  )}
+                  {c.status === 'signed' && !c.paperlessDocumentId && org?.paperlessUrl && (
+                    <button onClick={() => paperlessUploadMutation.mutate(c.id)}
+                      disabled={paperlessUploadMutation.isPending}
+                      className="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-50">
+                      {paperlessUploadMutation.isPending ? '⏳' : '📤'} Subir
                     </button>
                   )}
                   {c.status !== 'signed' && c.status !== 'cancelled' && (

@@ -88,6 +88,13 @@ export class ContractsController {
     return this.contractsService.send(id, req.user.organizationId, baseUrl);
   }
 
+  @Post(':id/paperless/upload')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'gestor')
+  uploadToPaperless(@Param('id') id: string, @Request() req) {
+    return this.contractsService.uploadToPaperless(id, req.user.organizationId);
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'gestor')
