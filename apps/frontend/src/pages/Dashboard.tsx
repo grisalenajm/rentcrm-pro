@@ -33,24 +33,113 @@ function kpiCard(label: string, value: string | number, sub?: string) {
   );
 }
 
-function toTop10WithOthers(counts: Record<string, number>) {
+// ── MEJORA 2: PieEntry con breakdown para "Otros" ──────────────────────────
+type PieEntry = { name: string; value: number; others?: { name: string; value: number }[] };
+
+function toTop10WithOthers(counts: Record<string, number>): PieEntry[] {
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const top10 = sorted.slice(0, 10).map(([name, value]) => ({ name, value }));
-  const others = sorted.slice(10).reduce((s, [, v]) => s + v, 0);
-  if (others > 0) top10.push({ name: 'Otros', value: others });
+  const top10: PieEntry[] = sorted.slice(0, 10).map(([name, value]) => ({ name, value }));
+  const othersItems = sorted.slice(10).map(([name, value]) => ({ name, value }));
+  const othersTotal = othersItems.reduce((s, { value: v }) => s + v, 0);
+  if (othersTotal > 0) top10.push({ name: 'Otros', value: othersTotal, others: othersItems });
   return top10;
 }
 
 const tooltipStyle = { backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: 8 };
 
+function PieCustomTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const entry: PieEntry = payload[0].payload;
+  return (
+    <div style={{ ...tooltipStyle, padding: '10px 14px', maxWidth: 220 }}>
+      <div className="font-semibold text-sm mb-1">{entry.name}: {entry.value}</div>
+      {entry.others && entry.others.length > 0 && (
+        <div className="space-y-0.5 mt-1 border-t border-slate-700 pt-1">
+          {entry.others.map(o => (
+            <div key={o.name} className="text-xs text-slate-300 flex justify-between gap-3">
+              <span>{o.name}</span><span className="text-slate-400">{o.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── MEJORA 1: Selector de vista por gráfico ────────────────────────────────
 type ViewMode = 'monthly' | 'annual' | 'compare';
+
+function ChartViewSelector({ view, setView, year, setYear, yearB, setYearB }: {
+  view: ViewMode; setView: (v: ViewMode) => void;
+  year: number; setYear: (y: number) => void;
+  yearB: number; setYearB: (y: number) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {view !== 'annual' && (
+        <select
+          value={year}
+          onChange={e => setYear(Number(e.target.value))}
+          className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        >
+          {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+      )}
+      {view === 'compare' && (
+        <>
+          <span className="text-slate-500 text-xs">vs</span>
+          <select
+            value={yearB}
+            onChange={e => setYearB(Number(e.target.value))}
+            className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          >
+            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </>
+      )}
+      <div className="flex items-center gap-0.5 bg-slate-800 rounded-lg p-0.5">
+        {(['monthly', 'annual', 'compare'] as ViewMode[]).map(mode => (
+          <button
+            key={mode}
+            onClick={() => setView(mode)}
+            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+              view === mode ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            {mode === 'monthly' ? 'Mensual' : mode === 'annual' ? 'Anual' : 'Comparativa'}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── MEJORA 3: tipo de celda del mapa de calor ──────────────────────────────
+type DayInfo = { count: number; checkin: boolean; checkout: boolean };
+
+function dayColor(info: DayInfo): string {
+  if (info.checkin) return 'bg-blue-500';
+  if (info.checkout) return 'bg-indigo-400';
+  if (info.count === 0) return 'bg-slate-800';
+  if (info.count === 1) return 'bg-emerald-400';
+  if (info.count === 2) return 'bg-emerald-500';
+  return 'bg-emerald-600';
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
-  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
-  const [compareYearB, setCompareYearB] = useState(CURRENT_YEAR - 1);
-  const [viewMode, setViewMode] = useState<ViewMode>('monthly');
+  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR); // Negocio tab
+
+  // MEJORA 1: estado por gráfico (tab Resumen)
+  const [barView, setBarView] = useState<ViewMode>('monthly');
+  const [barYear, setBarYear] = useState(CURRENT_YEAR);
+  const [barYearB, setBarYearB] = useState(CURRENT_YEAR - 1);
+  const [lineView, setLineView] = useState<ViewMode>('monthly');
+  const [lineYear, setLineYear] = useState(CURRENT_YEAR);
+  const [lineYearB, setLineYearB] = useState(CURRENT_YEAR - 1);
+  const [heatMapYear, setHeatMapYear] = useState(CURRENT_YEAR);
+
   const [occupancyPropId, setOccupancyPropId] = useState('');
   const [heatMapPropId, setHeatMapPropId] = useState('');
   const [bizPeriod, setBizPeriod] = useState<'month'|'quarter'|'year'>('year');
@@ -101,7 +190,6 @@ export default function Dashboard() {
     ).length,
     [bookings, todayStr]);
 
-  // Helpers para extraer ingresos/gastos por año+mes (ingresos = financials + bookings)
   const getIncome = (yr: number, mo?: number) => {
     const financialIncome = financials.filter((f: any) => {
       const d = new Date(f.date);
@@ -120,17 +208,17 @@ export default function Dashboard() {
       return d.getFullYear() === yr && (mo === undefined || d.getMonth() === mo);
     }).reduce((s: number, e: any) => s + Number(e.amount), 0);
 
-  // Bar chart: viewMode-aware
+  // Bar chart: por gráfico
   const chartBarData = useMemo(() => {
-    if (viewMode === 'annual') {
+    if (barView === 'annual') {
       return FIVE_YEARS.map(yr => ({
         name: String(yr),
         ingresos: Math.round(getIncome(yr)),
         gastos:   Math.round(getExpense(yr)),
       }));
     }
-    if (viewMode === 'compare') {
-      const yA = selectedYear, yB = compareYearB;
+    if (barView === 'compare') {
+      const yA = barYear, yB = barYearB;
       return MONTHS.map((name, mo) => ({
         name,
         [`ing.${yA}`]: Math.round(getIncome(yA, mo)),
@@ -139,15 +227,14 @@ export default function Dashboard() {
         [`gas.${yB}`]: Math.round(getExpense(yB, mo)),
       }));
     }
-    // monthly
     return MONTHS.map((name, mo) => ({
       name,
-      ingresos: Math.round(getIncome(selectedYear, mo)),
-      gastos:   Math.round(getExpense(selectedYear, mo)),
+      ingresos: Math.round(getIncome(barYear, mo)),
+      gastos:   Math.round(getExpense(barYear, mo)),
     }));
-  }, [financials, expenses, viewMode, selectedYear, compareYearB]);
+  }, [financials, expenses, barView, barYear, barYearB]);
 
-  // Line chart: viewMode-aware
+  // Line chart: por gráfico
   const propId = occupancyPropId || (properties[0]?.id ?? '');
 
   const getMonthOccupancy = (yr: number, mo: number, pid: string) => {
@@ -175,14 +262,14 @@ export default function Dashboard() {
   };
 
   const chartLineData = useMemo(() => {
-    if (viewMode === 'annual') {
+    if (lineView === 'annual') {
       return FIVE_YEARS.map(yr => ({
         name: String(yr),
         'Ocupación %': getYearOccupancy(yr, propId),
       }));
     }
-    if (viewMode === 'compare') {
-      const yA = selectedYear, yB = compareYearB;
+    if (lineView === 'compare') {
+      const yA = lineYear, yB = lineYearB;
       return MONTHS.map((name, mo) => ({
         name,
         [`Ocup.${yA}`]: getMonthOccupancy(yA, mo, propId),
@@ -191,26 +278,39 @@ export default function Dashboard() {
     }
     return MONTHS.map((name, mo) => ({
       name,
-      'Ocupación %': getMonthOccupancy(selectedYear, mo, propId),
+      'Ocupación %': getMonthOccupancy(lineYear, mo, propId),
     }));
-  }, [bookings, propId, viewMode, selectedYear, compareYearB]);
+  }, [bookings, propId, lineView, lineYear, lineYearB]);
 
-  // Heat map: filtrable por propiedad
+  // MEJORA 3: Mapa de calor con count + checkin/checkout
   const heatMap = useMemo(() => {
-    const grid: boolean[][] = Array.from({ length: 12 }, () => Array(31).fill(false));
+    const grid: DayInfo[][] = Array.from({ length: 12 }, () =>
+      Array.from({ length: 31 }, () => ({ count: 0, checkin: false, checkout: false }))
+    );
     bookings.filter((b: any) =>
       b.status !== 'cancelled' && (!heatMapPropId || b.propertyId === heatMapPropId)
     ).forEach((b: any) => {
       const start = new Date(b.checkInDate);
       const end   = new Date(b.checkOutDate);
       for (const d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
-        if (d.getFullYear() === selectedYear) {
-          grid[d.getMonth()][d.getDate() - 1] = true;
+        if (d.getFullYear() === heatMapYear) {
+          grid[d.getMonth()][d.getDate() - 1].count++;
         }
+      }
+      if (start.getFullYear() === heatMapYear) {
+        grid[start.getMonth()][start.getDate() - 1].checkin = true;
+      }
+      if (end.getFullYear() === heatMapYear) {
+        grid[end.getMonth()][end.getDate() - 1].checkout = true;
       }
     });
     return grid;
-  }, [bookings, selectedYear, heatMapPropId]);
+  }, [bookings, heatMapYear, heatMapPropId]);
+
+  // Meses visibles en móvil: mes actual y los 2 anteriores
+  const mobileVisibleMonths = new Set(
+    [NOW.getMonth() - 2, NOW.getMonth() - 1, NOW.getMonth()].map(m => ((m % 12) + 12) % 12)
+  );
 
   // ── TAB 2: NEGOCIO ────────────────────────────────────────────────────────
 
@@ -356,19 +456,6 @@ export default function Dashboard() {
     return <span className={`text-xs ml-1 ${pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{pct >= 0 ? '▲' : '▼'}{Math.abs(pct)}% vs año ant.</span>;
   };
 
-  const viewModeLabel = viewMode === 'monthly' ? 'Mensual' : viewMode === 'annual' ? 'Anual' : 'Comparativa';
-  const barChartTitle = viewMode === 'annual'
-    ? `Ingresos vs Gastos — ${FIVE_YEARS[0]}–${FIVE_YEARS[4]}`
-    : viewMode === 'compare'
-    ? `Ingresos vs Gastos — ${selectedYear} vs ${compareYearB}`
-    : `Ingresos vs Gastos — ${selectedYear}`;
-
-  const lineChartTitle = viewMode === 'annual'
-    ? `Ocupación anual`
-    : viewMode === 'compare'
-    ? `Ocupación — ${selectedYear} vs ${compareYearB}`
-    : `Ocupación mensual — ${selectedYear}`;
-
   // ── RENDER ────────────────────────────────────────────────────────────────
 
   return (
@@ -397,7 +484,7 @@ export default function Dashboard() {
       {/* ── TAB 1: RESUMEN ── */}
       {activeTab === 0 && (
         <div className="space-y-6">
-          {/* KPIs — siempre del mes en curso */}
+          {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {kpiCard('Ocupación actual', `${occupancyToday}%`, `${properties.length} propiedades`)}
             {kpiCard('Ingresos del mes', `€${monthIncome.toLocaleString('es-ES', { maximumFractionDigits: 0 })}`, MONTHS[NOW.getMonth()])}
@@ -405,50 +492,22 @@ export default function Dashboard() {
             {kpiCard('Checkins hoy', checkinsPendingToday, 'pendientes de completar')}
           </div>
 
-          {/* Selector de periodo para los gráficos */}
-          <div className="flex flex-wrap items-center gap-3">
-            {viewMode !== 'annual' && (
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400 text-sm">{viewMode === 'compare' ? 'Año A:' : 'Año:'}</span>
-                <select
-                  value={selectedYear}
-                  onChange={e => setSelectedYear(Number(e.target.value))}
-                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                >
-                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </div>
-            )}
-            {viewMode === 'compare' && (
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400 text-sm">Año B:</span>
-                <select
-                  value={compareYearB}
-                  onChange={e => setCompareYearB(Number(e.target.value))}
-                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                >
-                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </div>
-            )}
-            <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
-              {(['monthly', 'annual', 'compare'] as ViewMode[]).map(mode => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                    viewMode === mode ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {mode === 'monthly' ? 'Mensual' : mode === 'annual' ? 'Anual' : 'Comparativa'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Bar: ingresos vs gastos */}
+          {/* Bar: ingresos vs gastos — selector per-chart */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-            <h2 className="font-semibold mb-4">{barChartTitle}</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <h2 className="font-semibold">
+                {barView === 'annual'
+                  ? `Ingresos vs Gastos — ${FIVE_YEARS[0]}–${FIVE_YEARS[4]}`
+                  : barView === 'compare'
+                  ? `Ingresos vs Gastos — ${barYear} vs ${barYearB}`
+                  : `Ingresos vs Gastos — ${barYear}`}
+              </h2>
+              <ChartViewSelector
+                view={barView} setView={setBarView}
+                year={barYear} setYear={setBarYear}
+                yearB={barYearB} setYearB={setBarYearB}
+              />
+            </div>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartBarData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -456,12 +515,12 @@ export default function Dashboard() {
                 <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={v => `€${v}`} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`€${Number(v).toLocaleString('es-ES')}`, '']} />
                 <Legend wrapperStyle={{ color: '#94a3b8', fontSize: 13 }} />
-                {viewMode === 'compare' ? (
+                {barView === 'compare' ? (
                   <>
-                    <Bar dataKey={`ing.${selectedYear}`}  fill="#10b981" name={`Ingresos ${selectedYear}`}  radius={[3,3,0,0]} />
-                    <Bar dataKey={`gas.${selectedYear}`}  fill="#ef4444" name={`Gastos ${selectedYear}`}    radius={[3,3,0,0]} />
-                    <Bar dataKey={`ing.${compareYearB}`} fill="#06b6d4" name={`Ingresos ${compareYearB}`}  radius={[3,3,0,0]} />
-                    <Bar dataKey={`gas.${compareYearB}`} fill="#f97316" name={`Gastos ${compareYearB}`}    radius={[3,3,0,0]} />
+                    <Bar dataKey={`ing.${barYear}`}  fill="#10b981" name={`Ingresos ${barYear}`}  radius={[3,3,0,0]} />
+                    <Bar dataKey={`gas.${barYear}`}  fill="#ef4444" name={`Gastos ${barYear}`}    radius={[3,3,0,0]} />
+                    <Bar dataKey={`ing.${barYearB}`} fill="#06b6d4" name={`Ingresos ${barYearB}`} radius={[3,3,0,0]} />
+                    <Bar dataKey={`gas.${barYearB}`} fill="#f97316" name={`Gastos ${barYearB}`}   radius={[3,3,0,0]} />
                   </>
                 ) : (
                   <>
@@ -473,19 +532,32 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
 
-          {/* Line: ocupación */}
+          {/* Line: ocupación — selector per-chart */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-              <h2 className="font-semibold">{lineChartTitle}</h2>
-              {viewMode !== 'annual' && (
-                <select
-                  value={occupancyPropId}
-                  onChange={e => setOccupancyPropId(e.target.value)}
-                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                >
-                  {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              )}
+              <h2 className="font-semibold">
+                {lineView === 'annual'
+                  ? `Ocupación anual`
+                  : lineView === 'compare'
+                  ? `Ocupación — ${lineYear} vs ${lineYearB}`
+                  : `Ocupación mensual — ${lineYear}`}
+              </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                {lineView !== 'annual' && (
+                  <select
+                    value={occupancyPropId}
+                    onChange={e => setOccupancyPropId(e.target.value)}
+                    className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                )}
+                <ChartViewSelector
+                  view={lineView} setView={setLineView}
+                  year={lineYear} setYear={setLineYear}
+                  yearB={lineYearB} setYearB={setLineYearB}
+                />
+              </div>
             </div>
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={chartLineData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -494,10 +566,10 @@ export default function Dashboard() {
                 <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={v => `${v}%`} domain={[0, 100]} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`, '']} />
                 <Legend wrapperStyle={{ color: '#94a3b8', fontSize: 13 }} />
-                {viewMode === 'compare' ? (
+                {lineView === 'compare' ? (
                   <>
-                    <Line type="monotone" dataKey={`Ocup.${selectedYear}`}  stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 3 }} name={`Ocup. ${selectedYear}`} />
-                    <Line type="monotone" dataKey={`Ocup.${compareYearB}`} stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6', r: 3 }} name={`Ocup. ${compareYearB}`} />
+                    <Line type="monotone" dataKey={`Ocup.${lineYear}`}  stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 3 }} name={`Ocup. ${lineYear}`} />
+                    <Line type="monotone" dataKey={`Ocup.${lineYearB}`} stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6', r: 3 }} name={`Ocup. ${lineYearB}`} />
                   </>
                 ) : (
                   <Line type="monotone" dataKey="Ocupación %" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 3 }} />
@@ -506,46 +578,64 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
 
-          {/* Heat map: días ocupados */}
+          {/* MEJORA 3: Mapa de calor de ocupación por propiedad */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-              <h2 className="font-semibold">Días ocupados — {selectedYear}</h2>
-              <select
-                value={heatMapPropId}
-                onChange={e => setHeatMapPropId(e.target.value)}
-                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                <option value="">Todas las propiedades</option>
-                {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <h2 className="font-semibold">Ocupación por propiedad</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={heatMapYear}
+                  onChange={e => setHeatMapYear(Number(e.target.value))}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <select
+                  value={heatMapPropId}
+                  onChange={e => setHeatMapPropId(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="">Todas</option>
+                  {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <div className="min-w-[560px]">
-                {/* Day headers */}
                 <div className="flex gap-0.5 mb-1 ml-8">
                   {Array.from({ length: 31 }, (_, d) => (
                     <div key={d} className="w-4 text-center text-slate-600 text-[9px] shrink-0">{d + 1}</div>
                   ))}
                 </div>
                 {heatMap.map((days, mo) => (
-                  <div key={mo} className="flex items-center gap-0.5 mb-0.5">
+                  <div
+                    key={mo}
+                    className={`flex items-center gap-0.5 mb-0.5 ${!mobileVisibleMonths.has(mo) ? 'hidden sm:flex' : ''}`}
+                  >
                     <div className="w-7 text-slate-400 text-[11px] text-right mr-1 shrink-0">{MONTHS[mo]}</div>
-                    {days.map((occupied, d) => {
-                      const maxDay = daysInMonth(selectedYear, mo);
+                    {days.map((info, d) => {
+                      const maxDay = daysInMonth(heatMapYear, mo);
+                      const tip = d < maxDay && (info.count > 0 || info.checkout)
+                        ? `${info.count > 0 ? `${info.count} reserva(s)` : ''}${info.checkin ? ' · entrada' : ''}${info.checkout ? ' · salida' : ''}`.trim()
+                        : undefined;
                       return (
                         <div
                           key={d}
+                          title={tip}
                           className={`w-4 h-4 rounded-sm shrink-0 ${
-                            d >= maxDay ? 'opacity-0' : occupied ? 'bg-emerald-500' : 'bg-slate-800'
+                            d >= maxDay ? 'opacity-0' : dayColor(info)
                           }`}
                         />
                       );
                     })}
                   </div>
                 ))}
-                <div className="flex items-center gap-3 mt-3">
-                  <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-500" /><span className="text-xs text-slate-400">Ocupado</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-slate-800" /><span className="text-xs text-slate-400">Libre</span></div>
+                <div className="flex items-center gap-3 mt-3 flex-wrap">
+                  <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-blue-500" /><span className="text-xs text-slate-400">Entrada</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-indigo-400" /><span className="text-xs text-slate-400">Salida</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-400" /><span className="text-xs text-slate-400">Ocupado</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-600" /><span className="text-xs text-slate-400">Múltiples reservas</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-slate-800 border border-slate-700" /><span className="text-xs text-slate-400">Libre</span></div>
                 </div>
               </div>
             </div>
@@ -556,7 +646,6 @@ export default function Dashboard() {
       {/* ── TAB 2: NEGOCIO ── */}
       {activeTab === 1 && (
         <div className="space-y-6">
-          {/* Period selector */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-slate-400 text-sm">Periodo:</span>
             {(['month','quarter','year'] as const).map(p => (
@@ -580,7 +669,6 @@ export default function Dashboard() {
             </select>
           </div>
 
-          {/* Metrics row */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
               <div className="text-2xl font-bold text-emerald-400">
@@ -605,10 +693,9 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Property profitability table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-800">
-              <h2 className="font-semibold">Rentabilidad por propiedad — {viewModeLabel} {viewMode !== 'annual' ? selectedYear : ''}</h2>
+              <h2 className="font-semibold">Rentabilidad por propiedad — {selectedYear}</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -643,9 +730,8 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Ranking horizontal bars */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-              <h2 className="font-semibold mb-4">Ranking por ingresos — {viewMode !== 'annual' ? selectedYear : `${FIVE_YEARS[0]}–${FIVE_YEARS[4]}`}</h2>
+              <h2 className="font-semibold mb-4">Ranking por ingresos — {selectedYear}</h2>
               {propertyProfitability.length > 0 ? (
                 <ResponsiveContainer width="100%" height={Math.max(200, propertyProfitability.length * 44)}>
                   <BarChart
@@ -665,7 +751,7 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Pie: origen reservas — top 10 + otros */}
+            {/* MEJORA 2: Pie con top 10 + Otros y tooltip con desglose */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
               <h2 className="font-semibold mb-4">Origen de reservas — {periodLabel}</h2>
               {sourcePieData.length > 0 ? (
@@ -675,7 +761,7 @@ export default function Dashboard() {
                       <Pie data={sourcePieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`} labelLine={false}>
                         {sourcePieData.map((_: any, i: number) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                       </Pie>
-                      <Tooltip contentStyle={tooltipStyle} />
+                      <Tooltip content={<PieCustomTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="flex flex-wrap gap-2 justify-center mt-2">
@@ -698,7 +784,6 @@ export default function Dashboard() {
       {/* ── TAB 3: CLIENTES ── */}
       {activeTab === 2 && (
         <div className="space-y-6">
-          {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {kpiCard('Clientes únicos', clientData.top10.length + (Object.keys(clientData).length > 3 ? '...' : ''), 'con reservas')}
             {kpiCard('Clientes nuevos', clientData.newClients, '1 sola estancia')}
@@ -709,7 +794,6 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Top 10 clients table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-800">
               <h2 className="font-semibold">Top 10 clientes por gasto</h2>
@@ -745,7 +829,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Nationality pie — top 10 + otros */}
+          {/* MEJORA 2: Pie nacionalidades con tooltip desglose para "Otros" */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <h2 className="font-semibold mb-4">Nacionalidades de huéspedes</h2>
             {nationalityPie.length > 0 ? (
@@ -755,7 +839,7 @@ export default function Dashboard() {
                     <Pie data={nationalityPie} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({ name, percent }) => percent > 0.04 ? `${name} ${Math.round(percent * 100)}%` : ''} labelLine={false}>
                       {nationalityPie.map((_: any, i: number) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                     </Pie>
-                    <Tooltip contentStyle={tooltipStyle} />
+                    <Tooltip content={<PieCustomTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-2 justify-center md:justify-start">
@@ -777,7 +861,6 @@ export default function Dashboard() {
       {/* ── TAB 4: CUMPLIMIENTO ── */}
       {activeTab === 3 && (
         <div className="space-y-6">
-          {/* SES KPIs */}
           <div>
             <h2 className="font-semibold mb-3 text-slate-300">Partes SES — {MONTHS[NOW.getMonth()]} {NOW.getFullYear()}</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -796,7 +879,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Pending SES list */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
               <h2 className="font-semibold">Reservas con SES pendiente</h2>
@@ -836,7 +918,6 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Checkin KPIs */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
               <h2 className="font-semibold mb-4">Check-in online — {MONTHS[NOW.getMonth()]}</h2>
               <div className="space-y-3">
@@ -865,7 +946,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Contracts KPIs */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
               <h2 className="font-semibold mb-4">Contratos — {MONTHS[NOW.getMonth()]}</h2>
               <div className="space-y-3">
