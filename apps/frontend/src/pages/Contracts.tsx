@@ -91,10 +91,10 @@ export default function Contracts() {
   });
 
   const getSignUrl = (token: string) =>
-    `${window.location.protocol}//${window.location.hostname}:3000/sign/${token}`;
+    `${window.location.protocol}//${window.location.hostname}:3000/contracts/sign/${token}`;
 
-  const viewContract = (id: string) => {
-    window.open(`${window.location.protocol}//${window.location.hostname}:3001/api/contracts/view/${id}`, '_blank');
+  const viewContract = (token: string) => {
+    window.open(`${window.location.protocol}//${window.location.hostname}:3001/api/contracts/view/${token}`, '_blank');
   };
 
   return (
@@ -156,7 +156,7 @@ export default function Contracts() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end flex-wrap">
-                        <button onClick={() => viewContract(c.id)}
+                        <button onClick={() => viewContract(c.token)}
                           className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
                           {t('contracts.viewContract')}
                         </button>
@@ -231,7 +231,7 @@ export default function Contracts() {
                   {c.signedAt && <span> · ✓ {new Date(c.signedAt).toLocaleDateString('es-ES')}</span>}
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  <button onClick={() => viewContract(c.id)}
+                  <button onClick={() => viewContract(c.token)}
                     className="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
                     {t('contracts.viewContract')}
                   </button>

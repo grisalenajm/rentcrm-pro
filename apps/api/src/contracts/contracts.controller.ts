@@ -42,11 +42,13 @@ export class ContractsController {
   }
 
   // ── FIRMA PÚBLICA (sin auth, antes de /:id) ───────────
+  @Public()
   @Get('sign/:token')
   getByToken(@Param('token') token: string) {
     return this.contractsService.findByToken(token);
   }
 
+  @Public()
   @Post('sign/:token')
   sign(@Param('token') token: string, @Body() dto: SignContractDto, @Ip() ip: string) {
     return this.contractsService.sign(token, dto, ip);
@@ -54,9 +56,9 @@ export class ContractsController {
 
   // ── VISTA HTML pública (antes de /:id) ───────────────
   @Public()
-  @Get('view/:id')
-  async viewContract(@Param('id') id: string, @Res() res: Response) {
-    const html = await this.contractsService.renderContractHtml(id);
+  @Get('view/:token')
+  async viewContract(@Param('token') token: string, @Res() res: Response) {
+    const html = await this.contractsService.renderContractHtmlByToken(token);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   }

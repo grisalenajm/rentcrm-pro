@@ -37,7 +37,7 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/sign/:token" element={<SignContract />} />
+            <Route path="/contracts/sign/:token" element={<SignContract />} />
             <Route path="/checkin/:token" element={<CheckinPage />} />
             <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
               <Route index element={<Dashboard />} />

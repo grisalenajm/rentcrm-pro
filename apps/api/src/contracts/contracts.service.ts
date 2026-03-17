@@ -127,7 +127,7 @@ export class ContractsService {
       auth: { user: org.smtpUser as string, pass: org.smtpPass as string },
     });
 
-    const signUrl = `${baseUrl}/sign/${contract.token}`;
+    const signUrl = `${baseUrl}/contracts/sign/${contract.token}`;
 
     try {
       await transporter.sendMail({
@@ -265,9 +265,9 @@ export class ContractsService {
       .replace(/\{\{fechaFirma\}\}/g, contract.signedAt ? new Date(contract.signedAt).toLocaleDateString('es-ES') : '—');
   }
 
-  async renderContractHtml(id: string): Promise<string> {
-    const contract = await this.prisma.contract.findFirst({
-      where: { id },
+  async renderContractHtmlByToken(token: string): Promise<string> {
+    const contract = await this.prisma.contract.findUnique({
+      where: { token },
       include: { template: true, booking: { include: { client: true, property: true } } },
     });
     if (!contract) throw new NotFoundException('Contrato no encontrado');
