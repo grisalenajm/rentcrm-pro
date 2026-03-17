@@ -3,13 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, loginWithOtp } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberUser, setRememberUser] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Paso 2FA
+  const [otpStep, setOtpStep] = useState(false);
+  const [tempToken, setTempToken] = useState('');
+  const [otpCode, setOtpCode] = useState('');
 
   useEffect(() => {
     const remembered = localStorage.getItem('rememberedEmail');
@@ -29,10 +34,30 @@ export default function Login() {
       localStorage.removeItem('rememberedEmail');
     }
     try {
-      await login(email, password);
-      navigate('/');
+      const result = await login(email, password);
+      if (result?.requiresOtp) {
+        setTempToken(result.tempToken);
+        setOtpStep(true);
+      } else {
+        navigate('/');
+      }
     } catch {
       setError('Email o contraseña incorrectos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await loginWithOtp(tempToken, otpCode);
+      navigate('/');
+    } catch {
+      setError('Código incorrecto');
+      setOtpCode('');
     } finally {
       setLoading(false);
     }
@@ -48,62 +73,118 @@ export default function Login() {
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8">
-          <h2 className="text-lg font-semibold text-white mb-6">Iniciar sesión</h2>
+          {!otpStep ? (
+            <>
+              <h2 className="text-lg font-semibold text-white mb-6">Iniciar sesión</h2>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
-              {error}
-            </div>
+              {error && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    Contraseña
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="checkbox"
+                    id="rememberUser"
+                    checked={rememberUser}
+                    onChange={e => setRememberUser(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-emerald-500 cursor-pointer"
+                  />
+                  <label htmlFor="rememberUser" className="text-sm text-slate-400 cursor-pointer">
+                    Recordar usuario
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 text-white font-semibold rounded-lg transition-colors text-sm"
+                >
+                  {loading ? 'Entrando...' : 'Entrar'}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <div className="text-center mb-6">
+                <div className="text-3xl mb-3">🔐</div>
+                <h2 className="text-lg font-semibold text-white">Verificación en dos pasos</h2>
+                <p className="text-slate-400 text-sm mt-2">
+                  Introduce el código de 6 dígitos de tu app de autenticación
+                </p>
+              </div>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleOtpSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    Código de verificación
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    autoFocus
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm text-center tracking-[0.5em] text-lg font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || otpCode.length !== 6}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 text-white font-semibold rounded-lg transition-colors text-sm"
+                >
+                  {loading ? 'Verificando...' : 'Verificar'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setOtpStep(false); setOtpCode(''); setError(''); setTempToken(''); }}
+                  className="w-full py-2 text-slate-400 hover:text-white text-sm transition-colors"
+                >
+                  ← Volver al inicio de sesión
+                </button>
+              </form>
+            </>
           )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Contraseña
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
-                required
-              />
-            </div>
-
-            <div className="flex items-center gap-2 mt-1">
-              <input
-                type="checkbox"
-                id="rememberUser"
-                checked={rememberUser}
-                onChange={e => setRememberUser(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-emerald-500 cursor-pointer"
-              />
-              <label htmlFor="rememberUser" className="text-sm text-slate-400 cursor-pointer">
-                Recordar usuario
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 text-white font-semibold rounded-lg transition-colors text-sm"
-            >
-              {loading ? 'Entrando...' : 'Entrar'}
-            </button>
-          </form>
         </div>
       </div>
     </div>

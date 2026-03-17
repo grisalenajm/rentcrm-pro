@@ -13,6 +13,14 @@ export class LoginDto {
   password: string;
 }
 
+export class ValidateOtpDto {
+  @IsString()
+  tempToken: string;
+
+  @IsString()
+  otpToken: string;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -23,5 +31,13 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  @Public()
+  @Post('otp/validate')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  validateOtp(@Body() dto: ValidateOtpDto) {
+    return this.authService.validateOtp(dto.tempToken, dto.otpToken);
   }
 }

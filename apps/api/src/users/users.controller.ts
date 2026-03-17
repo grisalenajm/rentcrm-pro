@@ -1,10 +1,17 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { IsString, Length } from 'class-validator';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+
+export class OtpTokenDto {
+  @IsString()
+  @Length(6, 6)
+  token: string;
+}
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -20,6 +27,22 @@ export class UsersController {
   @Get('me')
   getMe(@Request() req) {
     return this.usersService.findOne(req.user.id, req.user.organizationId);
+  }
+
+  // OTP routes — ANTES de :id para evitar conflictos
+  @Post('otp/setup')
+  otpSetup(@Request() req) {
+    return this.usersService.otpSetup(req.user.id);
+  }
+
+  @Post('otp/verify')
+  otpVerify(@Body() dto: OtpTokenDto, @Request() req) {
+    return this.usersService.otpVerify(req.user.id, dto.token);
+  }
+
+  @Post('otp/disable')
+  otpDisable(@Body() dto: OtpTokenDto, @Request() req) {
+    return this.usersService.otpDisable(req.user.id, dto.token);
   }
 
   @Get(':id')

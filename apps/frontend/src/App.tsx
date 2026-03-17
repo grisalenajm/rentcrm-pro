@@ -12,7 +12,6 @@ import Bookings from './pages/Bookings';
 import BookingDetail from './pages/BookingDetail';
 import Financials from './pages/Financials';
 import Contracts from './pages/Contracts';
-import ContractTemplates from './pages/ContractTemplates';
 import SignContract from './pages/SignContract';
 import CheckinPage from './pages/CheckinPage';
 import ComingSoon from './pages/ComingSoon';
@@ -21,6 +20,7 @@ import OccupancyCalendar from './pages/OccupancyCalendar';
 import Settings from './pages/Settings';
 import UserManagement from './pages/UserManagement';
 import PropertyFinancialDetail from './pages/PropertyFinancialDetail';
+import Profile from './pages/Profile';
 import { UserPreferencesProvider } from './context/UserPreferencesContext';
 
 const qc = new QueryClient();
@@ -51,11 +51,11 @@ export default function App() {
               <Route path="bookings/:id"        element={<BookingDetail />} />
               <Route path="financials"          element={<Financials />} />
               <Route path="contracts"           element={<Contracts />} />
-              <Route path="contracts/templates" element={<ContractTemplates />} />
               <Route path="police"              element={<Police />} />
               <Route path="calendar"           element={<OccupancyCalendar />} />
               <Route path="users"               element={<UserManagement />} />
               <Route path="settings"             element={<Settings />} />
+              <Route path="profile"              element={<Profile />} />
             </Route>
           </Routes>
         </BrowserRouter>

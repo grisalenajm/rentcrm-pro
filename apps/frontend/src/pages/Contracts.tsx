@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
+import ContractTemplates from './ContractTemplates';
 
 interface Contract {
   id: string;
@@ -33,6 +34,7 @@ const statusColor: Record<string, string> = {
 export default function Contracts() {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'contracts' | 'templates'>('contracts');
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ bookingId: '', templateId: '', depositAmount: '' });
   const [signatureView, setSignatureView] = useState<Contract | null>(null);
@@ -100,8 +102,29 @@ export default function Contracts() {
     window.open(`${window.location.protocol}//${window.location.hostname}:3001/api/contracts/view/${token}`, '_blank');
   };
 
+  const tabClass = (tab: 'contracts' | 'templates') =>
+    `px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+      activeTab === tab ? 'bg-emerald-600/20 text-emerald-400' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+    }`;
+
   return (
-    <div className="p-6">
+    <div className="flex flex-col h-full">
+      {/* Tab bar */}
+      <div className="flex gap-1 px-6 pt-5 pb-0 shrink-0">
+        <button onClick={() => setActiveTab('contracts')} className={tabClass('contracts')}>
+          📄 {t('nav.contracts')}
+        </button>
+        <button onClick={() => setActiveTab('templates')} className={tabClass('templates')}>
+          📝 {t('nav.templates')}
+        </button>
+      </div>
+
+      {activeTab === 'templates' ? (
+        <div className="flex-1 overflow-hidden mt-4 border-t border-slate-800">
+          <ContractTemplates />
+        </div>
+      ) : (
+      <div className="p-6 overflow-y-auto flex-1">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">{t('contracts.title')}</h1>
@@ -372,6 +395,8 @@ export default function Contracts() {
             </button>
           </div>
         </div>
+      )}
+      </div>
       )}
     </div>
   );

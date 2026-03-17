@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 
@@ -28,7 +28,6 @@ export default function Layout() {
     { to: '/bookings',            icon: '📅', label: t('nav.bookings')   },
     { to: '/financials',          icon: '💶', label: t('nav.financials') },
     { to: '/contracts',           icon: '📄', label: t('nav.contracts')  },
-    { to: '/contracts/templates', icon: '📝', label: t('nav.templates')  },
     { to: '/calendar',            icon: '🗓️', label: t('nav.calendar')  },
     { to: '/police',              icon: '📡', label: t('nav.police')     },
     ...(user?.role === 'admin' ? [{ to: '/users', icon: '👤', label: t('nav.users') }] : []),
@@ -64,10 +63,10 @@ export default function Layout() {
       </nav>
 
       <div className="p-3 border-t border-slate-800">
-        <div className="px-3 py-2 mb-1">
+        <Link to="/profile" className="block px-3 py-2 mb-1 rounded-lg hover:bg-slate-800 transition-colors">
           <div className="text-xs font-medium text-white truncate">{user?.name}</div>
           <div className="text-xs text-slate-400 truncate">{user?.email}</div>
-        </div>
+        </Link>
         <button onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
           <span>🚪</span>

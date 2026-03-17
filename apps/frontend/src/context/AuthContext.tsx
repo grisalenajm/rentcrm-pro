@@ -22,7 +22,8 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ requiresOtp: true; tempToken: string } | void>;
+  loginWithOtp: (tempToken: string, otpToken: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -144,6 +145,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Auth actions ───────────────────────────────────────────────────────────
   const login = async (email: string, password: string) => {
     const { data } = await api.post('/auth/login', { email, password });
+    if (data.requiresOtp) {
+      return { requiresOtp: true as const, tempToken: data.tempToken };
+    }
+    setAuthToken(data.accessToken);
+    setUser(data.user);
+  };
+
+  const loginWithOtp = async (tempToken: string, otpToken: string) => {
+    const { data } = await api.post('/auth/otp/validate', { tempToken, otpToken });
     setAuthToken(data.accessToken);
     setUser(data.user);
   };
@@ -167,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, loginWithOtp, logout, isAuthenticated: !!user }}>
       {children}
 
       {/* ── Session Expired modal ────────────────────────────────────────── */}
