@@ -1,5 +1,5 @@
 # RentalSuite — Tareas pendientes
-> Actualizado 17/03/2026
+> Actualizado 18/03/2026
 
 ## En progreso
 (ninguna)
@@ -10,9 +10,6 @@
 - [ ] `Police.tsx`: historial de envíos SES con filtros y opción de reenvío (actualmente es placeholder ComingSoon)
 - [ ] Email de notificación cuando SES devuelve error
 
-### CSV NRUA / VAU
-- [ ] Nueva funcionalidad para Depósito de Arrendamientos Comunidad Valenciana
-- [ ] **Esperando especificación técnica de columnas** antes de implementar
 
 ### Gestión documental — Integración Paperless-ngx
 - [ ] Correspondent por propiedad en Paperless para rutas de almacenamiento estructuradas
@@ -38,6 +35,13 @@
 - [ ] `CONTRIBUTING.md`
 
 ## Completado
+
+### Sesión 18/03/2026
+- [x] Fix login: 401 en credenciales incorrectas no dispara logout
+- [x] Notas inline editables en detalle de Propiedad, Reserva y Cliente
+- [x] Campo NRUA en Property (46 chars, ej: ESFCTU00000303700029732800000000000000000VT-510015-A3)
+- [x] Exportación CSV N2 por propiedad seleccionada y año
+- [x] CSV NRUA / VAU — Nueva funcionalidad para Depósito de Arrendamientos Comunidad Valenciana
 
 ### Sesión 17/03/2026
 - [x] Fix Dashboard: ingresos = bookings.totalAmount + financials income sumados

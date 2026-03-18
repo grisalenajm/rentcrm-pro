@@ -212,6 +212,7 @@ Campo `deductible` (boolean, default false): si true, el gasto es deducible fisc
 | GET | `/excel/export/bookings` | any | Exportar reservas .xlsx |
 | GET | `/excel/export/expenses` | any | Exportar gastos .xlsx |
 | GET | `/excel/export/properties` | any | Exportar propiedades .xlsx |
+| GET | `/excel/export/nrua` | any | Exportar CSV N2 por propiedad (`?year=YYYY&propertyId=XXX`) |
 | GET | `/excel/template/:type` | any | Descargar plantilla importación (clients\|expenses) |
 | POST | `/excel/import/clients` | any | Importar clientes desde .xlsx (multipart/form-data, campo: `file`) |
 | POST | `/excel/import/expenses` | any | Importar gastos desde .xlsx (multipart/form-data, campo: `file`) |

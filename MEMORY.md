@@ -1,6 +1,6 @@
 # RentCRM Pro — Estado del Proyecto
 
-> Última actualización: 17/03/2026 — v1.3.0
+> Última actualización: 18/03/2026 — v1.3.0
 
 ## Stack
 - **Frontend**: Vite + React (TypeScript), puerto 3000, Docker (rebuild obligatorio)
@@ -17,7 +17,7 @@
 | users | ✅ | CRUD usuarios por organización |
 | organization | ✅ | Config SMTP, SES, logo, Paperless |
 | clients | ✅ | CRUD + navegación ←/→ entre registros |
-| properties | ✅ | CRUD + foto + country/postalCode + modales rediseñados |
+| properties | ✅ | CRUD + foto + country/postalCode + modales rediseñados + NRUA (C.Valenciana) |
 | property-rules | ✅ | Reglas de la casa: editor + 10 traducciones + checkin |
 | property-content | ✅ | Contenido público propiedad + documentos reordenables |
 | bookings | ✅ | CRUD + workflow estados + cambio manual + checkin tokenizado |
@@ -29,7 +29,7 @@
 | dashboard | ✅ | 4 pestañas (recharts): resumen/negocio/clientes/cumplimiento + mapa calor |
 | ses | ✅ | Partes viajeros SES Ministerio (pendiente alta en hospedajes.ses.mir.es) |
 | ical | ✅ | Sync Airbnb/Booking.com via iCal |
-| excel | ✅ | Exportar/importar clientes, reservas, gastos, propiedades |
+| excel | ✅ | Exportar/importar clientes, reservas, gastos, propiedades + CSV N2 (NRUA) |
 | translation | ✅ | LibreTranslate con caché Redis + precalentamiento |
 | paperless | ✅ | Integración Paperless-ngx para contratos firmados |
 
@@ -48,6 +48,12 @@
 ## Pendiente crítico
 - Alta en https://hospedajes.ses.mir.es (para activar envío de partes SES)
 - Ver TODO.md para lista completa
+
+## Exportación N2 (NRUA) — Comunidad Valenciana
+- Campo `nrua` (String opcional, 46 chars) en modelo Property
+- `GET /api/excel/export/nrua?year=YYYY&propertyId=XXX` — un CSV por propiedad
+- Frontend (`NruaExport.tsx`): checkboxes de propiedades con nrua + selector año + descarga secuencial
+- Formato: `NRUA;checkin;checkout;huespedes;finalidad` (fechas dd-mm-yyyy, finalidad=1)
 
 ## Alcance del producto
 - **Caso base**: reservas **indirectas** (via OTAs: Airbnb, Booking.com, etc.)

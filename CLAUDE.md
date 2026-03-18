@@ -160,8 +160,10 @@ model Property {
   icalUrl                  String?
   purchasePrice            Float?
   sesCodigoEstablecimiento String?
+  nrua                     String?   // NRUA Comunidad Valenciana, 46 chars
   paperlessCorrespondentId Int?
   organizationId           String
+  notes                    String?
 }
 
 model Expense {
@@ -378,6 +380,14 @@ https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion
 - SSL: `rejectUnauthorized: false` ya aplicado
 - El XML se comprime con `deflate` — pendiente verificar si el Ministerio lo requiere o espera plano
 - El catch en ses.service.ts (~línea 279) no loguea `err.response?.data` — añadir para debugging
+
+### Exportación N2 (NRUA)
+- Endpoint: `GET /api/excel/export/nrua?year=YYYY&propertyId=XXX`
+- Un CSV por propiedad; descarga secuencial si se seleccionan varias
+- Solo propiedades con `nrua` definido (devuelve 400 si no hay NRUA)
+- Formato fechas: `dd-mm-yyyy`, separador: `;`, finalidad: constante `1`
+- `huespedes`: `BookingGuestSes.count` si existen, si no `1`
+- Frontend: componente `NruaExport.tsx` en Properties.tsx (checkboxes + selector año)
 
 ## Problemas conocidos
 
