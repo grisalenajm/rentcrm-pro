@@ -9,7 +9,8 @@ Roles: `admin` > `gestor` > `owner` (viewer = solo lectura)
 ## Auth
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
-| POST | `/auth/login` | 🔓 (rate limit: 5/min) | Login → devuelve `{ access_token, user }` |
+| POST | `/auth/login` | 🔓 (rate limit: 5/min) | Login → `{ accessToken, user }` o `{ requiresOtp: true, tempToken }` si 2FA activo |
+| POST | `/auth/otp/validate` | 🔓 (rate limit: 10/min) | Validar código OTP → `{ accessToken, user }` · Body: `{ tempToken, otpToken }` |
 
 ---
 
@@ -23,6 +24,11 @@ Roles: `admin` > `gestor` > `owner` (viewer = solo lectura)
 | PUT | `/users/:id` | admin | Actualizar usuario |
 | DELETE | `/users/:id` | admin | Eliminar usuario |
 | PUT | `/users/:id/reset-password` | admin | Resetear contraseña |
+| POST | `/users/otp/setup` | any | Genera secreto TOTP + QR base64 → `{ secret, qrCode, otpauthUrl }` · Requiere confirmar con `/otp/verify` |
+| POST | `/users/otp/verify` | any | Activa el 2FA con el primer código · Body: `{ token: "123456" }` |
+| POST | `/users/otp/disable` | any | Desactiva el 2FA (requiere código válido) · Body: `{ token: "123456" }` |
+
+⚠️ Las rutas `/users/otp/*` van **antes** de `/users/:id` para evitar conflictos de enrutado.
 
 ---
 

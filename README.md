@@ -4,7 +4,7 @@
 
 **Vacation rental CRM — SES compliance · digital contracts · automated check-in**
 
-[![Version](https://img.shields.io/badge/version-v1.2.0-blue.svg)](https://github.com/your-org/rentalsuite/releases)
+[![Version](https://img.shields.io/badge/version-v1.3.0-blue.svg)](https://github.com/your-org/rentalsuite/releases)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-20%2B-brightgreen.svg)](https://nodejs.org/)
 [![Docker](https://img.shields.io/badge/docker-compose-blue.svg)](https://docs.docker.com/compose/)
@@ -32,6 +32,7 @@ Spain's Ministry of Interior traveller registration system).
 | **Excel** | Import/export clients, bookings, expenses, properties |
 | **Translations** | Self-hosted LibreTranslate, Redis cache, 10 languages |
 | **Multi-user** | Roles: `admin`, `gestor`, `owner`, `viewer` |
+| **2FA / OTP** | TOTP authentication (Google Authenticator / Authy), per-user activation, QR setup, secure temp-token login flow |
 
 ## 🏗️ Tech Stack
 
@@ -42,7 +43,7 @@ Spain's Ministry of Interior traveller registration system).
 | Database | PostgreSQL 16 |
 | Cache | Redis 7 |
 | Translations | LibreTranslate (self-hosted, 10 languages) |
-| Auth | JWT (access + refresh tokens) + role guards |
+| Auth | JWT (access + refresh tokens) + role guards + TOTP 2FA (otplib) |
 | Infra | Docker Compose + Nginx reverse proxy |
 
 ---

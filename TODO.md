@@ -1,84 +1,133 @@
-# RentCRM Pro — Tareas pendientes
+# RentalSuite — Tareas pendientes
+> Actualizado 17/03/2026
 
 ## En progreso
 (ninguna)
 
 ## Pendiente (priorizado)
 
-### UX
-- [ ] Mass update de precios de reservas desde Excel: modo 1 por ID de reserva, modo 2 por nombre de propiedad + fecha de entrada
+### SES Hospedajes — Frontend
+- [ ] `Police.tsx`: historial de envíos SES con filtros y opción de reenvío (actualmente es placeholder ComingSoon)
+- [ ] Email de notificación cuando SES devuelve error
 
-### Rebranding
-- [ ] Integrar logo e icono SVG de RentalSuite en la app (pendiente de tener los SVG exportados)
+### CSV NRUA / VAU
+- [ ] Nueva funcionalidad para Depósito de Arrendamientos Comunidad Valenciana
+- [ ] **Esperando especificación técnica de columnas** antes de implementar
 
-### Producción
-- [ ] docker-compose.prod.yml sin Nginx
-- [ ] .env.example documentado en inglés
-- [ ] README.md en inglés con instrucciones de instalación
-- [ ] setup.sh automatizado
+### Gestión documental — Integración Paperless-ngx
+- [ ] Correspondent por propiedad en Paperless para rutas de almacenamiento estructuradas
+  - Campo `paperlessCorrespondentId` en modelo Property
+  - Al subir contrato: pasar correspondent_id según la propiedad del contrato
+  - Storage Path sugerido: `inversiones/{correspondent}/{created_year}/{title}`
+- [ ] Settings: añadir campo Document Type ID de Paperless (para clasificar documentos)
 
-### SES / Compliance
-- [ ] Darse de alta en https://hospedajes.ses.mir.es
-- [ ] Una vez dado de alta: verificar que el envío funciona desde la app
-- [ ] Si sigue 404: probar sin comprimir el XML (quitar `deflate` en ses.service.ts ~línea 220)
-- [ ] Añadir log de `err.response?.data` en el catch de ses.service.ts (~línea 279)
-- [ ] Página Partes SES: historial de envíos con filtros y reenvío (pendiente licencia SES Hospedajes)
-- [ ] Notificación email cuando SES devuelve error
-- [ ] CSV NRUA/VAU para Depósito de Arrendamientos Comunidad Valenciana (pendiente especificación técnica)
+### Edición masiva
+- [ ] Mass update precios de reservas desde Excel (por ID reserva o por propiedad + fecha entrada)
+
+### Cambio contraseña usuario no admin
+- [ ] Usuario no admin puede cambiar su contraseña desde su perfil
+
+### Branding
+- [ ] Integrar SVG logo de RentalSuite en la app (pendiente exportar los SVGs)
+
+### Deploy producción
+- [ ] `docker-compose.prod.yml` limpio
+- [ ] `.env.example` con todas las variables documentadas
+- [ ] `README.md` bilingüe (EN/ES) profesional para GitHub
+- [ ] `setup.sh` script de automatización de instalación
+- [ ] `CONTRIBUTING.md`
 
 ## Completado
 
 ### Sesión 17/03/2026
-- [x] Reportes avanzados: precio medio noche, ocupación vs ingresos, comparativa entre propiedades, estacionalidad, tendencia año a año, ingresos por canal (airbnb/booking/direct), valor medio por reserva por canal, gastos por categoría, gastos fijos vs variables, alertas de gastos inusuales, resumen fiscal anual
-- [x] Campo `deductible` (boolean) en gastos — resumen fiscal reporta 100% del importe de la factura
-- [x] Filtros por columna, propiedad y fecha en página Financials
-- [x] Página detalle financiero por propiedad: ingresos/gastos mensuales y anuales con selector de periodo + reportes ROI (con precio de compra)
-- [x] Gastos recurrentes por propiedad: módulo `recurring-expenses` con frecuencia (monthly/quarterly/yearly), dayOfMonth, cron diario y notificación email cuando se contabiliza
-- [x] Mejoras dashboard: selector vistas mensual/anual/comparativa, gráficas circulares top 10 + "Otros", mapa de calor de ocupación por propiedad
-- [x] Edición masiva en reservas, clientes y gastos: selección múltiple, acciones en bloque, throttle con @SkipThrottle en bulk endpoints
-- [x] Integración Paperless-ngx para contratos firmados: módulo `paperless`, upload automático tras firma digital
-- [x] Contratos: view público por token (@Public()), error visible en frontend, SMTP leído desde Organization, firma PDF con columnas arrendatario/arrendador
-- [x] Git workflow: rama `develop` para desarrollo, `main` para producción, tags semánticos (v1.2.0)
+- [x] Fix Dashboard: ingresos = bookings.totalAmount + financials income sumados
+- [x] Fix Dashboard: KPIs del periodo actual encima del selector de gráfico
+- [x] ROI calculado como (beneficio anual / purchasePrice) * 100
+- [x] Campo `purchasePrice` añadido a Property (para cálculo ROI)
+- [x] Campo `deductible` (boolean) añadido a Expense
+- [x] Filtros en Financials.tsx: propiedad, tipo, rango de fechas
+- [x] Endpoint GET /api/financials/property/:propertyId/report?year=YYYY
+- [x] Página PropertyFinancialDetail.tsx: KPIs, gráfico barras mensual, desglose por tipo y canal
+- [x] Enlace "Ver finanzas" desde Properties a detalle financiero
+- [x] Gastos recurrentes: modelo RecurringExpense, CRUD, cron diario 8:00, email notificación
+- [x] Fix BookingStatusWorkflow: try/catch + mensaje de error visible + loading state
+- [x] Fix traducción estados reserva: created→Creada, registered→Registrada, etc. en i18n
+- [x] Fix statusColor para todos los estados (created|registered|processed|error|cancelled)
+- [x] Fix edición masiva: llamadas secuenciales con delay para evitar ThrottlerException
+- [x] Mass update BD: status 'pending' → 'created' en todas las reservas existentes
+- [x] Configuración ramas: develop (trabajo) → main (producción)
+- [x] Edición masiva en Reservas, Clientes y Gastos (cambio de estado/campo a varios)
+- [x] Dashboard mejoras gráficos: selector vistas, circulares top10, mapa calor ocupación
+- [x] Importación reservas desde Excel (POST /api/excel/import/bookings)
+- [x] Integración Paperless-ngx: subida automática al firmar contrato
+- [x] Paperless: configuración URL + Token + Document Type ID en Settings
+- [x] Paperless: tags resueltos como IDs numéricos (resolveTagId)
+- [x] Fix contratos: vista pública con token (sin login)
+- [x] Fix contratos: SMTP lee configuración desde Organization en BD
+- [x] Fix contratos: botón reenviar contrato
+- [x] Fix contratos: imagen de firma incluida en PDF generado
+- [x] Reportes avanzados: precio medio noche, ocupación vs ingresos, comparativa propiedades, estacionalidad, tendencia año a año, ingresos por canal, gastos por categoría, resumen fiscal anual
+- [x] Sesión idle: detección de inactividad + mensaje de expiración + logout automático
+- [x] Detalle propiedad como página dedicada /properties/:id (sin modal)
+- [x] Fix finanzas propiedad en blanco en PropertyFinancialDetail.tsx
+- [x] Layout ClientDetail: columna izquierda más estrecha, valoración visible
+- [x] Dashboard Negocio: selector de periodos funcional (mes/trimestre/año)
+- [x] Rentabilidad propiedad: KPIs anuales encima del selector de periodo
+- [x] Templates contratos movidos dentro de pestaña Contratos
+- [x] 2FA con OTP (TOTP): setup con QR, activación/desactivación desde perfil de usuario
+- [x] Deploy producción: docker-compose.prod.yml, .env.example, README bilingüe, setup.sh, CONTRIBUTING.md
+
+### Bugs sesión 17/03 (tarde) — RESUELTOS
+- [x] Propiedades: página de editar con mismo formato que página de detalles
+- [x] Propiedades: añadir botón "Editar" en página de detalle
+- [x] Clientes: email desborda y solapa el idioma de contacto en detalle
+- [x] Clientes: añadir botón "Editar" en página de detalle
+- [x] Clientes: página de edición con mismo formato que página de detalle
+- [x] Financials: página no muestra ingresos
+- [x] Calendario: mejorar diseño del calendario mensual (más moderno, menos cuadrado)
+- [x] Police.tsx: cambiar placeholder "Coming Soon" por "En desarrollo"
+- [x] 2FA/TOTP: no visible en perfil de usuario — verificar implementación y rebuild Docker
 
 ### Sesión 16/03/2026
-- [x] Propiedades: campos `country` y `postalCode` (ya en schema/DTOs, sincronizado con `db push`) + rediseño modales crear/editar/ver con patrón visual consistente (cards `bg-slate-800/40 border border-slate-700 rounded-xl`, `inputCls`/`labelCls` constants)
-- [x] Navegación anterior/siguiente en ClientDetail y BookingDetail: flechas ← → con contador posición/total, IDs pasados via React Router state `{ ids, index }` desde los listados
-- [x] Cambio de estado manual de reserva desde BookingDetail: modal centrado con transiciones válidas, badge de estado, solo visible para admin/gestor, PATCH `/api/bookings/:id/status`
+- [x] Propiedades: añadidos campos `country` y `postalCode`, rediseño de modales
+- [x] Navegación anterior/siguiente en detalle (ClientDetail, BookingDetail, Properties)
+- [x] Cambio de estado manual de reserva desde BookingDetail
+- [x] Proyecto renombrado a RentalSuite (logo SVG pendiente de integrar)
 
-### Sesión 14/03/2026 (tarde)
-- [x] Dashboard rediseñado con 4 pestañas (recharts): Resumen, Negocio, Clientes, Cumplimiento
-- [x] Fix Dockerfile frontend: copiar root node_modules (hoisting npm workspaces)
-- [x] Documentación actualizada: README, ESTADO_PROYECTO, TODO
-
-### Sesión 14/03/2026 (mañana)
-- [x] Mejoras flujo reserva: búsqueda cliente con debounce, idioma por nacionalidad, validación solapamiento fechas
-- [x] Fix parpadeo reservas en lista de clientes (staleTime + keepPreviousData)
-- [x] Fix ClientDetail: reservas visibles via GET /api/bookings?clientId= (antes usaba evaluations/summary)
-- [x] Filtros y ordenación por columna en Clients.tsx y Bookings.tsx
-- [x] Layout dos columnas y ancho completo en ClientDetail y BookingDetail
-- [x] Backend reglas de la casa: modelo PropertyRules, endpoints GET/PUT/translate, houseRules en checkin
-- [x] UI reglas de la casa en PropertyDetail: editor + traducciones por idioma
-- [x] Reglas de la casa en checkin online y email de checkin
+### Sesión 14/03/2026
+- [x] Filtros y ordenación en páginas Clients y Bookings
+- [x] Layout ancho en ClientDetail y BookingDetail
+- [x] Fix parpadeo en listado de reservas (staleTime + keepPreviousData)
+- [x] Fix ClientDetail: usa `/api/bookings?clientId=` correctamente
+- [x] Mejoras flujo reserva: debounce en búsqueda cliente, idioma por nacionalidad, validación solapamiento fechas
+- [x] Backend + UI reglas de la casa (PropertyRules) por propiedad
+- [x] Traducciones automáticas de reglas con LibreTranslate
+- [x] Reglas de la casa en checkin online y en email de confirmación
 
 ### Sesión 12/03/2026
-- [x] Fix endpoint SES: `/ws/v1/comunicacion` → `/ws/comunicacion`
+- [x] Fix endpoint SES: `/ws/comunicacion` (sin `/v1/`)
 - [x] sesCodigoEstablecimiento movido de Organization a Property
 - [x] Botón "Probar conexión SES" en Settings
-- [x] Documentación actualizada: CLAUDE.md, BEST_PRACTICES.md, COMMON_MISTAKES.md, TODO.md
+- [x] Documentación: BEST_PRACTICES.md, COMMON_MISTAKES.md, TODO.md
 
 ### Sesión 11/03/2026
-- [x] Workflow estados reserva: created→registered→processed/error/cancelled
-- [x] Componente BookingStatusWorkflow
-- [x] Auto-transiciones en checkin y SES
-- [x] Fix modal edición reserva: checkInDate/checkOutDate/totalAmount
-- [x] Fix SSL SES: rejectUnauthorized false
+- [x] Workflow estados reserva con componente BookingStatusWorkflow
+- [x] Auto-transiciones: checkin completo → registered; SES → processed/error
+- [x] Fix modal edición reserva: campos correctos (checkInDate/checkOutDate/totalAmount)
+- [x] Fix SSL en llamadas al Ministerio
+
+### Sesión 10/03/2026
+- [x] Dashboard con 4 pestañas: Resumen (KPIs + gráficos), Negocio, Clientes, Cumplimiento
+- [x] Fix Dockerfile frontend: copia node_modules raíz (recharts hoisteado por npm workspaces)
 
 ### Sesiones anteriores
-- [x] Responsive móvil completo
-- [x] Seguridad: 30 vulnerabilidades resueltas
-- [x] Financials: vista anual, CRUD gastos, totales
-- [x] Properties: foto, panel detalle, resumen financiero
+- [x] Responsive móvil: layout drawer, tarjetas móvil, modales fullscreen
+- [x] Seguridad: 30 vulnerabilidades (SSL, JWT, IDOR, rate limiting, helmet, CORS)
+- [x] Financials: vista anual con selector de año, CRUD gastos, totales
+- [x] Properties: foto de propiedad, panel detalle rediseñado, resumen financiero anual
 - [x] Excel: exportar/importar clientes, reservas, gastos, propiedades
-- [x] Checkin online: tokenizado, envío automático, página pública
-- [x] LibreTranslate: self-hosted, 10 idiomas, caché
-- [x] Login: validación + checkbox recordar usuario
+- [x] Checkin online: enlace tokenizado, envío automático 2 días antes, página pública
+- [x] LibreTranslate: self-hosted, 10 idiomas, caché + precalentamiento
+- [x] Checkin: huéspedes adicionales +14 años guardados en BookingGuestSes
+- [x] Login: validación campos vacíos + checkbox recordar usuario
+- [x] SES backend: envío síncrono, sesLote, sesStatus (enviado/error)

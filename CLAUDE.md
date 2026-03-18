@@ -1,11 +1,18 @@
-# RentCRM Pro — Guía para Claude Code
+# RentalSuite — Guía para Claude Code
+> Antes llamado RentCRM Pro. Documento actualizado 17/03/2026.
+
+## Identidad del proyecto
+- **Nombre**: RentalSuite (rebranding pendiente de integrar SVG logo en la app)
+- **Repo GitHub**: `grisalenajm/rentcrm-pro`
+- **Ramas**: `develop` (trabajo diario) → `main` (producción estable, merge cuando está probado)
+- **Tags semánticos**: v1.0.0, v1.1.0... en cada release
 
 ## Entorno
-- **Repo**: `/home/rentcrm/rentcrm-pro` (monorepo npm workspaces)
-- **Frontend**: `apps/frontend/` → puerto 3000 (Vite dev server dentro de Docker — **requiere rebuild** para ver cambios)
+- **Repo local**: `/home/rentcrm/rentcrm-pro` (monorepo npm workspaces)
+- **Frontend**: `apps/frontend/` → puerto 3000 (Vite — **requiere rebuild** para ver cambios)
 - **API**: `apps/api/` → puerto 3001 (NestJS, prefijo `/api`)
-- **DB**: PostgreSQL → `postgresql://rentcrm:[ver .env]@localhost:5432/rentcrm`
-- **Redis**: `redis://:[ver .env]@localhost:6379`
+- **DB**: PostgreSQL → `postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm`
+- **Redis**: `redis://:rentcrm_redis_pass@localhost:6379`
 - **LibreTranslate**: `http://localhost:5000` (externo) / `http://libretranslate:5000` (interno Docker)
 
 ## Contenedores Docker
@@ -30,10 +37,10 @@ docker logs rentcrm-api --tail=20
 ### Migraciones Prisma (SIEMPRE desde el host, nunca desde el contenedor)
 ```bash
 cd ~/rentcrm-pro/apps/api
-DATABASE_URL="postgresql://rentcrm:[ver .env]@localhost:5432/rentcrm" npx prisma migrate dev --name nombre-migracion
-DATABASE_URL="postgresql://rentcrm:[ver .env]@localhost:5432/rentcrm" npx prisma generate
-# Si falla "migration modified": usar db push en desarrollo
-DATABASE_URL="postgresql://rentcrm:[ver .env]@localhost:5432/rentcrm" npx prisma db push
+DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma migrate dev --name nombre-migracion
+DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma generate
+# Si falla "migration modified":
+DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma db push
 ```
 
 ### Frontend (requiere rebuild — NO hay hot reload real en el contenedor)
@@ -44,8 +51,10 @@ docker logs rentcrm-frontend --tail=5
 
 ### Git
 ```bash
-cd ~/rentcrm-pro && git add -A && git commit -m "mensaje" && git push origin main
+cd ~/rentcrm-pro && git add -A && git commit -m "mensaje en español" && git push origin develop
 ```
+> Los commits NO llevan Co-Authored-By.
+> Merge a main solo cuando el usuario confirma que está probado y estable.
 
 ## Estructura de archivos clave
 ```
@@ -53,67 +62,47 @@ rentcrm-pro/
 ├── apps/
 │   ├── api/
 │   │   ├── prisma/
-│   │   │   ├── schema.prisma          ← MODELOS DE BD
-│   │   │   └── migrations/            ← historial migraciones
+│   │   │   ├── schema.prisma
+│   │   │   └── migrations/
 │   │   └── src/
-│   │       ├── main.ts                ← bootstrap, puerto 3001
-│   │       ├── app.module.ts          ← módulos registrados
-│   │       ├── auth/
-│   │       │   ├── jwt-auth.guard.ts  ← respeta @Public()
-│   │       │   └── public.decorator.ts← @Public() para rutas sin JWT
+│   │       ├── auth/                  ← login, JWT, OTP/2FA
 │   │       ├── bookings/
-│   │       │   ├── bookings.controller.ts  ← IMPORTANTE: rutas checkin ANTES de :id
-│   │       │   ├── bookings.service.ts
-│   │       │   ├── ses.service.ts     ← lógica SES/SOAP Ministerio
-│   │       │   └── dto/
-│   │       │       ├── create-booking.dto.ts
-│   │       │       └── update-booking.dto.ts
 │   │       ├── clients/
 │   │       ├── properties/
-│   │       ├── expenses/              ← CRUD gastos por propiedad
-│   │       ├── recurring-expenses/    ← gastos recurrentes (cron diario, email notificación)
-│   │       ├── financials/            ← movimientos financieros + resumen anual
-│   │       ├── excel/                 ← exportar/importar Excel
-│   │       ├── paperless/             ← integración Paperless-ngx (upload contratos firmados)
-│   │       ├── organization/          ← config SMTP, SES, logo
-│   │       ├── property-content/      ← contenido público propiedad (descripción + documentos)
+│   │       ├── expenses/
+│   │       ├── recurring-expenses/
+│   │       ├── financials/
+│   │       ├── excel/
+│   │       ├── organization/
+│   │       ├── paperless/
 │   │       ├── translation/
-│   │       │   ├── translation.service.ts  ← caché + precalentamiento
-│   │       │   └── translation.module.ts
-│   │       ├── property-rules/            ← reglas de la casa por propiedad
-│   │       │   ├── property-rules.controller.ts  ← GET/PUT /api/properties/:id/rules
-│   │       │   ├── property-rules.service.ts     ← upsert + traducción + checkin
-│   │       │   ├── property-rules.module.ts
-│   │       │   └── dto/upsert-property-rules.dto.ts
-│   │       └── prisma/
-│   │           └── prisma.service.ts
+│   │       └── prisma/prisma.service.ts
 │   └── frontend/
 │       └── src/
-│           ├── main.tsx
-│           ├── App.tsx                ← rutas React Router
-│           ├── i18n/
-│           │   └── index.ts           ← TODAS las traducciones aquí (NO ficheros JSON)
-│           ├── context/
-│           │   └── AuthContext.tsx    ← JWT en memoria (no localStorage)
-│           ├── data/
-│           │   └── countries.ts       ← 195 países ISO 3166-1 (WORLD_COUNTRIES)
+│           ├── context/AuthContext.tsx ← JWT, idle detection, 2FA flow
+│           ├── data/countries.ts
 │           ├── components/
-│           │   ├── Layout.tsx              ← drawer móvil hamburguesa
-│           │   ├── ExcelButtons.tsx        ← exportar/importar reutilizable
-│           │   └── BookingStatusWorkflow.tsx ← badge estado + botones transición
+│           │   ├── Layout.tsx
+│           │   ├── ExcelButtons.tsx
+│           │   └── BookingStatusWorkflow.tsx
 │           └── pages/
 │               ├── Dashboard.tsx
 │               ├── Bookings.tsx
-│               ├── BookingDetail.tsx  ← editar reserva, checkin, evaluaciones, cambio estado manual
+│               ├── BookingDetail.tsx
 │               ├── Clients.tsx
-│               ├── ClientDetail.tsx   ← detalle cliente con navegación ←/→ entre registros
-│               ├── Properties.tsx     ← lista + modales detalle/crear/editar (country, postalCode)
-│               ├── Calendar.tsx
-│               ├── Contracts.tsx
-│               ├── Police.tsx         ← partes SES
-│               ├── Settings.tsx       ← config org, SMTP, SES, Paperless-ngx (botón test conexión)
-│               ├── Financials.tsx     ← gastos + totales anuales + filtros + detalle por propiedad
-│               └── CheckinPage.tsx    ← página PÚBLICA /checkin/:token
+│               ├── ClientDetail.tsx
+│               ├── ClientEdit.tsx
+│               ├── Properties.tsx
+│               ├── PropertyDetail.tsx
+│               ├── PropertyEdit.tsx
+│               ├── Financials.tsx
+│               ├── PropertyFinancialDetail.tsx
+│               ├── OccupancyCalendar.tsx
+│               ├── Contracts.tsx        ← tabs Contratos + Plantillas
+│               ├── Police.tsx           ← "En desarrollo"
+│               ├── Settings.tsx
+│               ├── Profile.tsx          ← perfil, cambio pwd, 2FA
+│               └── CheckinPage.tsx      ← pública /checkin/:token
 ```
 
 ## Modelos Prisma principales (schema.prisma)
@@ -166,21 +155,39 @@ model Property {
   city                     String?
   province                 String?
   postalCode               String? @map("postal_code")
-  country                  String? @db.VarChar(5)  // ISO 3166-1 alpha-2, ej. "ES"
+  country                  String? @db.VarChar(5)
   photo                    String?
   icalUrl                  String?
-  sesCodigoEstablecimiento String? // ← código SES por propiedad, NO en Organization
+  purchasePrice            Float?
+  sesCodigoEstablecimiento String?
+  paperlessCorrespondentId Int?
   organizationId           String
 }
 
 model Expense {
-  id         String   @id @default(uuid())
-  propertyId String
-  date       DateTime
-  amount     Float
-  type       String   // tasas|agua|luz|internet|limpieza|otros
-  notes      String?
+  id             String   @id @default(uuid())
+  propertyId     String
+  date           DateTime
+  amount         Float
+  type           String   // tasas|agua|luz|internet|limpieza|otros
+  deductible     Boolean  @default(false)
+  notes          String?
   organizationId String
+}
+
+model RecurringExpense {
+  id             String    @id @default(uuid())
+  propertyId     String
+  organizationId String
+  type           String
+  amount         Float
+  deductible     Boolean   @default(false)
+  frequency      String    // monthly|quarterly|yearly
+  dayOfMonth     Int       // 1-28
+  notes          String?
+  active         Boolean   @default(true)
+  nextRunDate    DateTime
+  lastRunDate    DateTime?
 }
 
 model BookingGuestSes {
@@ -202,35 +209,37 @@ model BookingGuestSes {
 }
 
 model Organization {
-  sesUsuarioWs        String?
-  sesPasswordWs       String?
-  sesCodigoArrendador String?
-  sesEndpoint         String?  // https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion
+  sesUsuarioWs          String?
+  sesPasswordWs         String?
+  sesCodigoArrendador   String?
+  sesEndpoint           String?
+  paperlessUrl          String?
+  paperlessToken        String?
+  paperlessDocTypeId    Int?
   // sesCodigoEstablecimiento NO va aquí, va en Property
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  password       String
+  role           String    // admin|gestor|owner|viewer
+  otpSecret      String?
+  otpEnabled     Boolean   @default(false)
+  otpVerifiedAt  DateTime?
+  organizationId String
 }
 
 model PropertyRules {
   id                 String   @id @default(uuid())
-  propertyId         String   @unique        // relación 1-1 con Property
+  propertyId         String   @unique
   organizationId     String
   baseLanguage       String   @default("es")
-  baseContent        String   @db.Text       // texto original
-  translations       Json     @default("{}")  // { "en": "...", "fr": "...", ... }
-  translationsEdited Json     @default("[]")  // idiomas editados manualmente — NO sobreescribir en translate
+  baseContent        String   @db.Text
+  translations       Json     @default("{}")
+  translationsEdited Json     @default("[]")
   updatedAt          DateTime @updatedAt
 }
-```
-
-## Variables de entorno clave (.env en apps/api/)
-```
-DATABASE_URL=postgresql://rentcrm:[ver .env]@postgres:5432/rentcrm
-REDIS_URL=redis://:[ver .env]@redis:6379
-JWT_SECRET=...
-FRONTEND_URL=http://192.168.1.123:3000
-LIBRETRANSLATE_URL=http://libretranslate:5000
-SMTP_HOST=...
-SMTP_USER=...
-SMTP_PASS=...
 ```
 
 ## Roles de usuario
@@ -245,12 +254,73 @@ JWT payload: `{ id, email, organizationId, role }`
 
 ## Patrones importantes
 
-### Rutas públicas (sin JWT)
+### Autenticación — flujo 2FA
+```
+Sin 2FA:  POST /auth/login → { access_token, user }
+Con 2FA:  POST /auth/login → { requiresOtp: true, tempToken }
+          POST /auth/otp/validate { tempToken, otpToken } → { access_token, user }
+Gestión:  POST /users/otp/setup → /otp/verify → /otp/disable
+```
+- 2FA es opcional por usuario, se configura en Profile.tsx
+- `tempToken` es un JWT `{ sub, type:'otp-pending' }` con expiración de 5 min
+
+### Sesión idle
 ```typescript
-@Public()
-@Get('checkin/:token')
-getCheckin() {}
-// IMPORTANTE: rutas con parámetro fijo ANTES de :id en el controlador
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000
+// 401 en cualquier llamada → mensaje "Sesión expirada" → redirect login
+// 30 min sin actividad → aviso → 2 min → logout automático
+```
+
+### Financials — fuente de ingresos (CRÍTICO)
+```
+Ingresos = Booking.totalAmount (status != cancelled) + Financial type='income'
+Gastos   = Financial type='expense' + Expense
+```
+- Usar `/api/financials/combined-summary` para totales que sumen ambas fuentes
+- NO usar solo `/api/financials` para calcular ingresos totales
+
+### Endpoint reporte financiero por propiedad
+```typescript
+GET /api/financials/property/:propertyId/report?year=YYYY
+// ⚠️ ANTES de /:id en el controlador
+```
+
+### Dashboard — estructura
+- KPIs SIEMPRE encima del selector de gráfico
+- ROI = (beneficio anual / purchasePrice) * 100; mostrar "—" si no hay purchasePrice
+- Pestaña Negocio: selector mensual/trimestral/anual con navegación de periodos
+
+### PropertyFinancialDetail
+- KPIs anuales ENCIMA del selector de periodo
+- Selector de periodo afecta solo al gráfico
+
+### Paperless-ngx
+```typescript
+// Tags: resolver nombres → IDs numéricos (resolveTagId)
+// Error en Paperless NO bloquea el flujo principal
+// SMTP y Paperless config: siempre desde Organization en BD
+```
+
+### Contratos — rutas públicas
+```typescript
+@Public() GET/POST /contracts/sign/:token
+@Public() GET      /contracts/view/:token
+// URLs públicas: siempre signToken, NUNCA el ID
+// Email: {FRONTEND_URL}/contracts/sign/{signToken}
+```
+
+### SMTP — regla crítica
+```typescript
+// SIEMPRE desde Organization en BD
+const org = await this.prisma.organization.findFirst()
+// Si smtpHost no definido: lanzar error, NO marcar como enviado
+```
+
+### Gastos recurrentes
+```typescript
+@Cron('0 8 * * *') // genera Expense real + email
+// dayOfMonth máximo 28
+// RecurringExpense es plantilla, Expense es el registro contable
 ```
 
 ### Workflow estados de reserva
@@ -262,13 +332,6 @@ processed  → (final)
 cancelled  → (final)
 ```
 - Colores: created=amber, registered=blue, processed=emerald, error=red, cancelled=slate
-
-### TranslationService
-```typescript
-// 10 idiomas: es, en, fr, de, it, pt, nl, da, nb, sv
-// Timeouts en sv al arrancar son normales — no son errores
-await this.translationService.translateMany([...textos], lang);
-```
 
 ### Frontend — routing API
 - `api.ts` usa `baseURL: '/api'` relativo → Vite proxy redirige a `http://api:3001`
@@ -285,37 +348,18 @@ await this.translationService.translateMany([...textos], lang);
 
 ### Navegación entre registros
 - Pasar `{ state: { ids: string[], index: number } }` al navegar al detalle desde el listado
-- En el detalle: `const navState = useLocation().state` → flechas ← → con contador `index+1 / ids.length`
+- En el detalle: `const navState = useLocation().state` → flechas ← → con contador
 - Sin state (acceso directo por URL) → no se muestran flechas
-- Los IDs provienen de `filteredSorted` (lista ya filtrada/ordenada en ese momento)
-
-### Cambio de estado manual de reserva
-- `PATCH /api/bookings/:id/status` con body `{ status: string }`
-- Transiciones válidas: created→registered|cancelled, registered→processed|error|cancelled, error→registered|processed|cancelled
-- Solo visible para `admin` y `gestor` — usar `useAuth()` para leer `user.role`
-- En BookingDetail: modal centrado con botones coloreados por estado destino
 
 ### Edición masiva (bulk)
 - Disponible en Bookings, Clients y Expenses
-- Selección múltiple con checkbox → barra de acciones masivas
-- Endpoints bulk usan `@SkipThrottle()` para evitar rate limit en operaciones de muchos registros
-- Errores detallados devueltos al frontend para mostrar qué registros fallaron
-
-### Gastos recurrentes
-- Módulo `recurring-expenses` → `GET/POST/PUT/DELETE /api/recurring-expenses`
-- Campos: `propertyId`, `type`, `amount`, `deductible`, `frequency` (monthly|quarterly|yearly), `dayOfMonth`, `nextRunDate`, `active`
-- Cron diario comprueba `nextRunDate` y crea el gasto + notificación email + actualiza `nextRunDate`
-
-### Paperless-ngx
-- Módulo `paperless` → servicio interno, sin endpoints públicos directos
-- Se activa automáticamente tras firma digital de contrato
-- Configuración en Organization: `paperlessUrl`, `paperlessToken`
-- Sube el PDF firmado a Paperless con tags automáticos (propiedad, cliente, fecha)
+- Endpoints bulk con `@SkipThrottle()` para evitar rate limit
+- Llamadas secuenciales con delay 300ms para evitar ThrottlerException
 
 ### PropertyRules — traducciones
 - `translations` es un JSON `{ "en": "...", "fr": "..." }` con los 10 idiomas como clave
 - `translationsEdited` es un array de códigos de idioma editados manualmente
-- El endpoint `POST /api/properties/:id/rules/translate` respeta `translationsEdited` — nunca sobreescribe esos idiomas
+- El endpoint `POST /api/properties/:id/rules/translate` respeta `translationsEdited`
 - En checkin: si existe `translations[lang]` → se usa; si no → se devuelve `baseContent`
 
 ## SES Hospedajes
@@ -324,7 +368,7 @@ await this.translationService.translateMany([...textos], lang);
 ```
 https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion
 ```
-- ⚠️ `/ws/v1/comunicacion` → 404 (incorrecto aunque aparezca en la doc)
+- ⚠️ `/ws/v1/comunicacion` → 404 (incorrecto)
 - `/ws/comunicacion` → 500 con body vacío = endpoint existe ✅
 
 ### Estado (17/03/2026)
@@ -339,19 +383,22 @@ https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion
 
 | Problema | Solución |
 |----------|----------|
-| Checkin 401 | Usar `@Public()` decorator |
-| Checkin 404 | Rutas fijas ANTES de `:id` |
+| Checkin/contrato 401 | `@Public()` + ruta fija ANTES de `:id` |
 | Docker no recarga | `npm run build` + `docker compose build + up -d` |
 | Log debug no aparece | Build no incluyó cambios — repetir `npm run build` explícito |
-| VITE_API_URL móvil | IP real `192.168.1.123`, no `api:3001` |
 | Prisma unknown arg | Verificar nombres en schema.prisma |
-| LibreTranslate `no` | Usar `nb` |
-| ValidationPipe whitelist | Todos los campos del DTO con decoradores |
 | `migrate dev` falla | Usar `prisma db push` en desarrollo |
 | Conflicto contenedor | `docker rm -f rentcrm-api && docker compose up -d api` |
-| SES 404 | Ver sección SES — endpoint sin `/v1/`, pendiente alta en Ministerio |
+| SES 404 | Endpoint sin `/v1/`, pendiente alta en Ministerio |
 | UPDATE BD no persiste | Verificar WHERE con SELECT inmediatamente después |
-| ClientDetail sin reservas | Usar `GET /api/bookings?clientId=` — NO `evaluations/summary` |
+| ClientDetail sin reservas | Usar `GET /api/bookings?clientId=` |
+| Email contrato no llega | SMTP desde Organization en BD |
+| Paperless 400 tags | resolveTagId: nombres → IDs numéricos |
+| Dashboard sin ingresos | Sumar bookings.totalAmount + financials income |
+| Estado 'pending' en reserva | No existe, el correcto es 'created' |
+| Edición masiva throttle | Llamadas secuenciales con delay 300ms |
+| LibreTranslate `no` | Usar `nb` |
+| ValidationPipe whitelist | Todos los campos del DTO con decoradores |
 
 ## Pendiente
 Ver `TODO.md`

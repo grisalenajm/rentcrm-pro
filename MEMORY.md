@@ -1,6 +1,6 @@
 # RentCRM Pro — Estado del Proyecto
 
-> Última actualización: 17/03/2026 — v1.2.0
+> Última actualización: 17/03/2026 — v1.3.0
 
 ## Stack
 - **Frontend**: Vite + React (TypeScript), puerto 3000, Docker (rebuild obligatorio)
@@ -13,7 +13,7 @@
 ## Módulos implementados
 | Módulo | Estado | Descripción |
 |--------|--------|-------------|
-| auth | ✅ | JWT, guards globales, roles (admin/gestor/owner/viewer) |
+| auth | ✅ | JWT, guards globales, roles (admin/gestor/owner/viewer), **2FA TOTP** (otplib v13) |
 | users | ✅ | CRUD usuarios por organización |
 | organization | ✅ | Config SMTP, SES, logo, Paperless |
 | clients | ✅ | CRUD + navegación ←/→ entre registros |
@@ -34,6 +34,7 @@
 | paperless | ✅ | Integración Paperless-ngx para contratos firmados |
 
 ## Funcionalidades UX clave
+- Autenticación 2FA por usuario (activar/desactivar desde `/profile`)
 - Edición masiva (bulk): reservas, clientes, gastos
 - Navegación ←/→ entre registros en detalle de cliente y reserva
 - Filtros y ordenación por columna en Clients, Bookings, Financials (frontend, no query params)
@@ -42,7 +43,7 @@
 ## Git Workflow
 - `develop` → rama de desarrollo activa
 - `main` → producción (merge desde develop)
-- Tags semánticos: `v1.0.0`, `v1.1.0`, `v1.2.0`
+- Tags semánticos: `v1.0.0`, `v1.1.0`, `v1.2.0`, `v1.3.0`
 
 ## Pendiente crítico
 - Alta en https://hospedajes.ses.mir.es (para activar envío de partes SES)

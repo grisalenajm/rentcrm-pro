@@ -1,7 +1,7 @@
 # 🏘️ RentCRM Pro — Estado del Proyecto
 
-**Última actualización:** 14/03/2026
-**Versión:** 1.6
+**Última actualización:** 17/03/2026
+**Versión:** 1.3.0
 **Entorno:** LXC Docker · 192.168.1.123 · Frontend :3000 · API :3001
 
 ---
@@ -9,7 +9,7 @@
 ## ✅ Módulos Completados
 
 ### Backend (NestJS + Prisma + PostgreSQL)
-- **Auth** — JWT, guards de roles (admin / gestor / viewer)
+- **Auth** — JWT, guards de roles (admin / gestor / viewer), **2FA TOTP** (otplib v13, Google Authenticator / Authy, tempToken de 5 min en paso OTP)
 - **Users** — CRUD completo con roles y activación/desactivación
 - **Properties** — CRUD completo + campo `sesCodigoEstablecimiento`
 - **Clients** — CRUD + búsqueda + tipo doc + país expedición + teléfono con prefijo
@@ -22,7 +22,8 @@
 - **SES Hospedajes** — envío de partes al webservice MIR, descarga XML/PDF, campos lote y estado en Booking
 
 ### Frontend (React + Vite + TypeScript + Tailwind)
-- **Login** — autenticación JWT
+- **Login** — autenticación JWT + **flujo 2FA** (paso 2 con código OTP si activado)
+- **Perfil** — página `/profile` con datos del usuario y sección Seguridad (activar/desactivar 2FA con QR)
 - **Dashboard** — 4 pestañas: Resumen (KPIs, barras ingresos/gastos, línea ocupación, mapa de calor), Negocio (rentabilidad, ranking, tarta canales, métricas con comparativa), Clientes (top 10, nacionalidades, nuevos/repetidores), Cumplimiento (SES, checkins, contratos)
 - **Properties** — CRUD completo + código SES por propiedad + **sección iCal por propiedad** (feeds, sync, export .ics)
 - **Clients** — lista con valoración media + tipo doc + país con bandera + teléfono con prefijo
@@ -111,7 +112,7 @@ rentcrm-pro/
 | Modelo | Campos destacados |
 |--------|------------------|
 | Organization | name, nif, logo, smtpHost/Port/User/Pass/From, currency, dateFormat, sesUsuarioWs, sesPasswordWs, sesCodigoArrendador, sesCodigoEstablecimiento, sesEndpoint |
-| User | name, email, passwordHash, role (admin/gestor/viewer), isActive |
+| User | name, email, passwordHash, role (admin/gestor/viewer), isActive, **otpSecret, otpEnabled, otpVerifiedAt** |
 | Property | name, address, city, province, rooms, status, sesCodigoEstablecimiento |
 | Client | firstName, lastName, docType, docNumber, docCountry, nationality, birthDate, email, phone |
 | Booking | checkInDate, checkOutDate, totalAmount, source, status, sesLote, sesStatus, sesSentAt |
@@ -137,6 +138,11 @@ POSTGRES_PASSWORD=...
 ---
 
 ## 📋 Historial de Sesiones
+
+### Sesión 17/03/2026 — v1.3.0
+- ✅ **Autenticación 2FA con OTP (TOTP)** — compatible Google Authenticator / Authy
+  - Backend: 3 campos nuevos en User (otpSecret, otpEnabled, otpVerifiedAt), endpoints `POST /users/otp/setup|verify|disable`, flujo login con tempToken de 5 min, endpoint `POST /auth/otp/validate`
+  - Frontend: Login en 2 pasos cuando 2FA activo, página `/profile` con sección Seguridad (QR setup, activar/desactivar con confirmación de código), enlace al perfil desde el nombre en el sidebar
 
 ### Sesión 14/03/2026
 - ✅ **Dashboard rediseñado** — 4 pestañas con recharts: Resumen (KPIs hoy, barras ingresos/gastos 12 meses, línea ocupación mensual por propiedad, mapa de calor 12×31), Negocio (rentabilidad por propiedad, ranking horizontal, tarta canales, precio medio/estancia media con comparativa año anterior), Clientes (top 10, tarta nacionalidades, nuevos vs repetidores), Cumplimiento (KPIs SES/checkin/contratos del mes, lista SES pendiente)
