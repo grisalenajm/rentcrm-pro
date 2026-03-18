@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
@@ -30,10 +30,15 @@ export class PropertiesService {
 
   async update(id: string, dto: UpdatePropertyDto, organizationId: string) {
     await this.findOne(id, organizationId);
-    return this.prisma.property.update({
-      where: { id },
-      data: dto,
-    });
+    try {
+      return await this.prisma.property.update({
+        where: { id },
+        data: dto,
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2000') throw new BadRequestException('El valor introducido es demasiado largo para el campo');
+      throw e;
+    }
   }
 
   async remove(id: string, organizationId: string) {
