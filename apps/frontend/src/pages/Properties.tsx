@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import ExcelButtons from '../components/ExcelButtons';
+import NruaExport from '../components/NruaExport';
 import { WORLD_COUNTRIES } from '../data/countries';
 
 interface Property {
@@ -299,6 +300,8 @@ export default function Properties() {
           </div>
         </>
       )}
+
+      <NruaExport />
 
       {/* Property create/edit modal */}
       {showForm && (

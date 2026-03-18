@@ -58,6 +58,10 @@ export class CreatePropertyDto {
 
   @IsOptional()
   @IsString()
+  nrua?: string;
+
+  @IsOptional()
+  @IsString()
   photo?: string;
 
   @IsOptional()

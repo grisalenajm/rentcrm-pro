@@ -93,6 +93,7 @@ model Property {
   photo          String?   @db.Text
   status         String    @default("active") @db.VarChar(20)
   sesCodigoEstablecimiento String? @map("ses_codigo_establecimiento") @db.VarChar(20)
+  nrua           String?   @map("nrua") @db.VarChar(50)
   purchasePrice  Float?    @map("purchase_price")
   notes          String?   @db.Text
   createdBy      String?   @map("created_by") @db.Uuid

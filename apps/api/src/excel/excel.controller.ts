@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Res, UseGuards, Request, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Res, UseGuards, Request, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { ExcelService } from './excel.service';
@@ -36,6 +36,13 @@ export class ExcelController {
     const buffer = await this.excelService.exportProperties(req.user.organizationId);
     res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="propiedades.xlsx"' });
     res.send(buffer);
+  }
+
+  @Get('export/nrua')
+  async exportNrua(@Request() req, @Query('propertyId') propertyId: string, @Query('year') year: string, @Res() res: Response) {
+    const { csv, filename } = await this.excelService.exportNrua(propertyId, year, req.user.organizationId);
+    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${filename}"` });
+    res.send(csv);
   }
 
   // Plantillas

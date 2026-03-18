@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import * as ExcelJS from 'exceljs';
 
@@ -430,6 +430,49 @@ export class ExcelService {
     }
     this.styleHeader(ws);
     return Buffer.from(await wb.xlsx.writeBuffer());
+  }
+
+  // ─── EXPORTAR N2 (NRUA) ─────────────────────────────────
+
+  async exportNrua(propertyId: string, yearStr: string, organizationId: string): Promise<{ csv: string; filename: string }> {
+    if (!propertyId) throw new BadRequestException('propertyId es obligatorio');
+    const year = parseInt(yearStr) || new Date().getFullYear();
+
+    const property = await this.prisma.property.findFirst({
+      where: { id: propertyId, organizationId },
+    });
+    if (!property) throw new NotFoundException('Propiedad no encontrada');
+    if (!property.nrua) throw new BadRequestException('La propiedad no tiene NRUA definido');
+
+    const start = new Date(`${year}-01-01T00:00:00.000Z`);
+    const end   = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        propertyId,
+        organizationId,
+        status: { not: 'cancelled' },
+        checkInDate: { gte: start, lt: end },
+      },
+      include: { guestsSes: true },
+      orderBy: { checkInDate: 'asc' },
+    });
+
+    const fmt = (d: Date) => {
+      const dd = String(d.getUTCDate()).padStart(2, '0');
+      const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const yyyy = d.getUTCFullYear();
+      return `${dd}-${mm}-${yyyy}`;
+    };
+
+    const rows: string[] = ['NRUA;checkin;checkout;huespedes;finalidad'];
+    for (const b of bookings) {
+      const guests = b.guestsSes?.length > 0 ? b.guestsSes.length : 1;
+      rows.push(`${property.nrua};${fmt(b.checkInDate)};${fmt(b.checkOutDate)};${guests};1`);
+    }
+
+    const safeName = property.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+    return { csv: rows.join('\n'), filename: `N2_${safeName}_${year}.csv` };
   }
 
   // ─── HELPERS ────────────────────────────────────────────

@@ -48,6 +48,7 @@ export default function PropertyEdit() {
         purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
         status: form.status,
         sesCodigoEstablecimiento: form.sesCodigoEstablecimiento || undefined,
+        nrua: form.nrua || undefined,
       });
       await qc.invalidateQueries({ queryKey: ['property', id] });
       await qc.invalidateQueries({ queryKey: ['properties'] });
@@ -154,6 +155,10 @@ export default function PropertyEdit() {
           <div>
             <label className={labelCls}>Código SES establecimiento</label>
             <input value={form.sesCodigoEstablecimiento || ''} onChange={f('sesCodigoEstablecimiento')} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>NRUA (Comunidad Valenciana)</label>
+            <input value={form.nrua || ''} onChange={f('nrua')} placeholder="ESFCTU..." className={inputCls} />
           </div>
         </div>
       </div>
