@@ -6,8 +6,10 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Properties from './pages/Properties';
 import PropertyDetail from './pages/PropertyDetail';
+import PropertyEdit from './pages/PropertyEdit';
 import Clients from './pages/Clients';
 import ClientDetail from './pages/ClientDetail';
+import ClientEdit from './pages/ClientEdit';
 import Bookings from './pages/Bookings';
 import BookingDetail from './pages/BookingDetail';
 import Financials from './pages/Financials';
@@ -44,9 +46,11 @@ export default function App() {
               <Route index element={<Dashboard />} />
               <Route path="properties"                       element={<Properties />} />
               <Route path="properties/:id"               element={<PropertyDetail />} />
+              <Route path="properties/:id/edit"          element={<PropertyEdit />} />
               <Route path="properties/:id/financials"     element={<PropertyFinancialDetail />} />
               <Route path="clients"             element={<Clients />} />
               <Route path="clients/:id"         element={<ClientDetail />} />
+              <Route path="clients/:id/edit"    element={<ClientEdit />} />
               <Route path="bookings"            element={<Bookings />} />
               <Route path="bookings/:id"        element={<BookingDetail />} />
               <Route path="financials"          element={<Financials />} />

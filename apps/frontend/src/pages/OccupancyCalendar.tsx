@@ -316,17 +316,38 @@ export default function OccupancyCalendar() {
 
     return (
       <div style={{padding:'0 24px 24px'}}>
-        <div style={{display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:2}}>
+        <style>{`
+          .cal-month-cell { transition: background 0.12s; }
+          .cal-month-cell:hover { filter: brightness(1.08); }
+          @media (max-width: 640px) {
+            .cal-month-cell { min-height: 60px !important; }
+          }
+        `}</style>
+        {/* Cabecera días semana */}
+        <div style={{
+          display:'grid', gridTemplateColumns:'repeat(7,1fr)',
+          background: dark ? '#0a0e17' : '#f8fafc',
+          borderRadius:'12px 12px 0 0',
+          border:`1px solid ${pal.borderCol}`,
+          borderBottom:'none',
+          marginBottom:0,
+        }}>
           {WD.map((d,i) => (
             <div key={d} style={{
-              padding:'8px 0', textAlign:'center',
-              fontSize:10, fontWeight:700,
-              color: i>=5 ? (dark?'#334155':'#cbd5e1') : pal.headerText,
-              textTransform:'uppercase', letterSpacing:'0.08em',
+              padding:'10px 0', textAlign:'center',
+              fontSize:11, fontWeight:700,
+              color: i>=5 ? (dark?'#64748b':'#94a3b8') : (dark?'#475569':'#64748b'),
+              textTransform:'uppercase', letterSpacing:'0.1em',
+              borderRight: i<6 ? `1px solid ${pal.borderCol}` : 'none',
             }}>{d}</div>
           ))}
         </div>
-        <div style={{border:`1px solid ${pal.borderCol}`, borderRadius:8, overflow:'hidden'}}>
+        <div style={{
+          border:`1px solid ${pal.borderCol}`,
+          borderRadius:'0 0 12px 12px',
+          overflow:'hidden',
+          boxShadow: dark ? '0 4px 24px #00000030' : '0 4px 24px #0000001a',
+        }}>
           {Array.from({length:weeks},(_,wi) => {
             const bars = getBarsForWeek(wi);
             const weekCells = Array.from({length:7},(_,di) => {
@@ -339,22 +360,32 @@ export default function OccupancyCalendar() {
                   const isT    = day && sameDay(day,today);
                   const isWEnd = di>=5;
                   return (
-                    <div key={di} style={{
+                    <div key={di} className="cal-month-cell" style={{
                       height: CELL_H,
-                      background: isT ? pal.cellToday : isWEnd ? pal.cellWEnd : pal.cellBg,
+                      background: isT
+                        ? (dark ? '#052e16' : '#ecfdf5')
+                        : isWEnd
+                          ? (dark ? '#0c1220' : '#f8fafc')
+                          : (dark ? '#0d1117' : '#ffffff'),
                       borderRight: di<6 ? `1px solid ${pal.borderCol}` : 'none',
-                      borderBottom:`1px solid ${pal.borderCol}`,
+                      borderBottom: wi<weeks-1 ? `1px solid ${pal.borderCol}` : 'none',
                       borderTop: isT ? `2px solid ${pal.todayBorder}` : '2px solid transparent',
                       padding:'6px 8px', boxSizing:'border-box',
+                      cursor: day ? 'default' : 'default',
                     }}>
                       {day && (
                         isT
-                          ? <span style={{width:22,height:22,display:'inline-flex',alignItems:'center',
-                              justifyContent:'center',background:pal.todayCircle,borderRadius:'50%',
-                              fontSize:11,fontWeight:800,color:'#fff',float:'right'}}>
+                          ? <span style={{
+                              width:24, height:24, display:'inline-flex',
+                              alignItems:'center', justifyContent:'center',
+                              background: pal.todayCircle,
+                              borderRadius:'50%', fontSize:11, fontWeight:800,
+                              color:'#fff', float:'right',
+                              boxShadow:`0 0 0 3px ${pal.todayCircle}30`,
+                            }}>
                               {day.getDate()}
                             </span>
-                          : <span style={{fontSize:11,fontWeight:600,color:isWEnd?pal.numWEnd:pal.numColor,float:'right'}}>
+                          : <span style={{fontSize:11, fontWeight:600, color: isWEnd ? pal.numWEnd : pal.numColor, float:'right'}}>
                               {day.getDate()}
                             </span>
                       )}
@@ -368,8 +399,8 @@ export default function OccupancyCalendar() {
                   const startsThisWeek = sameDay(ci, addDays(weekSt, startCol));
                   const endsThisWeek   = endCol < 7;
                   const pct     = 100/7;
-                  const left    = `calc(${startCol*pct}% + ${startsThisWeek?4:0}px)`;
-                  const right   = `calc(${(7-endCol)*pct}% + ${endsThisWeek?4:0}px)`;
+                  const left    = `calc(${startCol*pct}% + ${startsThisWeek?5:0}px)`;
+                  const right   = `calc(${(7-endCol)*pct}% + ${endsThisWeek?5:0}px)`;
                   return (
                     <div
                       key={bk.id+wi}
@@ -382,21 +413,20 @@ export default function OccupancyCalendar() {
                         background: col.bg,
                         borderLeft:   startsThisWeek ? `3px solid ${col.solid}` : 'none',
                         borderRight:  endsThisWeek   ? `3px solid ${col.solid}` : 'none',
-                        borderTop:    `1px solid ${col.solid}80`,
-                        borderBottom: `1px solid ${col.solid}80`,
-                        borderRadius: startsThisWeek&&endsThisWeek ? 5
-                          : startsThisWeek ? '5px 0 0 5px'
-                          : endsThisWeek   ? '0 5px 5px 0' : 0,
+                        borderTop:    `1px solid ${col.solid}60`,
+                        borderBottom: `1px solid ${col.solid}60`,
+                        borderRadius: startsThisWeek&&endsThisWeek ? 8
+                          : startsThisWeek ? '8px 0 0 8px'
+                          : endsThisWeek   ? '0 8px 8px 0' : 0,
                         display:'flex', alignItems:'center',
                         overflow:'hidden', cursor:'pointer', zIndex:10,
+                        boxShadow: `0 1px 4px ${col.solid}40`,
                       }}>
                       {startsThisWeek && (
                         <div style={{padding:'0 8px',overflow:'hidden',whiteSpace:'nowrap'}}>
-                          <span style={{fontSize:11,fontWeight:700,color:'#ffffff'}}>
-                            ▶ {bk.client.firstName} {bk.client.lastName[0]}.
-                          </span>
-                          <span style={{fontSize:10,color:'#000000',marginLeft:12}}>
-                            {Number(bk.totalAmount).toLocaleString()}€
+                          <span style={{fontSize:11,fontWeight:700,color:'#ffffff',
+                            textOverflow:'ellipsis',overflow:'hidden',display:'inline-block',maxWidth:'90%'}}>
+                            {bk.client.firstName} {bk.client.lastName[0]}.
                           </span>
                         </div>
                       )}

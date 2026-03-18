@@ -94,6 +94,18 @@ export default function Financials() {
     queryFn: () => api.get('/properties').then((r) => r.data),
   });
 
+  // Ingresos de reservas (Booking.totalAmount, status != cancelled)
+  const { data: bookingsRaw = [] } = useQuery({
+    queryKey: ['bookings-income', selectedYear, filters.propertyId],
+    queryFn: () =>
+      api.get('/bookings', { params: { limit: 1000 } }).then((r) => {
+        const data = r.data?.data || r.data;
+        return Array.isArray(data) ? data : [];
+      }),
+    staleTime: 30_000,
+    placeholderData: (prev: any) => prev,
+  });
+
   const createExpense = useMutation({
     mutationFn: (data: any) => api.post('/expenses', data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['expenses'] }); closeModal(); },
@@ -240,9 +252,22 @@ export default function Financials() {
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
-  // Totals — income from financial ledger, expenses from CRUD table
+  // Totals — income from financial ledger + bookings, expenses from CRUD table
   const incomeRecords = (allFinancials as any[]).filter((r: any) => r.type === 'income');
-  const totalIncome   = incomeRecords.reduce((s: number, r: any) => s + Number(r.amount), 0);
+  const financialIncome = incomeRecords.reduce((s: number, r: any) => s + Number(r.amount), 0);
+
+  // Booking income: non-cancelled bookings whose checkInDate falls in the selected year
+  const bookingIncomeRecords = (bookingsRaw as any[]).filter((b: any) => {
+    if (b.status === 'cancelled') return false;
+    const year = new Date(b.checkInDate || b.checkIn || '').getFullYear();
+    if (year !== selectedYear) return false;
+    if (filters.propertyId && b.property?.id !== filters.propertyId) return false;
+    return true;
+  });
+  console.log('[Financials] allFinancials:', allFinancials, 'bookingIncomeRecords:', bookingIncomeRecords);
+
+  const bookingIncome = bookingIncomeRecords.reduce((s: number, b: any) => s + Number(b.totalAmount || 0), 0);
+  const totalIncome   = financialIncome + bookingIncome;
   const totalExpenses = (expenses as any[]).reduce((s: number, e: any) => s + Number(e.amount), 0);
   const netProfit     = totalIncome - totalExpenses;
 
@@ -252,6 +277,11 @@ export default function Financials() {
     const pid = r.propertyId || '__none__';
     if (!propMap[pid]) propMap[pid] = { name: r.property?.name || 'Sin propiedad', income: 0, expenses: 0 };
     propMap[pid].income += Number(r.amount);
+  }
+  for (const b of bookingIncomeRecords) {
+    const pid = b.property?.id || b.propertyId || '__none__';
+    if (!propMap[pid]) propMap[pid] = { name: b.property?.name || 'Sin propiedad', income: 0, expenses: 0 };
+    propMap[pid].income += Number(b.totalAmount || 0);
   }
   for (const e of expenses as any[]) {
     const pid = e.propertyId || '__none__';

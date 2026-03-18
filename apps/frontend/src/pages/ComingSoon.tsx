@@ -4,7 +4,7 @@ export default function ComingSoon({ title }: { title: string }) {
       <div className="text-center">
         <div className="text-5xl mb-4">🚧</div>
         <h1 className="text-xl font-bold text-white mb-2">{title}</h1>
-        <p className="text-slate-400 text-sm">Próximamente disponible</p>
+        <p className="text-slate-400 text-sm">En desarrollo</p>
       </div>
     </div>
   );

@@ -111,6 +111,11 @@ export default function ClientDetail() {
           className="text-slate-400 hover:text-white transition-colors text-sm">
           {t('common.back')}
         </button>
+        <div className="flex-1" />
+        <button onClick={() => navigate(`/clients/${id}/edit`)}
+          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-sm rounded-lg transition-colors text-slate-300">
+          Editar
+        </button>
         {navState && (
           <div className="flex items-center gap-1">
             <button
@@ -153,9 +158,9 @@ export default function ClientDetail() {
                 </div>
               )}
               {client?.email && (
-                <div>
+                <div className="col-span-2 md:col-span-1">
                   <span className="text-slate-400">{t('common.email')}: </span>
-                  <span>{client.email}</span>
+                  <span className="break-all">{client.email}</span>
                 </div>
               )}
               {client?.phone && (
