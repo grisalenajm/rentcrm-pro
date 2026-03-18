@@ -95,12 +95,27 @@ export default function PropertyDetail() {
     enabled: !!id,
   });
 
-  // Financial summary
+  const { data: propertyBookings = [] } = useQuery({
+    queryKey: ['bookings-property', id],
+    queryFn: () => api.get(`/bookings?propertyId=${id}`).then(r => {
+      const res = r.data;
+      return Array.isArray(res) ? res : (res?.data ?? []);
+    }),
+    enabled: !!id,
+  });
+
+  // Financial summary (Financial type=income + Booking.totalAmount status!=cancelled)
   const incomeSummary: Record<number, number> = {};
   for (const r of financialRecords as any[]) {
     if (r.type === 'income') {
       const year = new Date(r.date).getFullYear();
       incomeSummary[year] = (incomeSummary[year] || 0) + Number(r.amount);
+    }
+  }
+  for (const b of propertyBookings as any[]) {
+    if (b.status !== 'cancelled' && b.totalAmount) {
+      const year = new Date(b.checkInDate).getFullYear();
+      incomeSummary[year] = (incomeSummary[year] || 0) + Number(b.totalAmount);
     }
   }
   const expYears = Object.keys(expensesSummary as Record<string, number>).map(Number);
