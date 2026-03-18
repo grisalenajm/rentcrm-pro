@@ -94,6 +94,7 @@ model Property {
   status         String    @default("active") @db.VarChar(20)
   sesCodigoEstablecimiento String? @map("ses_codigo_establecimiento") @db.VarChar(20)
   purchasePrice  Float?    @map("purchase_price")
+  notes          String?   @db.Text
   createdBy      String?   @map("created_by") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
@@ -203,6 +204,7 @@ model Booking {
   welcomeSentAt DateTime? @map("welcome_sent_at")
   statusChangedAt  DateTime?
   statusHistory    BookingStatusHistory[]
+  notes         String?   @db.Text
 
   @@map("bookings")
 }

@@ -84,6 +84,11 @@ export default function BookingDetail() {
   const [dateError, setDateError] = useState('');
   const [overlapError, setOverlapError] = useState('');
 
+  // Notas inline
+  const [notesEditing, setNotesEditing] = useState(false);
+  const [notesDraft, setNotesDraft] = useState('');
+  const [notesSaving, setNotesSaving] = useState(false);
+
   const contractStatusColor: Record<string, string> = {
     draft:     'bg-slate-500/10 text-slate-400',
     sent:      'bg-amber-500/10 text-amber-400',
@@ -593,6 +598,65 @@ export default function BookingDetail() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Notas */}
+      <div className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider">Notas</h3>
+          {!notesEditing && (
+            <button
+              onClick={() => { setNotesDraft(booking.notes || ''); setNotesEditing(true); }}
+              className="text-xs text-slate-400 hover:text-emerald-400 transition-colors">
+              {booking.notes ? 'Editar' : 'Añadir'}
+            </button>
+          )}
+        </div>
+        {notesEditing ? (
+          <div className="space-y-3">
+            <textarea
+              value={notesDraft}
+              onChange={e => setNotesDraft(e.target.value)}
+              rows={4}
+              autoFocus
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setNotesEditing(false)}
+                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                Cancelar
+              </button>
+              <button
+                disabled={notesSaving}
+                onClick={async () => {
+                  setNotesSaving(true);
+                  try {
+                    await api.put(`/bookings/${id}`, { notes: notesDraft });
+                    await qc.invalidateQueries({ queryKey: ['booking', id] });
+                    setNotesEditing(false);
+                  } finally {
+                    setNotesSaving(false);
+                  }
+                }}
+                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg text-sm font-semibold transition-colors">
+                {notesSaving ? 'Guardando…' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        ) : booking.notes ? (
+          <p
+            onClick={() => { setNotesDraft(booking.notes || ''); setNotesEditing(true); }}
+            className="text-sm text-slate-300 whitespace-pre-wrap cursor-pointer hover:text-white transition-colors">
+            {booking.notes}
+          </p>
+        ) : (
+          <p
+            onClick={() => { setNotesDraft(''); setNotesEditing(true); }}
+            className="text-sm text-slate-500 cursor-pointer hover:text-slate-400 transition-colors">
+            Sin notas
+          </p>
+        )}
       </div>
 
       {/* Modal edición */}

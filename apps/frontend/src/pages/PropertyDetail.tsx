@@ -21,6 +21,7 @@ interface Property {
   status: string;
   sesCodigoEstablecimiento?: string;
   photo?: string;
+  notes?: string;
 }
 
 interface Feed {
@@ -60,6 +61,11 @@ export default function PropertyDetail() {
   const [tab, setTab] = useState<'info' | 'contenido'>('info');
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Notas inline
+  const [notesEditing, setNotesEditing] = useState(false);
+  const [notesDraft, setNotesDraft] = useState('');
+  const [notesSaving, setNotesSaving] = useState(false);
 
   // iCal modal state
   const [showIcal, setShowIcal] = useState(false);
@@ -362,6 +368,65 @@ export default function PropertyDetail() {
             <p className="text-white text-sm font-mono mt-1">
               {property.sesCodigoEstablecimiento || <span className="text-slate-500">No configurado</span>}
             </p>
+          </div>
+
+          {/* Card: Notas */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">Notas</p>
+              {!notesEditing && (
+                <button
+                  onClick={() => { setNotesDraft(property.notes || ''); setNotesEditing(true); }}
+                  className="text-xs text-slate-400 hover:text-emerald-400 transition-colors">
+                  {property.notes ? 'Editar' : 'Añadir'}
+                </button>
+              )}
+            </div>
+            {notesEditing ? (
+              <div className="space-y-3">
+                <textarea
+                  value={notesDraft}
+                  onChange={e => setNotesDraft(e.target.value)}
+                  rows={4}
+                  autoFocus
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setNotesEditing(false)}
+                    className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                    Cancelar
+                  </button>
+                  <button
+                    disabled={notesSaving}
+                    onClick={async () => {
+                      setNotesSaving(true);
+                      try {
+                        await api.put(`/properties/${property.id}`, { notes: notesDraft });
+                        await qc.invalidateQueries({ queryKey: ['property', id] });
+                        setNotesEditing(false);
+                      } finally {
+                        setNotesSaving(false);
+                      }
+                    }}
+                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg text-sm font-semibold transition-colors">
+                    {notesSaving ? 'Guardando…' : 'Guardar'}
+                  </button>
+                </div>
+              </div>
+            ) : property.notes ? (
+              <p
+                onClick={() => { setNotesDraft(property.notes || ''); setNotesEditing(true); }}
+                className="text-sm text-slate-300 whitespace-pre-wrap cursor-pointer hover:text-white transition-colors">
+                {property.notes}
+              </p>
+            ) : (
+              <p
+                onClick={() => { setNotesDraft(''); setNotesEditing(true); }}
+                className="text-sm text-slate-500 cursor-pointer hover:text-slate-400 transition-colors">
+                Sin notas
+              </p>
+            )}
           </div>
 
           {/* Card: Resumen financiero */}

@@ -118,6 +118,7 @@ export class BookingsService {
         ...(resolvedCheckIn  ? { checkInDate:  new Date(resolvedCheckIn)  } : {}),
         ...(resolvedCheckOut ? { checkOutDate: new Date(resolvedCheckOut) } : {}),
         ...(totalPrice !== undefined ? { totalAmount: parseFloat(String(totalPrice)) } : {}),
+        ...(notes !== undefined ? { notes } : {}),
       },
     });
   }
