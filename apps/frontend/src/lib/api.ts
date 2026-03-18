@@ -18,7 +18,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const url: string = err.config?.url ?? '';
+    const isAuthRoute = url.includes('/auth/login') || url.includes('/auth/otp');
+    if (err.response?.status === 401 && !isAuthRoute) {
       authToken = null;
       // Notify AuthContext so it can show the "session expired" modal
       // before redirecting — avoids a hard navigation that loses React state.
