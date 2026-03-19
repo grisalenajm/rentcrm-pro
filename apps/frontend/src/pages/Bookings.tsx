@@ -3,8 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
-import { bookingStatusColor, inputCls, labelCls, selCls } from '../lib/ui';
+import { bookingStatusColor, badgeCls, inputCls, labelCls, selCls } from '../lib/ui';
 import FormField from '../components/FormField';
+import DataTable from '../components/DataTable';
+import type { Column } from '../components/DataTable';
 import ExcelButtons from '../components/ExcelButtons';
 
 // ── Datos de países ───────────────────────────────────────────────────────
@@ -73,7 +75,6 @@ const LANGUAGE_NAMES: Record<string, string> = {
   nb: 'Norsk', sv: 'Svenska',
 };
 
-const statusColor = bookingStatusColor;
 
 const emptyGuest = () => ({
   firstName: '', lastName: '', docType: 'passport', docNumber: '',
@@ -225,13 +226,6 @@ export default function Bookings() {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortKey(key); setSortDir('asc'); }
   };
-
-  const thSort = (label: string, key: string) => (
-    <th onClick={() => handleSort(key)}
-      className="text-left px-4 py-3 text-slate-400 font-semibold cursor-pointer hover:text-white select-none transition-colors whitespace-nowrap">
-      {label}{sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
-    </th>
-  );
 
   // ── Filtrado + ordenación ─────────────────────────────────────────────
   const filteredSorted = useMemo(() => {
@@ -446,6 +440,59 @@ export default function Bookings() {
     if (errors.length === 0) cancelBulk();
   };
 
+  // ── Columnas de la tabla ──────────────────────────────────────────────
+  const bookingColumns: Column[] = [
+    {
+      header: <input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />,
+      thClassName: 'pl-4 py-3 w-10',
+      tdClassName: 'pl-4 py-3',
+      stopPropagation: true,
+      render: (b) => (
+        <input type="checkbox" checked={selectedIds.has(b.id)} onChange={() => toggleOne(b.id)}
+          className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+      ),
+    },
+    {
+      header: t('bookings.client'), sortKey: 'client',
+      tdClassName: 'px-4 py-3 font-medium',
+      render: (b) => `${b.client?.firstName ?? ''} ${b.client?.lastName ?? ''}`.trim() || '—',
+    },
+    {
+      header: t('bookings.property'), sortKey: 'property',
+      tdClassName: 'px-4 py-3 text-slate-400',
+      render: (b) => b.property?.name ?? '—',
+    },
+    {
+      header: t('bookings.checkIn'), sortKey: 'checkin',
+      tdClassName: 'px-4 py-3 text-slate-400',
+      render: (b) => new Date(b.checkInDate).toLocaleDateString('es-ES'),
+    },
+    {
+      header: t('bookings.checkOut'), sortKey: 'checkout',
+      tdClassName: 'px-4 py-3 text-slate-400',
+      render: (b) => new Date(b.checkOutDate).toLocaleDateString('es-ES'),
+    },
+    {
+      header: t('common.total'), sortKey: 'total',
+      tdClassName: 'px-4 py-3 font-semibold text-emerald-400',
+      render: (b) => `€${b.totalAmount}`,
+    },
+    {
+      header: t('bookings.source'), sortKey: 'source',
+      tdClassName: 'px-4 py-3 text-slate-400',
+      render: (b) => t(`bookings.sources.${b.source}`) || b.source,
+    },
+    {
+      header: t('common.status'), sortKey: 'status',
+      tdClassName: 'px-4 py-3',
+      render: (b) => (
+        <span className={`${badgeCls} ${bookingStatusColor[b.status] ?? 'bg-slate-500/10 text-slate-400'}`}>
+          {t(`bookings.statuses.${b.status}`) || b.status}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div className={`p-4 md:p-6${selectedIds.size > 0 ? ' pb-24' : ''}`}>
       <div className="flex justify-between items-center mb-6">
@@ -509,77 +556,39 @@ export default function Bookings() {
         <div className="text-slate-400 text-center py-20">{t('common.loading')}</div>
       ) : bookings.length === 0 ? (
         <div className="text-slate-400 text-center py-20">{t('common.noData')}</div>
-      ) : filteredSorted.length === 0 ? (
-        <div className="text-slate-400 text-center py-20">No se encontraron resultados</div>
       ) : (
-        <>
-          {/* Desktop: tabla */}
-          <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-800">
-                  <th className="pl-4 py-3 w-10">
-                    <input type="checkbox" checked={allVisibleSelected} onChange={toggleAll}
-                      className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
-                  </th>
-                  {thSort(t('bookings.client'), 'client')}
-                  {thSort(t('bookings.property'), 'property')}
-                  {thSort(t('bookings.checkIn'), 'checkin')}
-                  {thSort(t('bookings.checkOut'), 'checkout')}
-                  {thSort(t('common.total'), 'total')}
-                  {thSort(t('bookings.source'), 'source')}
-                  {thSort(t('common.status'), 'status')}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSorted.map((b: any, i: number) => (
-                  <tr key={b.id} onClick={() => navigate(`/bookings/${b.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
-                    className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
-                    <td className="pl-4 py-3" onClick={e => e.stopPropagation()}>
-                      <input type="checkbox" checked={selectedIds.has(b.id)} onChange={() => toggleOne(b.id)}
-                        className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
-                    </td>
-                    <td className="px-4 py-3 font-medium">{b.client?.firstName} {b.client?.lastName}</td>
-                    <td className="px-4 py-3 text-slate-400">{b.property?.name}</td>
-                    <td className="px-4 py-3 text-slate-400">{new Date(b.checkInDate).toLocaleDateString('es-ES')}</td>
-                    <td className="px-4 py-3 text-slate-400">{new Date(b.checkOutDate).toLocaleDateString('es-ES')}</td>
-                    <td className="px-4 py-3 font-semibold text-emerald-400">€{b.totalAmount}</td>
-                    <td className="px-4 py-3 text-slate-400">{t(`bookings.sources.${b.source}`) || b.source}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[b.status] || 'bg-slate-500/10 text-slate-400'}`}>
-                        {t(`bookings.statuses.${b.status}`) || b.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {/* Móvil: tarjetas */}
-          <div className="md:hidden space-y-3">
-            {filteredSorted.map((b: any, i: number) => (
-              <div key={b.id} onClick={() => navigate(`/bookings/${b.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:bg-slate-800/70">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <input type="checkbox" checked={selectedIds.has(b.id)} onChange={() => toggleOne(b.id)}
-                      onClick={e => e.stopPropagation()}
-                      className="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0" />
-                    <span className="font-medium text-white truncate">{b.client?.firstName} {b.client?.lastName}</span>
-                  </div>
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[b.status] || 'bg-slate-500/10 text-slate-400'}`}>
-                    {t(`bookings.statuses.${b.status}`) || b.status}
-                  </span>
+        <DataTable
+          columns={bookingColumns}
+          rows={filteredSorted}
+          getRowKey={(b) => b.id}
+          onRowClick={(b, i) => navigate(`/bookings/${b.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSort={handleSort}
+          emptyMessage="No se encontraron resultados"
+          renderCard={(b, i) => (
+            <div key={b.id}
+              onClick={() => navigate(`/bookings/${b.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
+              className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:bg-slate-800/70">
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <input type="checkbox" checked={selectedIds.has(b.id)} onChange={() => toggleOne(b.id)}
+                    onClick={e => e.stopPropagation()}
+                    className="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0" />
+                  <span className="font-medium text-white truncate">{b.client?.firstName} {b.client?.lastName}</span>
                 </div>
-                <p className="text-slate-400 text-sm mb-2">{b.property?.name}</p>
-                <div className="flex justify-between items-center text-xs text-slate-500">
-                  <span>{new Date(b.checkInDate).toLocaleDateString('es-ES')} → {new Date(b.checkOutDate).toLocaleDateString('es-ES')}</span>
-                  <span className="font-semibold text-emerald-400">€{b.totalAmount}</span>
-                </div>
+                <span className={`${badgeCls} ${bookingStatusColor[b.status] ?? 'bg-slate-500/10 text-slate-400'}`}>
+                  {t(`bookings.statuses.${b.status}`) || b.status}
+                </span>
               </div>
-            ))}
-          </div>
-        </>
+              <p className="text-slate-400 text-sm mb-2">{b.property?.name}</p>
+              <div className="flex justify-between items-center text-xs text-slate-500">
+                <span>{new Date(b.checkInDate).toLocaleDateString('es-ES')} → {new Date(b.checkOutDate).toLocaleDateString('es-ES')}</span>
+                <span className="font-semibold text-emerald-400">€{b.totalAmount}</span>
+              </div>
+            </div>
+          )}
+        />
       )}
 
       {/* ── Barra de edición masiva ── */}

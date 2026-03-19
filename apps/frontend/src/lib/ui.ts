@@ -54,6 +54,11 @@ const _platformColors: Record<string, string> = {
 export const platformBadgeColor = (platform: string): string =>
   _platformColors[platform] ?? _platformColors.other;
 
+// ── Badge ─────────────────────────────────────────────────────────────────────
+
+/** Clase base para todos los badges de estado/tipo */
+export const badgeCls = 'text-xs font-semibold px-2.5 py-1 rounded-full';
+
 // ── Form input classes ────────────────────────────────────────────────────────
 
 export const inputCls =

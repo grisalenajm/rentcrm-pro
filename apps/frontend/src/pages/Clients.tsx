@@ -3,7 +3,9 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
-import { inputCls, labelCls, selCls } from '../lib/ui';
+import { inputCls, labelCls, selCls, LANGUAGES } from '../lib/ui';
+import DataTable from '../components/DataTable';
+import type { Column } from '../components/DataTable';
 import ExcelButtons from '../components/ExcelButtons';
 import { WORLD_COUNTRIES } from '../data/countries';
 
@@ -26,18 +28,6 @@ interface Client {
 
 const COUNTRIES = WORLD_COUNTRIES;
 
-const LANGUAGES = [
-  { code: 'es', name: 'Español' },
-  { code: 'en', name: 'English' },
-  { code: 'fr', name: 'Français' },
-  { code: 'de', name: 'Deutsch' },
-  { code: 'it', name: 'Italiano' },
-  { code: 'pt', name: 'Português' },
-  { code: 'nl', name: 'Nederlands' },
-  { code: 'da', name: 'Dansk' },
-  { code: 'nb', name: 'Norsk' },
-  { code: 'sv', name: 'Svenska' },
-];
 
 const NATIONALITY_LANG: Record<string, string> = {
   ES: 'es', FR: 'fr', DE: 'de', IT: 'it', PT: 'pt',
@@ -157,12 +147,6 @@ export default function Clients() {
     else { setSortKey(key); setSortDir('asc'); }
   };
 
-  const thSort = (label: string, key: string) => (
-    <th onClick={() => handleSort(key)}
-      className="text-left px-4 py-3 text-slate-400 font-semibold cursor-pointer hover:text-white select-none transition-colors whitespace-nowrap">
-      {label}{sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
-    </th>
-  );
 
   // ── Filtrado + ordenación ─────────────────────────────────────────────
   const filteredSorted = useMemo(() => {
@@ -306,6 +290,77 @@ export default function Clients() {
     if (rejected.length === 0) cancelBulk();
   };
 
+  // ── Columnas de la tabla ─────────────────────────────────────────────
+  const clientColumns: Column<Client>[] = [
+    {
+      header: <input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />,
+      thClassName: 'pl-4 py-3 w-10',
+      tdClassName: 'pl-4 py-3',
+      stopPropagation: true,
+      render: (c) => (
+        <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleOne(c.id)}
+          className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+      ),
+    },
+    {
+      header: t('common.name'), sortKey: 'name',
+      tdClassName: 'px-4 py-3 font-medium',
+      render: (c) => `${c.firstName} ${c.lastName}`,
+    },
+    {
+      header: t('clients.dni'), sortKey: 'dni',
+      tdClassName: 'px-4 py-3 text-slate-400 font-mono text-xs',
+      render: (c) => c.dniPassport || '—',
+    },
+    {
+      header: t('common.email'), sortKey: 'email',
+      tdClassName: 'px-4 py-3 text-slate-400',
+      render: (c) => c.email || '—',
+    },
+    {
+      header: t('common.phone'),
+      tdClassName: 'px-4 py-3 text-slate-400',
+      render: (c) => c.phone || '—',
+    },
+    {
+      header: t('clients.bookings'), sortKey: 'bookings',
+      tdClassName: 'px-4 py-3 text-slate-400',
+      render: (c) => { const s = (summaries as any)[c.id]; return s ? s.totalBookings : '—'; },
+    },
+    {
+      header: t('clients.rating'), sortKey: 'rating',
+      tdClassName: 'px-4 py-3',
+      render: (c) => {
+        const s = (summaries as any)[c.id];
+        return s?.avgScore
+          ? <Stars score={s.avgScore} />
+          : <span className="text-slate-600 text-xs">{t('clients.noRating')}</span>;
+      },
+    },
+    {
+      header: 'Idioma', sortKey: 'language',
+      tdClassName: 'px-4 py-3 text-slate-400 text-xs',
+      render: (c) => LANGUAGES.find(l => l.code === c.language)?.name || 'Español',
+    },
+    {
+      header: '',
+      tdClassName: 'px-4 py-3',
+      stopPropagation: true,
+      render: (c) => (
+        <div className="flex gap-2 justify-end">
+          <button onClick={e => openEdit(e, c)}
+            className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
+            {t('common.edit')}
+          </button>
+          <button onClick={e => { e.stopPropagation(); if (confirm(t('common.confirm_delete'))) deleteMutation.mutate(c.id); }}
+            className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+            {t('common.delete')}
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className={`p-6${selectedIds.size > 0 ? ' pb-24' : ''}`}>
       <div className="flex justify-between items-center mb-6">
@@ -353,117 +408,52 @@ export default function Clients() {
         <div className="text-slate-400 text-center py-20">{t('common.loading')}</div>
       ) : clients.length === 0 ? (
         <div className="text-slate-400 text-center py-20">{t('common.noData')}</div>
-      ) : filteredSorted.length === 0 ? (
-        <div className="text-slate-400 text-center py-20">No se encontraron resultados</div>
       ) : (
-        <>
-          {/* Desktop: tabla */}
-          <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-800">
-                  <th className="pl-4 py-3 w-10">
-                    <input type="checkbox" checked={allVisibleSelected} onChange={toggleAll}
-                      className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
-                  </th>
-                  {thSort(t('common.name'), 'name')}
-                  {thSort(t('clients.dni'), 'dni')}
-                  {thSort(t('common.email'), 'email')}
-                  <th className="text-left px-4 py-3 text-slate-400 font-semibold">{t('common.phone')}</th>
-                  {thSort(t('clients.bookings'), 'bookings')}
-                  {thSort(t('clients.rating'), 'rating')}
-                  {thSort('Idioma', 'language')}
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSorted.map((c: Client, i: number) => {
-                  const s = (summaries as any)[c.id];
-                  return (
-                    <tr key={c.id} onClick={() => navigate(`/clients/${c.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
-                      className="border-b border-slate-800 hover:bg-slate-800/70 transition-colors cursor-pointer">
-                      <td className="pl-4 py-3" onClick={e => e.stopPropagation()}>
-                        <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleOne(c.id)}
-                          className="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
-                      </td>
-                      <td className="px-4 py-3 font-medium">{c.firstName} {c.lastName}</td>
-                      <td className="px-4 py-3 text-slate-400 font-mono text-xs">{c.dniPassport || '—'}</td>
-                      <td className="px-4 py-3 text-slate-400">{c.email || '—'}</td>
-                      <td className="px-4 py-3 text-slate-400">{c.phone || '—'}</td>
-                      <td className="px-4 py-3 text-slate-400">{s ? s.totalBookings : '—'}</td>
-                      <td className="px-4 py-3">
-                        {s?.avgScore ? <Stars score={s.avgScore} /> : <span className="text-slate-600 text-xs">{t('clients.noRating')}</span>}
-                      </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">
-                        {LANGUAGES.find(l => l.code === c.language)?.name || 'Español'}
-                      </td>
-                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                        <div className="flex gap-2 justify-end">
-                          <button onClick={e => openEdit(e, c)}
-                            className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">
-                            {t('common.edit')}
-                          </button>
-                          <button onClick={e => { e.stopPropagation(); if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(c.id); }}
-                            className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
-                            {t('common.delete')}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Móvil: tarjetas */}
-          <div className="md:hidden space-y-3">
-            {filteredSorted.map((c: Client, i: number) => {
-              const s = (summaries as any)[c.id];
-              return (
-                <div key={c.id} onClick={() => navigate(`/clients/${c.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
-                  className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:bg-slate-800/70 transition-colors">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleOne(c.id)}
-                        onClick={e => e.stopPropagation()}
-                        className="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0" />
-                      <span className="font-medium text-white truncate">{c.firstName} {c.lastName}</span>
-                    </div>
-                    {s?.avgScore
-                      ? <Stars score={s.avgScore} />
-                      : <span className="text-xs text-slate-500">{t('clients.noRating')}</span>}
+        <DataTable
+          columns={clientColumns}
+          rows={filteredSorted}
+          getRowKey={(c) => c.id}
+          onRowClick={(c, i) => navigate(`/clients/${c.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSort={handleSort}
+          emptyMessage="No se encontraron resultados"
+          renderCard={(c, i) => {
+            const s = (summaries as any)[c.id];
+            return (
+              <div key={c.id}
+                onClick={() => navigate(`/clients/${c.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
+                className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:bg-slate-800/70 transition-colors">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleOne(c.id)}
+                      onClick={e => e.stopPropagation()}
+                      className="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0" />
+                    <span className="font-medium text-white truncate">{c.firstName} {c.lastName}</span>
                   </div>
-                  {c.dniPassport && (
-                    <p className="text-xs text-slate-400 font-mono mb-1">{c.dniPassport}</p>
-                  )}
-                  {c.email && (
-                    <p className="text-xs text-slate-400 mb-1">{c.email}</p>
-                  )}
-                  {c.phone && (
-                    <p className="text-xs text-slate-400 mb-1">{c.phone}</p>
-                  )}
-                  {s && (
-                    <p className="text-xs text-slate-500 mb-1">{s.totalBookings} {t('clients.bookings')}</p>
-                  )}
-                  {c.language && (
-                    <p className="text-xs text-slate-500 mb-2">{LANGUAGES.find(l => l.code === c.language)?.name || 'Español'}</p>
-                  )}
-                  <div className="flex gap-2 mt-2" onClick={e => e.stopPropagation()}>
-                    <button onClick={e => openEdit(e, c)}
-                      className="flex-1 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors text-white">
-                      {t('common.edit')}
-                    </button>
-                    <button onClick={e => { e.stopPropagation(); if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(c.id); }}
-                      className="flex-1 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
-                      {t('common.delete')}
-                    </button>
-                  </div>
+                  {s?.avgScore
+                    ? <Stars score={s.avgScore} />
+                    : <span className="text-xs text-slate-500">{t('clients.noRating')}</span>}
                 </div>
-              );
-            })}
-          </div>
-        </>
+                {c.dniPassport && <p className="text-xs text-slate-400 font-mono mb-1">{c.dniPassport}</p>}
+                {c.email && <p className="text-xs text-slate-400 mb-1">{c.email}</p>}
+                {c.phone && <p className="text-xs text-slate-400 mb-1">{c.phone}</p>}
+                {s && <p className="text-xs text-slate-500 mb-1">{s.totalBookings} {t('clients.bookings')}</p>}
+                {c.language && <p className="text-xs text-slate-500 mb-2">{LANGUAGES.find(l => l.code === c.language)?.name || 'Español'}</p>}
+                <div className="flex gap-2 mt-2" onClick={e => e.stopPropagation()}>
+                  <button onClick={e => openEdit(e, c)}
+                    className="flex-1 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors text-white">
+                    {t('common.edit')}
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); if (confirm(t('common.confirm_delete'))) deleteMutation.mutate(c.id); }}
+                    className="flex-1 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                    {t('common.delete')}
+                  </button>
+                </div>
+              </div>
+            );
+          }}
+        />
       )}
 
       {/* ── Barra de edición masiva ── */}
