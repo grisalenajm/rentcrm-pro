@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
-import { CHART_COLORS, TOOLTIP_STYLE, KPI_CARD } from '../lib/ui';
+import { CHART_COLORS, TOOLTIP_STYLE, KPI_CARD, CARD } from '../lib/ui';
 import KpiCard from '../components/KpiCard';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -486,7 +486,7 @@ export default function Dashboard() {
           </div>
 
           {/* Bar: ingresos vs gastos — selector per-chart */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <h2 className="font-semibold">
                 {barView === 'annual'
@@ -526,7 +526,7 @@ export default function Dashboard() {
           </div>
 
           {/* Line: ocupación — selector per-chart */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <h2 className="font-semibold">
                 {lineView === 'annual'
@@ -572,7 +572,7 @@ export default function Dashboard() {
           </div>
 
           {/* MEJORA 3: Mapa de calor de ocupación por propiedad */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <h2 className="font-semibold">Ocupación por propiedad</h2>
               <div className="flex flex-wrap items-center gap-2">
@@ -749,7 +749,7 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className={CARD}>
               <h2 className="font-semibold mb-4">Ranking por ingresos — {selectedYear}</h2>
               {propertyProfitability.length > 0 ? (
                 <ResponsiveContainer width="100%" height={Math.max(200, propertyProfitability.length * 44)}>
@@ -771,7 +771,7 @@ export default function Dashboard() {
             </div>
 
             {/* MEJORA 2: Pie con top 10 + Otros y tooltip con desglose */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className={CARD}>
               <h2 className="font-semibold mb-4">Origen de reservas — {periodLabel}</h2>
               {sourcePieData.length > 0 ? (
                 <div className="flex flex-col items-center">
@@ -848,7 +848,7 @@ export default function Dashboard() {
           </div>
 
           {/* MEJORA 2: Pie nacionalidades con tooltip desglose para "Otros" */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <h2 className="font-semibold mb-4">Nacionalidades de huéspedes</h2>
             {nationalityPie.length > 0 ? (
               <div className="flex flex-col md:flex-row items-center gap-6">
@@ -936,7 +936,7 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className={CARD}>
               <h2 className="font-semibold mb-4">Check-in online — {MONTHS[NOW.getMonth()]}</h2>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -964,7 +964,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className={CARD}>
               <h2 className="font-semibold mb-4">Contratos — {MONTHS[NOW.getMonth()]}</h2>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
-import { inputCls, labelCls, selCls, LANGUAGES } from '../lib/ui';
+import { inputCls, labelCls, selCls, LANGUAGES, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, MODAL_OVERLAY, MODAL_PANEL } from '../lib/ui';
 import DataTable from '../components/DataTable';
 import type { Column } from '../components/DataTable';
 import ExcelButtons from '../components/ExcelButtons';
@@ -353,7 +353,7 @@ export default function Clients() {
             {t('common.edit')}
           </button>
           <button onClick={e => { e.stopPropagation(); if (confirm(t('common.confirm_delete'))) deleteMutation.mutate(c.id); }}
-            className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+            className={BTN_DANGER}>
             {t('common.delete')}
           </button>
         </div>
@@ -374,7 +374,7 @@ export default function Clients() {
         <div className="flex items-center gap-2">
           <ExcelButtons entity="clients" onImportSuccess={() => qc.invalidateQueries({ queryKey: ['clients'] })} />
           <button onClick={openCreate}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
+            className={BTN_PRIMARY}>
             + {t('clients.new')}
           </button>
         </div>
@@ -446,7 +446,7 @@ export default function Clients() {
                     {t('common.edit')}
                   </button>
                   <button onClick={e => { e.stopPropagation(); if (confirm(t('common.confirm_delete'))) deleteMutation.mutate(c.id); }}
-                    className="flex-1 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                    className={`flex-1 ${BTN_DANGER}`}>
                     {t('common.delete')}
                   </button>
                 </div>
@@ -499,11 +499,11 @@ export default function Clients() {
           )}
           <div className="flex gap-2 ml-auto">
             <button onClick={applyBulk} disabled={!bulkAction || !bulkValue || bulkLoading}
-              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors">
+              className={BTN_PRIMARY}>
               {bulkLoading ? '...' : 'Aplicar'}
             </button>
             <button onClick={cancelBulk}
-              className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-semibold transition-colors">
+              className={BTN_SECONDARY}>
               Cancelar
             </button>
           </div>
@@ -511,8 +511,8 @@ export default function Clients() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
+        <div className={MODAL_OVERLAY}>
+          <div className={`${MODAL_PANEL} max-h-[95vh] md:max-h-[90vh] overflow-y-auto`}>
             <h2 className="text-lg font-bold mb-5 text-white">{editing ? t('common.edit') : t('clients.new')}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
 
@@ -645,11 +645,11 @@ export default function Clients() {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold text-white transition-colors">
+                  className={`flex-1 ${BTN_SECONDARY}`}>
                   {t('common.cancel')}
                 </button>
                 <button type="submit"
-                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold text-white transition-colors">
+                  className={`flex-1 ${BTN_PRIMARY}`}>
                   {editing ? t('common.save') : t('clients.new')}
                 </button>
               </div>

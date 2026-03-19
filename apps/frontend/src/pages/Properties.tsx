@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
-import { inputCls, labelCls, platformBadgeColor } from '../lib/ui';
+import { inputCls, labelCls, platformBadgeColor, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, MODAL_OVERLAY, MODAL_PANEL } from '../lib/ui';
 import ExcelButtons from '../components/ExcelButtons';
 import NruaExport from '../components/NruaExport';
 import { WORLD_COUNTRIES } from '../data/countries';
@@ -192,7 +192,7 @@ export default function Properties() {
         <div className="flex items-center gap-2">
           <ExcelButtons entity="properties" showImport={false} />
           <button onClick={openCreate}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
+            className={BTN_PRIMARY}>
             + {t('properties.new')}
           </button>
         </div>
@@ -244,7 +244,7 @@ export default function Properties() {
                         <button onClick={(e) => { e.stopPropagation(); openEdit(p); }}
                           className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">{t('common.edit')}</button>
                         <button onClick={(e) => { e.stopPropagation(); if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(p.id); }}
-                          className="px-3 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">{t('common.delete')}</button>
+                          className={BTN_DANGER}>{t('common.delete')}</button>
                       </div>
                     </td>
                   </tr>
@@ -283,7 +283,7 @@ export default function Properties() {
                   <button onClick={() => openEdit(p)}
                     className="flex-1 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors text-center">{t('common.edit')}</button>
                   <button onClick={() => { if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(p.id); }}
-                    className="flex-1 py-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors text-center">{t('common.delete')}</button>
+                    className={`flex-1 ${BTN_DANGER}`}>{t('common.delete')}</button>
                 </div>
               </div>
             ))}
@@ -295,8 +295,8 @@ export default function Properties() {
 
       {/* Property create/edit modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
+        <div className={MODAL_OVERLAY}>
+          <div className={`${MODAL_PANEL} md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto`}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
               <h2 className="text-lg font-bold text-white">{editing ? t('common.edit') : t('properties.new')}</h2>
               <button type="button" onClick={() => setShowForm(false)}
@@ -410,9 +410,9 @@ export default function Properties() {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">{t('common.cancel')}</button>
+                  className={`flex-1 ${BTN_SECONDARY}`}>{t('common.cancel')}</button>
                 <button type="submit"
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-sm font-semibold transition-colors">
+                  className={`flex-1 ${BTN_PRIMARY}`}>
                   {editing ? t('common.save') : t('properties.new')}
                 </button>
               </div>
@@ -423,7 +423,7 @@ export default function Properties() {
 
       {/* iCal sync modal */}
       {icalProperty && (
-        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+        <div className={MODAL_OVERLAY}>
           <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-2xl max-h-[95vh] md:max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
               <div>
@@ -433,7 +433,7 @@ export default function Properties() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => { setIcalShowAdd(true); setIcalError(''); }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
+                  className={BTN_PRIMARY}>
                   + {t('properties.ical.addFeed')}
                 </button>
                 <button onClick={() => setIcalProperty(null)}
@@ -488,13 +488,13 @@ export default function Properties() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => { setIcalShowAdd(false); setIcalError(''); }}
-                      className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-semibold transition-colors">
+                      className={`flex-1 ${BTN_SECONDARY}`}>
                       {t('properties.ical.cancel')}
                     </button>
                     <button
                       onClick={handleAddFeed}
                       disabled={icalSaving}
-                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50">
+                      className={`flex-1 ${BTN_PRIMARY}`}>
                       {icalSaving ? t('properties.ical.saving') : t('properties.ical.save')}
                     </button>
                   </div>

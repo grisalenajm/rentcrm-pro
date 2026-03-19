@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
-import { bookingStatusColor, badgeCls, inputCls, labelCls, selCls } from '../lib/ui';
+import { bookingStatusColor, badgeCls, inputCls, labelCls, selCls, BTN_PRIMARY, BTN_SECONDARY, MODAL_OVERLAY, MODAL_PANEL } from '../lib/ui';
 import FormField from '../components/FormField';
 import DataTable from '../components/DataTable';
 import type { Column } from '../components/DataTable';
@@ -506,7 +506,7 @@ export default function Bookings() {
         <div className="flex items-center gap-2">
           <ExcelButtons entity="bookings" onImportSuccess={() => qc.invalidateQueries({ queryKey: ['bookings'] })} />
           <button onClick={() => { setShowForm(true); setErrorMsg(''); resetForm(); }}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
+            className={BTN_PRIMARY}>
             + {t('bookings.new')}
           </button>
         </div>
@@ -638,11 +638,11 @@ export default function Bookings() {
           )}
           <div className="flex gap-2 ml-auto">
             <button onClick={applyBulk} disabled={!bulkAction || !bulkValue || bulkLoading}
-              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors">
+              className={BTN_PRIMARY}>
               {bulkLoading ? '...' : 'Aplicar'}
             </button>
             <button onClick={cancelBulk}
-              className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-semibold transition-colors">
+              className={BTN_SECONDARY}>
               Cancelar
             </button>
           </div>
@@ -650,8 +650,8 @@ export default function Bookings() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl p-6 w-full md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
+        <div className={MODAL_OVERLAY}>
+          <div className={`${MODAL_PANEL} md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto`}>
             <h2 className="text-lg font-bold mb-5 text-white">{t('bookings.new')}</h2>
 
             {errorMsg && (
@@ -871,11 +871,11 @@ export default function Bookings() {
               {/* ── Botones ───────────────────────────────────────── */}
               <div className="flex gap-3 pt-1">
                 <button onClick={() => { setShowForm(false); setErrorMsg(''); resetForm(); }}
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold text-white transition-colors">
+                  className={`flex-1 ${BTN_SECONDARY}`}>
                   {t('common.cancel')}
                 </button>
                 <button onClick={handleSubmit} disabled={isSubmitDisabled}
-                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold text-white transition-colors">
+                  className={`flex-1 ${BTN_PRIMARY}`}>
                   {createMutation.isPending || createClientMutation.isPending ? t('common.saving') : t('bookings.new')}
                 </button>
               </div>
