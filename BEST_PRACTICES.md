@@ -7,7 +7,7 @@
 - **Conflicto contenedor**: `docker rm -f rentcrm-api && docker compose up -d api`
 - NUNCA solo `restart` — no recarga código
 - Si el log de debug no aparece tras rebuild: el build no incluyó los cambios → repetir `npm run build` explícito
-- Tras cada tarea: `git add -A && git commit -m 'mensaje en español' && git push origin main`
+- Tras cada tarea: `git add -A && git commit -m 'message in English (public repo)' && git push origin main`
 
 ## Prisma (CRÍTICO)
 - SIEMPRE desde el host, NUNCA desde dentro del contenedor

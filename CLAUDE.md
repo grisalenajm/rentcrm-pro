@@ -51,7 +51,7 @@ docker logs rentcrm-frontend --tail=5
 
 ### Git
 ```bash
-cd ~/rentcrm-pro && git add -A && git commit -m "mensaje en español" && git push origin develop
+cd ~/rentcrm-pro && git add -A && git commit -m "message in English (public repo)" && git push origin develop
 ```
 > Los commits NO llevan Co-Authored-By.
 > Merge a main solo cuando el usuario confirma que está probado y estable.
