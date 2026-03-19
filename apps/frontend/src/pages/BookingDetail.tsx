@@ -10,6 +10,12 @@ import {
   bookingStatusBtn as STATUS_BTN,
   contractStatusColor,
   LANGUAGES,
+  inputCls,
+  labelCls,
+  MODAL_OVERLAY,
+  MODAL_PANEL,
+  BTN_PRIMARY,
+  BTN_SECONDARY,
 } from '../lib/ui';
 
 
@@ -532,7 +538,7 @@ export default function BookingDetail() {
                 <div className="mb-3">
                   <label className="text-xs text-slate-400 mb-1 block">Idioma del email</label>
                   <select value={checkinLang} onChange={e => setCheckinLang(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                    className={inputCls}>
                     {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
                   </select>
                 </div>
@@ -585,12 +591,12 @@ export default function BookingDetail() {
               onChange={e => setNotesDraft(e.target.value)}
               rows={4}
               autoFocus
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none"
+              className={`${inputCls} resize-none`}
             />
             <div className="flex gap-2">
               <button
                 onClick={() => setNotesEditing(false)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                className={`flex-1 ${BTN_SECONDARY}`}>
                 Cancelar
               </button>
               <button
@@ -605,7 +611,7 @@ export default function BookingDetail() {
                     setNotesSaving(false);
                   }
                 }}
-                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg text-sm font-semibold transition-colors">
+                className={`flex-1 ${BTN_PRIMARY}`}>
                 {notesSaving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>
@@ -627,20 +633,20 @@ export default function BookingDetail() {
 
       {/* Modal edición */}
       {showEdit && (
-        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[95vh] overflow-y-auto p-6">
+        <div className={MODAL_OVERLAY}>
+          <div className={`${MODAL_PANEL} max-h-[95vh] overflow-y-auto`}>
             <h2 className="text-lg font-bold mb-5">Editar reserva</h2>
 
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Entrada *</label>
+                  <label className={labelCls}>Entrada *</label>
                   <input type="date" value={editForm.startDate}
                     onChange={e => setEditForm({...editForm, startDate: e.target.value})}
                     className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 ${dateError ? 'border-red-500' : 'border-slate-700'}`} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Salida *</label>
+                  <label className={labelCls}>Salida *</label>
                   <input type="date" value={editForm.endDate}
                     onChange={e => setEditForm({...editForm, endDate: e.target.value})}
                     className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 ${dateError ? 'border-red-500' : 'border-slate-700'}`} />
@@ -654,16 +660,16 @@ export default function BookingDetail() {
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total €</label>
+                <label className={labelCls}>Total €</label>
                 <input type="number" step="0.01" value={editForm.totalPrice}
                   onChange={e => setEditForm({...editForm, totalPrice: e.target.value})}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  className={inputCls} />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Origen</label>
+                <label className={labelCls}>Origen</label>
                 <select value={editForm.source} onChange={e => setEditForm({...editForm, source: e.target.value})}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                  className={inputCls}>
                   <option value="direct">Directo</option>
                   <option value="airbnb">Airbnb</option>
                   <option value="booking">Booking.com</option>
@@ -673,19 +679,19 @@ export default function BookingDetail() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Notas</label>
+                <label className={labelCls}>Notas</label>
                 <textarea value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})}
-                  rows={3} className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none" />
+                  rows={3} className={`${inputCls} resize-none`} />
               </div>
             </div>
 
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowEdit(false)}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition-colors">
+                className={`flex-1 ${BTN_SECONDARY}`}>
                 Cancelar
               </button>
               <button onClick={handleEditSubmit} disabled={updateMutation.isPending || !!dateError || !!overlapError}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl text-sm font-semibold transition-colors">
+                className={`flex-1 ${BTN_PRIMARY}`}>
                 {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
               </button>
             </div>
@@ -728,8 +734,8 @@ export default function BookingDetail() {
 
       {/* Modal valoración */}
       {showRating && (
-        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-sm max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
+        <div className={MODAL_OVERLAY}>
+          <div className={`${MODAL_PANEL} md:max-w-sm max-h-[95vh] md:max-h-[90vh] overflow-y-auto`}>
             <h2 className="text-lg font-bold mb-4">{evaluation ? t('evaluations.editTitle') : t('evaluations.title')}</h2>
             <div className="mb-4">
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('evaluations.score')}</label>
@@ -737,14 +743,14 @@ export default function BookingDetail() {
               <p className="text-xs text-slate-400 mt-1">{(t('evaluations.scores') as any)[ratingScore]}</p>
             </div>
             <div className="mb-4">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.comment')}</label>
+              <label className={labelCls}>{t('evaluations.comment')}</label>
               <textarea value={ratingNotes} onChange={e => setRatingNotes(e.target.value)} rows={3}
                 placeholder={t('evaluations.commentPlaceholder')}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none" />
+                className={`${inputCls} resize-none`} />
             </div>
             <div className="flex gap-3">
               <button onClick={() => setShowRating(false)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                className={`flex-1 ${BTN_SECONDARY}`}>
                 {t('common.cancel')}
               </button>
               <button
@@ -757,7 +763,7 @@ export default function BookingDetail() {
                   }
                 }}
                 disabled={createEvalMutation.isPending || updateEvalMutation.isPending}
-                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                className={`flex-1 ${BTN_PRIMARY}`}>
                 {(createEvalMutation.isPending || updateEvalMutation.isPending) ? t('common.saving') : t('evaluations.save')}
               </button>
             </div>

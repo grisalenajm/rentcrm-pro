@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import ExcelButtons from '../components/ExcelButtons';
 import { useAuth } from '../context/AuthContext';
+import { inputCls, labelCls, MODAL_OVERLAY, MODAL_PANEL, BTN_PRIMARY, BTN_SECONDARY } from '../lib/ui';
 
 const EXPENSE_TYPES = [
   { value: 'tasas',    label: 'Tasas' },
@@ -33,8 +34,6 @@ const EMPTY_REC_FORM = {
 
 const EMPTY_FORM    = { propertyId: '', date: '', amount: '', type: 'otros', notes: '', deductible: false };
 const EMPTY_FILTERS = { propertyId: '', type: '', from: '', to: '' };
-
-const inputCls = 'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500';
 
 export default function Financials() {
   const { t } = useTranslation();
@@ -404,7 +403,7 @@ export default function Financials() {
           <div className="flex flex-col md:flex-row gap-3 md:items-end">
             {/* Propiedad */}
             <div className="flex-1 min-w-0">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              <label className={labelCls}>
                 Propiedad
               </label>
               <select value={filters.propertyId} onChange={setFilter('propertyId')} className={inputCls}>
@@ -417,7 +416,7 @@ export default function Financials() {
 
             {/* Tipo */}
             <div className="flex-1 min-w-0">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              <label className={labelCls}>
                 Tipo
               </label>
               <select value={filters.type} onChange={setFilter('type')} className={inputCls}>
@@ -429,7 +428,7 @@ export default function Financials() {
 
             {/* Desde */}
             <div className="flex-1 min-w-0">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              <label className={labelCls}>
                 Desde
               </label>
               <input
@@ -442,7 +441,7 @@ export default function Financials() {
 
             {/* Hasta */}
             <div className="flex-1 min-w-0">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              <label className={labelCls}>
                 Hasta
               </label>
               <input
@@ -909,15 +908,15 @@ export default function Financials() {
 
       {/* Recurring expense modal */}
       {showRecModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
+        <div className={MODAL_OVERLAY}>
+          <div className={`${MODAL_PANEL} max-h-[95vh] md:max-h-[90vh] overflow-y-auto`}>
             <h2 className="text-lg font-bold mb-5">
               {editingRec ? 'Editar gasto recurrente' : 'Nuevo gasto recurrente'}
             </h2>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Propiedad *</label>
+                  <label className={labelCls}>Propiedad *</label>
                   <select value={recForm.propertyId} onChange={rf('propertyId')} className={inputCls}>
                     <option value="">— Selecciona propiedad —</option>
                     {(properties as any[]).map((p: any) => (
@@ -926,7 +925,7 @@ export default function Financials() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Tipo *</label>
+                  <label className={labelCls}>Tipo *</label>
                   <select value={recForm.type} onChange={rf('type')} className={inputCls}>
                     {EXPENSE_TYPES.map((et) => (
                       <option key={et.value} value={et.value}>{et.label}</option>
@@ -934,11 +933,11 @@ export default function Financials() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Importe (€) *</label>
+                  <label className={labelCls}>Importe (€) *</label>
                   <input type="number" step="0.01" min="0" value={recForm.amount} onChange={rf('amount')} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Frecuencia *</label>
+                  <label className={labelCls}>Frecuencia *</label>
                   <select value={recForm.frequency} onChange={rf('frequency')} className={inputCls}>
                     {FREQUENCIES.map((fr) => (
                       <option key={fr.value} value={fr.value}>{fr.label}</option>
@@ -946,15 +945,15 @@ export default function Financials() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Día del mes (1-28) *</label>
+                  <label className={labelCls}>Día del mes (1-28) *</label>
                   <input type="number" min="1" max="28" value={recForm.dayOfMonth} onChange={rf('dayOfMonth')} className={inputCls} />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Primera generación *</label>
+                  <label className={labelCls}>Primera generación *</label>
                   <input type="date" value={recForm.nextRunDate} onChange={rf('nextRunDate')} className={inputCls} />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Notas</label>
+                  <label className={labelCls}>Notas</label>
                   <textarea
                     value={recForm.notes}
                     onChange={rf('notes')}
@@ -978,14 +977,14 @@ export default function Financials() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={closeRecModal}
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors"
+                  className={`flex-1 ${BTN_SECONDARY}`}
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleSaveRec}
                   disabled={!recForm.propertyId || !recForm.amount || !recForm.nextRunDate || isRecPending}
-                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors"
+                  className={`flex-1 ${BTN_PRIMARY}`}
                 >
                   {isRecPending ? t('common.saving') : editingRec ? 'Guardar cambios' : 'Crear gasto recurrente'}
                 </button>
@@ -997,23 +996,23 @@ export default function Financials() {
 
       {/* Expense modal */}
       {showExpenseModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-md max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
+        <div className={MODAL_OVERLAY}>
+          <div className={`${MODAL_PANEL} max-h-[95vh] md:max-h-[90vh] overflow-y-auto`}>
             <h2 className="text-lg font-bold mb-5">
               {editingExpense ? 'Editar gasto' : 'Nuevo gasto'}
             </h2>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Fecha *</label>
+                  <label className={labelCls}>Fecha *</label>
                   <input type="date" value={expenseForm.date} onChange={f('date')} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Importe (€) *</label>
+                  <label className={labelCls}>Importe (€) *</label>
                   <input type="number" step="0.01" min="0" value={expenseForm.amount} onChange={f('amount')} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Tipo *</label>
+                  <label className={labelCls}>Tipo *</label>
                   <select value={expenseForm.type} onChange={f('type')} className={inputCls}>
                     {EXPENSE_TYPES.map((et) => (
                       <option key={et.value} value={et.value}>{et.label}</option>
@@ -1021,7 +1020,7 @@ export default function Financials() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Propiedad</label>
+                  <label className={labelCls}>Propiedad</label>
                   <select value={expenseForm.propertyId} onChange={f('propertyId')} className={inputCls}>
                     <option value="">—</option>
                     {(properties as any[]).map((p: any) => (
@@ -1030,7 +1029,7 @@ export default function Financials() {
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Notas</label>
+                  <label className={labelCls}>Notas</label>
                   <input
                     value={expenseForm.notes}
                     onChange={f('notes')}
@@ -1053,14 +1052,14 @@ export default function Financials() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={closeModal}
-                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors"
+                  className={`flex-1 ${BTN_SECONDARY}`}
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={!expenseForm.date || !expenseForm.amount || isPending}
-                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors"
+                  className={`flex-1 ${BTN_PRIMARY}`}
                 >
                   {isPending ? t('common.saving') : editingExpense ? 'Guardar cambios' : 'Añadir gasto'}
                 </button>

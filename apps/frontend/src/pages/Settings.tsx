@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import ContentEditor from '../components/ContentEditor';
+import { inputCls, labelCls, BTN_PRIMARY } from '../lib/ui';
 
 const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'MXN', 'ARS', 'COP'];
 const DATE_FORMATS = ['dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd'];
@@ -126,7 +127,7 @@ export default function Settings() {
         </div>
         {activeTab !== 'usuario' && (
           <button onClick={handleSave} disabled={updateMutation.isPending}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+            className={BTN_PRIMARY}>
             {saved ? t('common.saved') : updateMutation.isPending ? t('common.saving') : t('common.save')}
           </button>
         )}
@@ -173,7 +174,7 @@ export default function Settings() {
               <select
                 value={language}
                 onChange={e => setLanguage(e.target.value as any)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                className={inputCls}>
                 {LANGUAGES.map(l => (
                   <option key={l.value} value={l.value}>{l.label}</option>
                 ))}
@@ -217,26 +218,26 @@ export default function Settings() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('settings.companyName')} *</label>
+              <label className={labelCls}>{t('settings.companyName')} *</label>
               <input value={currentValue('name')} onChange={f('name')}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                className={inputCls} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('settings.contactEmail')}</label>
+                <label className={labelCls}>{t('settings.contactEmail')}</label>
                 <input type="email" value={currentValue('email')} onChange={f('email')}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('common.phone')}</label>
+                <label className={labelCls}>{t('common.phone')}</label>
                 <input value={currentValue('phone')} onChange={f('phone')}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  className={inputCls} />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('common.address')}</label>
+              <label className={labelCls}>{t('common.address')}</label>
               <textarea value={currentValue('address')} onChange={f('address')} rows={2}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none" />
+                className={`${inputCls} resize-none`} />
             </div>
           </>
         )}
@@ -245,9 +246,9 @@ export default function Settings() {
         {activeTab === 'fiscal' && (
           <>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('settings.nif')}</label>
+              <label className={labelCls}>{t('settings.nif')}</label>
               <input value={currentValue('nif')} onChange={f('nif')}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                className={inputCls} />
             </div>
             <div className="bg-slate-800 rounded-xl p-4 text-sm text-slate-400">
               <p className="font-semibold text-white mb-1">ℹ️ {language === 'es' ? 'Datos fiscales' : 'Tax information'}</p>
@@ -265,32 +266,32 @@ export default function Settings() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('settings.smtp.host')}</label>
+                <label className={labelCls}>{t('settings.smtp.host')}</label>
                 <input value={currentValue('smtpHost')} onChange={f('smtpHost')} placeholder="smtp.gmail.com"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('settings.smtp.port')}</label>
+                <label className={labelCls}>{t('settings.smtp.port')}</label>
                 <input type="number" value={currentValue('smtpPort')} onChange={f('smtpPort')} placeholder="587"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('settings.smtp.user')}</label>
+                <label className={labelCls}>{t('settings.smtp.user')}</label>
                 <input value={currentValue('smtpUser')} onChange={f('smtpUser')} placeholder="tu@email.com"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                <label className={labelCls}>
                   {t('settings.smtp.pass')} {org?.smtpPassSet && <span className="text-emerald-400 font-normal">{t('settings.smtp.saved')}</span>}
                 </label>
                 <input type="password" value={smtpPass} onChange={e => setSmtpPass(e.target.value)}
                   placeholder={org?.smtpPassSet ? '••••••••' : t('settings.smtp.pass')}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  className={inputCls} />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('settings.smtp.from')}</label>
+                <label className={labelCls}>{t('settings.smtp.from')}</label>
                 <input value={currentValue('smtpFrom')} onChange={f('smtpFrom')} placeholder="noreply@tuempresa.com"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  className={inputCls} />
               </div>
             </div>
 
@@ -304,7 +305,7 @@ export default function Settings() {
                   value={testEmail}
                   onChange={e => setTestEmail(e.target.value)}
                   placeholder={language === 'en' ? 'Send test to...' : 'Enviar prueba a...'}
-                  className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className={`flex-1 ${inputCls}`}
                 />
                 <button
                   onClick={handleTestSmtp}
@@ -334,29 +335,29 @@ export default function Settings() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Usuario WS</label>
+                <label className={labelCls}>Usuario WS</label>
                 <input value={currentValue('sesUsuarioWs')} onChange={f('sesUsuarioWs')}
                   placeholder="12345678AWS"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  className={inputCls} />
                 <p className="text-xs text-slate-500 mt-1">Tu NIF/CIF terminado en WS</p>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Contraseña WS</label>
+                <label className={labelCls}>Contraseña WS</label>
                 <input type="password" value={currentValue('sesPasswordWs')} onChange={f('sesPasswordWs')}
                   placeholder="••••••••"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  className={inputCls} />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Código Arrendador</label>
+                <label className={labelCls}>Código Arrendador</label>
                 <input value={currentValue('sesCodigoArrendador')} onChange={f('sesCodigoArrendador')}
                   placeholder="0000000001"
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  className={inputCls} />
                 <p className="text-xs text-slate-500 mt-1">Asignado al registrarte en SES</p>
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Entorno</label>
+                <label className={labelCls}>Entorno</label>
                 <select value={currentValue('sesEndpoint')} onChange={f('sesEndpoint')}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                  className={inputCls}>
                   <option value="">— Seleccionar —</option>
                   <option value="https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion">🟢 SES Hospedajes — Producción</option>
                   <option value="https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/v1/comunicacion">🧪 SES Hospedajes — Pruebas</option>
@@ -399,21 +400,21 @@ export default function Settings() {
                 : 'Signed contracts will be automatically uploaded to your Paperless-ngx instance.'}</p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              <label className={labelCls}>
                 URL de Paperless-ngx
               </label>
               <input
                 value={currentValue('paperlessUrl')}
                 onChange={f('paperlessUrl')}
                 placeholder="http://192.168.1.50:8000"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                className={inputCls}
               />
               <p className="text-xs text-slate-500 mt-1">
                 {language === 'es' ? 'URL base de tu servidor Paperless (sin slash final)' : 'Base URL of your Paperless server (no trailing slash)'}
               </p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              <label className={labelCls}>
                 API Token {org?.paperlessTokenSet && <span className="text-emerald-400 font-normal">✓ guardado</span>}
               </label>
               <input
@@ -421,7 +422,7 @@ export default function Settings() {
                 value={currentValue('paperlessToken')}
                 onChange={f('paperlessToken')}
                 placeholder={org?.paperlessTokenSet ? '••••••••' : 'Token de la API de Paperless-ngx'}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                className={inputCls}
               />
               <p className="text-xs text-slate-500 mt-1">
                 {language === 'es'
@@ -461,16 +462,16 @@ export default function Settings() {
           <>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('settings.currency')}</label>
+                <label className={labelCls}>{t('settings.currency')}</label>
                 <select value={currentValue('currency')} onChange={f('currency')}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                  className={inputCls}>
                   {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('settings.dateFormat')}</label>
+                <label className={labelCls}>{t('settings.dateFormat')}</label>
                 <select value={currentValue('dateFormat')} onChange={f('dateFormat')}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+                  className={inputCls}>
                   {DATE_FORMATS.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>

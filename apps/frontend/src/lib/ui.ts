@@ -63,14 +63,14 @@ export const badgeCls = 'text-xs font-semibold px-2.5 py-1 rounded-full';
 // ── Form input classes ────────────────────────────────────────────────────────
 
 export const inputCls =
-  'w-full bg-[#0f0f1a] border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed';
+  'w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed';
 
 export const labelCls =
-  'block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1.5';
+  'block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1';
 
-/** Para selects de filtro en barra de herramientas (sin w-full, bg más oscuro) */
+/** Para selects (mismo estilo que inputCls) */
 export const selCls =
-  'bg-[#0f0f1a] border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed';
+  'w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed';
 
 // ── Chart colors ──────────────────────────────────────────────────────────────
 
@@ -99,28 +99,28 @@ export const TOOLTIP_STYLE: React.CSSProperties = {
 // ── KPI card ──────────────────────────────────────────────────────────────────
 
 /** Clase base de tarjeta genérica */
-export const CARD = 'bg-[#1a1a2e] rounded-2xl border border-white/5 p-6 shadow-xl shadow-black/20';
+export const CARD = 'bg-slate-900 rounded-xl border border-slate-800 p-6';
 
 /** Clase base del contenedor de tarjeta KPI */
-export const KPI_CARD = 'bg-[#1a1a2e] rounded-2xl border border-white/5 p-5 flex flex-col gap-1 shadow-lg shadow-black/20';
+export const KPI_CARD = 'bg-slate-900 rounded-xl border border-slate-800 p-5 flex flex-col gap-1';
 
 /** Modal overlay */
-export const MODAL_OVERLAY = 'fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end md:items-center justify-center z-50 p-0 md:p-4';
+export const MODAL_OVERLAY = 'fixed inset-0 bg-black/60 flex items-end md:items-center justify-center z-50 p-0 md:p-4';
 
 /** Modal panel */
-export const MODAL_PANEL = 'bg-[#1a1a2e] border border-white/5 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg p-6 shadow-2xl';
+export const MODAL_PANEL = 'bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-lg p-6';
 
 /** Título de sección */
 export const SECTION_TITLE = 'text-base font-semibold text-white/90 mb-4';
 
 /** Botón primario */
-export const BTN_PRIMARY = 'bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed';
+export const BTN_PRIMARY = 'bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
 /** Botón secundario */
-export const BTN_SECONDARY = 'bg-white/5 hover:bg-white/10 text-white font-medium px-4 py-2.5 rounded-xl border border-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed';
+export const BTN_SECONDARY = 'bg-slate-700 hover:bg-slate-600 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
 /** Botón de peligro */
-export const BTN_DANGER = 'bg-red-500/20 hover:bg-red-500/30 text-red-400 font-medium px-4 py-2.5 rounded-xl border border-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed';
+export const BTN_DANGER = 'bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
 // ── Skeleton loader ────────────────────────────────────────────────────────────
 

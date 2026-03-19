@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { LANGUAGES } from '../lib/ui';
+import { LANGUAGES, inputCls, labelCls, MODAL_OVERLAY, MODAL_PANEL, BTN_PRIMARY, BTN_SECONDARY } from '../lib/ui';
 
 
 function Stars({ score, onChange }: { score: number; onChange?: (s: number) => void }) {
@@ -206,12 +206,12 @@ export default function ClientDetail() {
                   onChange={e => setNotesDraft(e.target.value)}
                   rows={4}
                   autoFocus
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none"
+                  className={`${inputCls} resize-none`}
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={() => setNotesEditing(false)}
-                    className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                    className={`flex-1 ${BTN_SECONDARY}`}>
                     Cancelar
                   </button>
                   <button
@@ -226,7 +226,7 @@ export default function ClientDetail() {
                         setNotesSaving(false);
                       }
                     }}
-                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg text-sm font-semibold transition-colors">
+                    className={`flex-1 ${BTN_PRIMARY}`}>
                     {notesSaving ? 'Guardando…' : 'Guardar'}
                   </button>
                 </div>
@@ -368,8 +368,8 @@ export default function ClientDetail() {
 
       {/* Modal crear valoración */}
       {ratingBookingId && (
-        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-sm max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
+        <div className={MODAL_OVERLAY}>
+          <div className={`${MODAL_PANEL} md:max-w-sm max-h-[95vh] md:max-h-[90vh] overflow-y-auto`}>
             <h2 className="text-lg font-bold mb-4">{t('evaluations.title')}</h2>
             <div className="mb-4">
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('evaluations.score')}</label>
@@ -377,18 +377,18 @@ export default function ClientDetail() {
               <p className="text-xs text-slate-400 mt-1">{(t('evaluations.scores') as any)[ratingScore]}</p>
             </div>
             <div className="mb-4">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.comment')}</label>
+              <label className={labelCls}>{t('evaluations.comment')}</label>
               <textarea value={ratingNotes} onChange={e => setRatingNotes(e.target.value)} rows={3}
                 placeholder={t('evaluations.commentPlaceholder')}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none" />
+                className={`${inputCls} resize-none`} />
             </div>
             <div className="flex gap-3">
               <button onClick={() => setRatingBookingId(null)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                className={`flex-1 ${BTN_SECONDARY}`}>
                 {t('common.cancel')}
               </button>
               <button onClick={handleRating} disabled={createEvalMutation.isPending}
-                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                className={`flex-1 ${BTN_PRIMARY}`}>
                 {createEvalMutation.isPending ? t('common.saving') : t('evaluations.save')}
               </button>
             </div>
@@ -398,8 +398,8 @@ export default function ClientDetail() {
 
       {/* Modal editar valoración */}
       {editingEval && (
-        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-sm max-h-[95vh] md:max-h-[90vh] overflow-y-auto p-6">
+        <div className={MODAL_OVERLAY}>
+          <div className={`${MODAL_PANEL} md:max-w-sm max-h-[95vh] md:max-h-[90vh] overflow-y-auto`}>
             <h2 className="text-lg font-bold mb-4">{t('evaluations.editTitle')}</h2>
             <div className="mb-4">
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('evaluations.score')}</label>
@@ -407,17 +407,17 @@ export default function ClientDetail() {
               <p className="text-xs text-slate-400 mt-1">{(t('evaluations.scores') as any)[editingEval.score]}</p>
             </div>
             <div className="mb-4">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.comment')}</label>
+              <label className={labelCls}>{t('evaluations.comment')}</label>
               <textarea value={editingEval.notes || ''} onChange={e => setEditingEval({ ...editingEval, notes: e.target.value })} rows={3}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none" />
+                className={`${inputCls} resize-none`} />
             </div>
             <div className="flex gap-3">
               <button onClick={() => setEditingEval(null)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                className={`flex-1 ${BTN_SECONDARY}`}>
                 {t('common.cancel')}
               </button>
               <button onClick={handleUpdateRating} disabled={updateEvalMutation.isPending}
-                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg text-sm font-semibold transition-colors">
+                className={`flex-1 ${BTN_PRIMARY}`}>
                 {updateEvalMutation.isPending ? t('common.saving') : t('common.save')}
               </button>
             </div>
