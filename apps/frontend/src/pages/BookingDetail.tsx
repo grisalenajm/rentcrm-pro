@@ -11,7 +11,9 @@ import {
   contractStatusColor,
   LANGUAGES,
   inputCls,
+  selCls,
   labelCls,
+  CARD,
   MODAL_OVERLAY,
   MODAL_PANEL,
   BTN_PRIMARY,
@@ -294,7 +296,7 @@ export default function BookingDetail() {
         <div className="space-y-6">
 
           {/* Info principal */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <h2 className="font-bold text-lg mb-4">{booking.property?.name}</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
@@ -327,7 +329,7 @@ export default function BookingDetail() {
           </div>
 
           {/* Cliente */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider mb-3">{t('bookings.client')}</h3>
             <button onClick={() => navigate(`/clients/${booking.client?.id}`)}
               className="text-lg font-bold hover:text-emerald-400 transition-colors text-left">
@@ -342,7 +344,7 @@ export default function BookingDetail() {
           </div>
 
           {/* Valoración */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider">{t('bookings.rating')}</h3>
               <button onClick={() => setShowRating(true)}
@@ -362,7 +364,7 @@ export default function BookingDetail() {
           </div>
 
           {/* Contratos */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider">{t('bookings.contract')}</h3>
               <button onClick={() => navigate('/contracts')} className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
@@ -393,7 +395,7 @@ export default function BookingDetail() {
           </div>
 
           {/* Financiero */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider mb-3">{t('bookings.financials')}</h3>
             {booking.financials?.length === 0 ? (
               <p className="text-slate-500 text-sm">{t('bookings.noFinancials')}</p>
@@ -422,7 +424,7 @@ export default function BookingDetail() {
 
           {/* Huéspedes adicionales */}
           {booking.guests?.length > 0 && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className={CARD}>
               <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider mb-3">{t('bookings.additionalGuests')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {booking.guests.map((g: any) => (
@@ -436,7 +438,7 @@ export default function BookingDetail() {
           )}
 
           {/* SES Hospedajes */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-3 gap-2">
               <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider">🚔 SES Hospedajes</h3>
               <div className="flex flex-wrap items-center gap-2">
@@ -503,7 +505,7 @@ export default function BookingDetail() {
           </div>
 
           {/* Checkin online */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <span>✅</span> Checkin online
             </h3>
@@ -538,7 +540,7 @@ export default function BookingDetail() {
                 <div className="mb-3">
                   <label className="text-xs text-slate-400 mb-1 block">Idioma del email</label>
                   <select value={checkinLang} onChange={e => setCheckinLang(e.target.value)}
-                    className={inputCls}>
+                    className={selCls}>
                     {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
                   </select>
                 </div>
@@ -551,7 +553,7 @@ export default function BookingDetail() {
           </div>
 
           {/* Welcome Package */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <span>📨</span> {t('bookings.welcomePackage')}
             </h3>
@@ -573,7 +575,7 @@ export default function BookingDetail() {
       </div>
 
       {/* Notas */}
-      <div className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-5">
+      <div className={`mt-6 ${CARD}`}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider">Notas</h3>
           {!notesEditing && (
@@ -669,7 +671,7 @@ export default function BookingDetail() {
               <div>
                 <label className={labelCls}>Origen</label>
                 <select value={editForm.source} onChange={e => setEditForm({...editForm, source: e.target.value})}
-                  className={inputCls}>
+                  className={selCls}>
                   <option value="direct">Directo</option>
                   <option value="airbnb">Airbnb</option>
                   <option value="booking">Booking.com</option>
@@ -701,8 +703,8 @@ export default function BookingDetail() {
 
       {/* Status change modal */}
       {showStatusModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6">
+        <div className={MODAL_OVERLAY}>
+          <div className={`${MODAL_PANEL} md:max-w-sm`}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-white">Cambiar estado</h3>
               <button onClick={() => { setShowStatusModal(false); setStatusError(''); }}

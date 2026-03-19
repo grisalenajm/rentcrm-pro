@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { LANGUAGES, inputCls, labelCls, MODAL_OVERLAY, MODAL_PANEL, BTN_PRIMARY, BTN_SECONDARY } from '../lib/ui';
+import { LANGUAGES, inputCls, labelCls, CARD, MODAL_OVERLAY, MODAL_PANEL, BTN_PRIMARY, BTN_SECONDARY } from '../lib/ui';
 
 
 function Stars({ score, onChange }: { score: number; onChange?: (s: number) => void }) {
@@ -136,7 +136,7 @@ export default function ClientDetail() {
         <div className="md:w-1/3 space-y-6">
 
           {/* Datos cliente */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <h2 className="font-bold text-lg mb-4">{client?.firstName} {client?.lastName}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               {client?.dniPassport && (
@@ -188,7 +188,7 @@ export default function ClientDetail() {
           </div>
 
           {/* Notas cliente */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className={CARD}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider">Notas</h3>
               {!notesEditing && (
@@ -247,7 +247,7 @@ export default function ClientDetail() {
           </div>
 
           {/* Resumen */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+          <div className={`${CARD} space-y-4`}>
             <div>
               <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('evaluations.totalBookings')}</div>
               <div className="text-2xl font-bold">{totalBookings}</div>
@@ -335,7 +335,7 @@ export default function ClientDetail() {
               {/* Móvil: tarjetas */}
               <div className="md:hidden space-y-3 p-4">
                 {bookings.map((b: any) => (
-                  <div key={b.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                  <div key={b.id} className={CARD}>
                     <div className="flex justify-between items-start mb-2">
                       <span className="font-medium text-white">{b.property?.name || '—'}</span>
                       <span className="text-xs font-semibold text-emerald-400">€{b.totalAmount}</span>
