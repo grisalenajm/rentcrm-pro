@@ -513,18 +513,20 @@ export default function Bookings() {
       </div>
 
       {/* ── Barra de filtros ────────────────────────────────────────────── */}
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="mb-4 flex flex-col md:flex-row gap-2">
         <input
           placeholder="Buscar cliente o propiedad..."
           value={filterSearch}
           onChange={e => setFilterSearch(e.target.value)}
-          className="flex-1 min-w-48 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+          className="flex-1 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
         />
-        <select value={filterProperty} onChange={e => setFilterProperty(e.target.value)} className={selCls}>
+        <select value={filterProperty} onChange={e => setFilterProperty(e.target.value)}
+          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 md:w-44">
           <option value="">Todas las propiedades</option>
           {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={selCls}>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 md:w-40">
           <option value="">Todos los estados</option>
           {['created','registered','processed','error','cancelled'].map(s => (
             <option key={s} value={s}>{t(`bookings.statuses.${s}`)}</option>
@@ -535,18 +537,18 @@ export default function Bookings() {
           value={filterDateFrom}
           onChange={e => setFilterDateFrom(e.target.value)}
           title="Check-in desde"
-          className={selCls}
+          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 md:w-40"
         />
         <input
           type="date"
           value={filterDateTo}
           onChange={e => setFilterDateTo(e.target.value)}
           title="Check-in hasta"
-          className={selCls}
+          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 md:w-40"
         />
         {hasFilters && (
           <button onClick={() => { setFilterSearch(''); setFilterProperty(''); setFilterStatus(''); setFilterDateFrom(''); setFilterDateTo(''); }}
-            className="px-3 py-2 text-xs text-slate-400 hover:text-white border border-slate-700 rounded-lg transition-colors">
+            className="px-3 py-2 text-xs text-slate-400 hover:text-white border border-slate-700 rounded-lg transition-colors whitespace-nowrap">
             Limpiar
           </button>
         )}

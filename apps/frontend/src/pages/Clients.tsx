@@ -24,6 +24,7 @@ interface Client {
   postalCode?: string;
   province?: string;
   country?: string;
+  createdAt?: string;
 }
 
 const COUNTRIES = WORLD_COUNTRIES;
@@ -94,6 +95,8 @@ export default function Clients() {
   const [filterSearch, setFilterSearch] = useState('');
   const [filterNationality, setFilterNationality] = useState('');
   const [filterLanguage, setFilterLanguage] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
   const [sortKey, setSortKey] = useState('');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -160,6 +163,8 @@ export default function Clients() {
     }
     if (filterNationality) r = r.filter((c: Client) => c.nationality === filterNationality);
     if (filterLanguage)    r = r.filter((c: Client) => c.language === filterLanguage);
+    if (filterDateFrom)    r = r.filter((c: Client) => c.createdAt && new Date(c.createdAt) >= new Date(filterDateFrom));
+    if (filterDateTo)      r = r.filter((c: Client) => c.createdAt && new Date(c.createdAt) <= new Date(filterDateTo + 'T23:59:59'));
     if (sortKey) {
       r.sort((a: Client, b: Client) => {
         if (sortKey === 'bookings') {
@@ -262,7 +267,7 @@ export default function Clients() {
     else createMutation.mutate(data);
   };
 
-  const hasFilters = filterSearch || filterNationality || filterLanguage;
+  const hasFilters = filterSearch || filterNationality || filterLanguage || filterDateFrom || filterDateTo;
 
   // ── Bulk helpers ───────────────────────────────────────────────────────
   const allVisibleSelected = filteredSorted.length > 0 && filteredSorted.every((c: Client) => selectedIds.has(c.id));
@@ -381,24 +386,35 @@ export default function Clients() {
       </div>
 
       {/* ── Barra de filtros ────────────────────────────────────────────── */}
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="mb-4 flex flex-col md:flex-row gap-2">
         <input
           placeholder="Buscar por nombre o DNI..."
           value={filterSearch}
           onChange={e => setFilterSearch(e.target.value)}
-          className="flex-1 min-w-48 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+          className="flex-1 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
         />
-        <select value={filterNationality} onChange={e => setFilterNationality(e.target.value)} className={selCls}>
+        <select value={filterNationality} onChange={e => setFilterNationality(e.target.value)}
+          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 md:w-44">
           <option value="">Todas las nac.</option>
           {COUNTRIES.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
         </select>
-        <select value={filterLanguage} onChange={e => setFilterLanguage(e.target.value)} className={selCls}>
-          <option value="">Todos los idiomas</option>
-          {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
-        </select>
+        <input
+          type="date"
+          value={filterDateFrom}
+          onChange={e => setFilterDateFrom(e.target.value)}
+          title="Creación desde"
+          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 md:w-40"
+        />
+        <input
+          type="date"
+          value={filterDateTo}
+          onChange={e => setFilterDateTo(e.target.value)}
+          title="Creación hasta"
+          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 md:w-40"
+        />
         {hasFilters && (
-          <button onClick={() => { setFilterSearch(''); setFilterNationality(''); setFilterLanguage(''); }}
-            className="px-3 py-2 text-xs text-slate-400 hover:text-white border border-slate-700 rounded-lg transition-colors">
+          <button onClick={() => { setFilterSearch(''); setFilterNationality(''); setFilterLanguage(''); setFilterDateFrom(''); setFilterDateTo(''); }}
+            className="px-3 py-2 text-xs text-slate-400 hover:text-white border border-slate-700 rounded-lg transition-colors whitespace-nowrap">
             Limpiar
           </button>
         )}

@@ -20,6 +20,7 @@ interface Property {
   purchasePrice?: number;
   status: string;
   sesCodigoEstablecimiento?: string;
+  nrua?: string;
   photo?: string;
   notes?: string;
 }
@@ -365,8 +366,12 @@ export default function PropertyDetail() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
             <p className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">SES Hospedajes</p>
             <p className="text-xs text-slate-400">Código establecimiento</p>
-            <p className="text-white text-sm font-mono mt-1">
+            <p className="text-white text-sm font-mono mt-1 mb-3">
               {property.sesCodigoEstablecimiento || <span className="text-slate-500">No configurado</span>}
+            </p>
+            <p className="text-xs text-slate-400">NRUA</p>
+            <p className="text-white text-sm font-mono mt-1">
+              {property.nrua || <span className="text-slate-500">No configurado</span>}
             </p>
           </div>
 

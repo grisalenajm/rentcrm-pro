@@ -172,11 +172,21 @@ export class FinancialsService {
     const bookings = await this.prisma.booking.findMany({
       where: {
         propertyId,
+        organizationId,
+        status: { not: 'cancelled' },
         checkInDate: { lte: to },
         checkOutDate: { gte: from },
-        status: { not: 'cancelled' },
       },
-      select: { checkInDate: true, checkOutDate: true },
+      select: { checkInDate: true, checkOutDate: true, totalAmount: true, source: true },
+    });
+
+    // Expense records from Expense model (gastos de propiedad)
+    const expenseRecords = await this.prisma.expense.findMany({
+      where: {
+        propertyId,
+        property: { organizationId },
+        date: { gte: from, lte: to },
+      },
     });
 
     // Occupancy days clipped to the year
@@ -190,36 +200,73 @@ export class FinancialsService {
 
     // Monthly aggregation
     const months = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, income: 0, expenses: 0, profit: 0 }));
+
+    // Financial records (income + expense from Financial model)
     for (const r of records) {
       const m = new Date(r.date).getMonth(); // 0-based
       const amt = Number(r.amount);
       if (r.type === 'income')  { months[m].income   += amt; }
       else                      { months[m].expenses += amt; }
     }
+
+    // Booking income (Booking.totalAmount)
+    for (const b of bookings) {
+      if (b.totalAmount) {
+        const m = new Date(b.checkInDate).getMonth();
+        months[m].income += Number(b.totalAmount);
+      }
+    }
+
+    // Expense model records
+    for (const e of expenseRecords) {
+      const m = new Date(e.date).getMonth();
+      months[m].expenses += Number(e.amount);
+    }
+
     for (const m of months) m.profit = m.income - m.expenses;
 
     // Totals
-    const totalIncome  = records.filter(r => r.type === 'income' ).reduce((s, r) => s + Number(r.amount), 0);
-    const totalExpense = records.filter(r => r.type === 'expense').reduce((s, r) => s + Number(r.amount), 0);
+    const totalIncomeFinancial = records.filter(r => r.type === 'income').reduce((s, r) => s + Number(r.amount), 0);
+    const totalIncomeBookings  = bookings.reduce((s, b) => s + Number(b.totalAmount || 0), 0);
+    const totalIncome  = totalIncomeFinancial + totalIncomeBookings;
 
-    // Expenses by category type
+    const totalExpenseFinancial = records.filter(r => r.type === 'expense').reduce((s, r) => s + Number(r.amount), 0);
+    const totalExpenseModel     = expenseRecords.reduce((s, e) => s + Number(e.amount), 0);
+    const totalExpense = totalExpenseFinancial + totalExpenseModel;
+
+    // Expenses by category type (Financial expenses + Expense model)
     const byType: Record<string, number> = {};
     for (const r of records.filter(r => r.type === 'expense')) {
       const key = r.category?.name ?? 'otros';
       byType[key] = (byType[key] ?? 0) + Number(r.amount);
     }
+    for (const e of expenseRecords) {
+      const key = e.type ?? 'otros';
+      byType[key] = (byType[key] ?? 0) + Number(e.amount);
+    }
 
     // Deductible total
     const deductibleTotal = records
       .filter(r => r.type === 'expense' && (r as any).deductible)
-      .reduce((s, r) => s + Number(r.amount), 0);
+      .reduce((s, r) => s + Number(r.amount), 0)
+      + expenseRecords
+        .filter(e => e.deductible)
+        .reduce((s, e) => s + Number(e.amount), 0);
 
-    // Income by channel (booking source)
+    // Income by channel
     const byChannel: Record<string, number> = {};
     for (const r of records.filter(r => r.type === 'income')) {
       const key = r.booking?.source ?? 'directo';
       byChannel[key] = (byChannel[key] ?? 0) + Number(r.amount);
     }
+    for (const b of bookings) {
+      if (b.totalAmount) {
+        const key = b.source ?? 'directo';
+        byChannel[key] = (byChannel[key] ?? 0) + Number(b.totalAmount);
+      }
+    }
+
+    console.log(`[getPropertyReport] propertyId=${propertyId} year=${year} totalIncome=${totalIncome} totalExpense=${totalExpense} bookings=${bookings.length} expenses=${expenseRecords.length}`);
 
     return {
       property,

@@ -29,7 +29,7 @@ export default function Layout() {
     { to: '/financials',          icon: '💶', label: t('nav.financials') },
     { to: '/contracts',           icon: '📄', label: t('nav.contracts')  },
     { to: '/calendar',            icon: '🗓️', label: t('nav.calendar')  },
-    { to: '/police',              icon: '📡', label: t('nav.police')     },
+    { to: '/transmision-datos',   icon: '📡', label: t('nav.transmision') },
     ...(user?.role === 'admin' ? [{ to: '/users', icon: '👤', label: t('nav.users') }] : []),
     { to: '/settings',            icon: '⚙️', label: t('nav.settings')  },
   ];

@@ -852,8 +852,8 @@ export default function Dashboard() {
             <h2 className="font-semibold mb-4">Nacionalidades de huéspedes</h2>
             {nationalityPie.length > 0 ? (
               <div className="flex flex-col md:flex-row items-center gap-6">
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                     <Pie data={nationalityPie} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({ name, percent }) => percent > 0.04 ? `${name} ${Math.round(percent * 100)}%` : ''} labelLine={false}>
                       {nationalityPie.map((_: any, i: number) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                     </Pie>
