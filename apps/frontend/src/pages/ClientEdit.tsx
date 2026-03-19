@@ -2,23 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { inputCls, LANGUAGES } from '../lib/ui';
 import { WORLD_COUNTRIES } from '../data/countries';
-
-const LANGUAGES = [
-  { code: 'es', name: 'Español' },
-  { code: 'en', name: 'English' },
-  { code: 'fr', name: 'Français' },
-  { code: 'de', name: 'Deutsch' },
-  { code: 'it', name: 'Italiano' },
-  { code: 'pt', name: 'Português' },
-  { code: 'nl', name: 'Nederlands' },
-  { code: 'da', name: 'Dansk' },
-  { code: 'nb', name: 'Norsk' },
-  { code: 'sv', name: 'Svenska' },
-];
-
-const inputCls = 'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500';
-const labelCls = 'block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1';
+import FormField from '../components/FormField';
 
 export default function ClientEdit() {
   const { id } = useParams<{ id: string }>();
@@ -109,35 +95,28 @@ export default function ClientEdit() {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
         <p className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-4">Datos personales</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className={labelCls}>Nombre *</label>
+          <FormField label="Nombre" required>
             <input value={form.firstName || ''} onChange={f('firstName')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Apellidos *</label>
+          </FormField>
+          <FormField label="Apellidos" required>
             <input value={form.lastName || ''} onChange={f('lastName')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>DNI / Pasaporte</label>
+          </FormField>
+          <FormField label="DNI / Pasaporte">
             <input value={form.dniPassport || ''} onChange={f('dniPassport')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Nacionalidad</label>
+          </FormField>
+          <FormField label="Nacionalidad">
             <input value={form.nationality || ''} onChange={f('nationality')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Fecha de nacimiento</label>
+          </FormField>
+          <FormField label="Fecha de nacimiento">
             <input type="date" value={form.birthDate ? form.birthDate.slice(0, 10) : ''} onChange={f('birthDate')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Idioma de contacto</label>
-            <select value={form.language || 'es'} onChange={f('language')}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+          </FormField>
+          <FormField label="Idioma de contacto">
+            <select value={form.language || 'es'} onChange={f('language')} className={inputCls}>
               {LANGUAGES.map(l => (
                 <option key={l.code} value={l.code}>{l.name}</option>
               ))}
             </select>
-          </div>
+          </FormField>
         </div>
       </div>
 
@@ -145,14 +124,12 @@ export default function ClientEdit() {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
         <p className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-4">Contacto</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className={labelCls}>Email</label>
+          <FormField label="Email">
             <input type="email" value={form.email || ''} onChange={f('email')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Teléfono</label>
+          </FormField>
+          <FormField label="Teléfono">
             <input type="tel" value={form.phone || ''} onChange={f('phone')} className={inputCls} />
-          </div>
+          </FormField>
         </div>
       </div>
 
@@ -161,31 +138,27 @@ export default function ClientEdit() {
         <p className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-4">Dirección</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
-            <label className={labelCls}>Calle</label>
-            <input value={form.street || ''} onChange={f('street')} className={inputCls} />
+            <FormField label="Calle">
+              <input value={form.street || ''} onChange={f('street')} className={inputCls} />
+            </FormField>
           </div>
-          <div>
-            <label className={labelCls}>Código Postal</label>
+          <FormField label="Código Postal">
             <input value={form.postalCode || ''} onChange={f('postalCode')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Ciudad</label>
+          </FormField>
+          <FormField label="Ciudad">
             <input value={form.city || ''} onChange={f('city')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Provincia</label>
+          </FormField>
+          <FormField label="Provincia">
             <input value={form.province || ''} onChange={f('province')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>País</label>
-            <select value={form.country || ''} onChange={f('country')}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+          </FormField>
+          <FormField label="País">
+            <select value={form.country || ''} onChange={f('country')} className={inputCls}>
               <option value="">— Sin especificar —</option>
               {WORLD_COUNTRIES.map(c => (
                 <option key={c.code} value={c.code}>{c.name}</option>
               ))}
             </select>
-          </div>
+          </FormField>
         </div>
       </div>
 
@@ -193,7 +166,7 @@ export default function ClientEdit() {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
         <p className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-4">Notas</p>
         <textarea value={form.notes || ''} onChange={f('notes')} rows={3}
-          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 resize-none" />
+          className={`${inputCls} resize-none`} />
       </div>
 
       {/* Botones pie */}

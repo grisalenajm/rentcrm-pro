@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { inputCls } from '../lib/ui';
 import { WORLD_COUNTRIES } from '../data/countries';
-
-const inputCls = 'w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500';
-const labelCls = 'block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1';
+import FormField from '../components/FormField';
 
 export default function PropertyEdit() {
   const { id } = useParams<{ id: string }>();
@@ -94,72 +93,60 @@ export default function PropertyEdit() {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
-            <label className={labelCls}>Nombre *</label>
-            <input value={form.name || ''} onChange={f('name')} className={inputCls} />
+            <FormField label="Nombre" required>
+              <input value={form.name || ''} onChange={f('name')} className={inputCls} />
+            </FormField>
           </div>
           <div className="md:col-span-2">
-            <label className={labelCls}>Dirección</label>
-            <input value={form.address || ''} onChange={f('address')} className={inputCls} />
+            <FormField label="Dirección">
+              <input value={form.address || ''} onChange={f('address')} className={inputCls} />
+            </FormField>
           </div>
-          <div>
-            <label className={labelCls}>Ciudad</label>
+          <FormField label="Ciudad">
             <input value={form.city || ''} onChange={f('city')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Provincia</label>
+          </FormField>
+          <FormField label="Provincia">
             <input value={form.province || ''} onChange={f('province')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Código Postal</label>
+          </FormField>
+          <FormField label="Código Postal">
             <input value={form.postalCode || ''} onChange={f('postalCode')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>País</label>
-            <select value={form.country || ''} onChange={f('country')}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+          </FormField>
+          <FormField label="País">
+            <select value={form.country || ''} onChange={f('country')} className={inputCls}>
               <option value="">— Sin especificar —</option>
               {WORLD_COUNTRIES.map(c => (
                 <option key={c.code} value={c.code}>{c.name}</option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className={labelCls}>Habitaciones</label>
+          </FormField>
+          <FormField label="Habitaciones">
             <input type="number" min="0" value={form.rooms ?? ''} onChange={f('rooms')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Baños</label>
+          </FormField>
+          <FormField label="Baños">
             <input type="number" min="0" value={form.bathrooms ?? ''} onChange={f('bathrooms')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Máx. huéspedes</label>
+          </FormField>
+          <FormField label="Máx. huéspedes">
             <input type="number" min="0" value={form.maxGuests ?? ''} onChange={f('maxGuests')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Precio/noche (€)</label>
+          </FormField>
+          <FormField label="Precio/noche (€)">
             <input type="number" min="0" step="0.01" value={form.pricePerNight ?? ''} onChange={f('pricePerNight')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Precio de compra (€)</label>
+          </FormField>
+          <FormField label="Precio de compra (€)">
             <input type="number" min="0" step="0.01" value={form.purchasePrice ?? ''} onChange={f('purchasePrice')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Estado</label>
-            <select value={form.status || 'active'} onChange={f('status')}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+          </FormField>
+          <FormField label="Estado">
+            <select value={form.status || 'active'} onChange={f('status')} className={inputCls}>
               <option value="active">Activa</option>
               <option value="maintenance">Mantenimiento</option>
               <option value="inactive">Inactiva</option>
             </select>
-          </div>
-          <div>
-            <label className={labelCls}>Código SES establecimiento</label>
+          </FormField>
+          <FormField label="Código SES establecimiento">
             <input value={form.sesCodigoEstablecimiento || ''} onChange={f('sesCodigoEstablecimiento')} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>NRUA (Comunidad Valenciana)</label>
-            <input value={form.nrua || ''} onChange={f('nrua')} placeholder="ESFCTU..." className={inputCls} />
-          </div>
+          </FormField>
+          <FormField label="NRUA (Comunidad Valenciana)">
+            <input value={form.nrua || ''} onChange={f('nrua')} placeholder="ESFCTU..." maxLength={46} className={inputCls} />
+          </FormField>
         </div>
       </div>
 

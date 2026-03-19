@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import { bookingStatusColor, inputCls, labelCls, selCls } from '../lib/ui';
+import FormField from '../components/FormField';
 import ExcelButtons from '../components/ExcelButtons';
 
 // ── Datos de países ───────────────────────────────────────────────────────
@@ -88,33 +89,25 @@ function DocFields({ prefix, docType, docNumber, docCountry, onDocType, onDocNum
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label className={labelCls}>Tipo doc.</label>
-          <select value={docType} onChange={onDocType} disabled={readonly}
-            className={`${inputCls} ${readonly ? 'opacity-60 cursor-default' : ''}`}>
+        <FormField label="Tipo doc.">
+          <select value={docType} onChange={onDocType} disabled={readonly} className={inputCls}>
             <option value="dni">DNI Nacional</option>
             <option value="passport">Pasaporte</option>
             <option value="nie">NIE</option>
             <option value="other">Otro</option>
           </select>
-        </div>
-        <div>
-          <label className={labelCls}>País expedición</label>
-          <select value={docCountry} onChange={onDocCountry} disabled={readonly}
-            className={`${inputCls} ${readonly ? 'opacity-60 cursor-default' : ''}`}>
+        </FormField>
+        <FormField label="País expedición">
+          <select value={docCountry} onChange={onDocCountry} disabled={readonly} className={inputCls}>
             {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
           </select>
-        </div>
+        </FormField>
       </div>
-      <div>
-        <label className={labelCls}>Nº documento *</label>
-        <input value={docNumber} onChange={onDocNumber} readOnly={readonly}
+      <FormField label="Nº documento" required error={warnings[prefix] ? `⚠ ${warnings[prefix]}` : undefined}>
+        <input value={docNumber} onChange={onDocNumber} disabled={readonly}
           placeholder={docType === 'dni' ? '12345678A' : docType === 'passport' ? 'AAA123456' : ''}
-          className={`${inputCls} ${readonly ? 'opacity-60 cursor-default' : ''}`} />
-        {warnings[prefix] && (
-          <p className="text-amber-400 text-xs mt-1">⚠ {warnings[prefix]}</p>
-        )}
-      </div>
+          className={inputCls} />
+      </FormField>
     </div>
   );
 }
@@ -127,11 +120,11 @@ function PhoneField({ phoneCode, phoneNumber, onCode, onNumber, readonly }: {
       <label className={labelCls}>Teléfono</label>
       <div className="flex gap-2">
         <select value={phoneCode} onChange={onCode} disabled={readonly}
-          className={`px-2 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 w-28 ${readonly ? 'opacity-60 cursor-default' : ''}`}>
+          className="px-2 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 w-28 disabled:opacity-50 disabled:cursor-not-allowed">
           {COUNTRIES.map(c => <option key={c.code} value={c.phone}>{c.phone} {c.code}</option>)}
         </select>
-        <input value={phoneNumber} onChange={onNumber} readOnly={readonly} placeholder="600000000"
-          className={`flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 ${readonly ? 'opacity-60 cursor-default' : ''}`} />
+        <input value={phoneNumber} onChange={onNumber} disabled={readonly} placeholder="600000000"
+          className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed" />
       </div>
     </div>
   );
@@ -693,37 +686,36 @@ export default function Bookings() {
                         className="text-slate-400 hover:text-white text-xs">✕ Cancelar</button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className={labelCls}>Nombre *</label>
+                      <FormField label="Nombre" required>
                         <input
                           autoFocus
                           value={newClientName.firstName}
                           onChange={e => setNewClientName({ ...newClientName, firstName: e.target.value })}
                           placeholder="Nombre"
-                          className={`${inputCls} text-white`} />
-                      </div>
-                      <div>
-                        <label className={labelCls}>Apellido *</label>
+                          className={inputCls} />
+                      </FormField>
+                      <FormField label="Apellido" required>
                         <input
                           value={newClientName.lastName}
                           onChange={e => setNewClientName({ ...newClientName, lastName: e.target.value })}
                           placeholder="Apellido"
-                          className={`${inputCls} text-white`} />
-                      </div>
+                          className={inputCls} />
+                      </FormField>
                     </div>
                   </div>
                 ) : (
                   /* Campo de búsqueda con desplegable */
                   <div className="relative">
-                    <label className={labelCls}>Buscar cliente *</label>
-                    <input
-                      value={clientSearch}
-                      onChange={e => { setClientSearch(e.target.value); }}
-                      onFocus={() => clientSearch.trim() && setShowDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-                      placeholder="Nombre, apellido o DNI..."
-                      className={inputCls}
-                    />
+                    <FormField label="Buscar cliente" required>
+                      <input
+                        value={clientSearch}
+                        onChange={e => { setClientSearch(e.target.value); }}
+                        onFocus={() => clientSearch.trim() && setShowDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                        placeholder="Nombre, apellido o DNI..."
+                        className={inputCls}
+                      />
+                    </FormField>
                     {showDropdown && (clientResults.length > 0 || clientSearch.trim()) && (
                       <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg overflow-hidden shadow-xl max-h-60 overflow-y-auto">
                         {clientResults.map((c: any) => (
@@ -781,16 +773,14 @@ export default function Bookings() {
                         className="text-red-400 hover:text-red-300 text-xs font-semibold">✕ Eliminar</button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className={labelCls}>Nombre *</label>
+                      <FormField label="Nombre" required>
                         <input value={g.firstName} onChange={e => updateGuest(i, 'firstName', e.target.value)}
-                          className={`${inputCls} text-white`} />
-                      </div>
-                      <div>
-                        <label className={labelCls}>Apellido *</label>
+                          className={inputCls} />
+                      </FormField>
+                      <FormField label="Apellido" required>
                         <input value={g.lastName} onChange={e => updateGuest(i, 'lastName', e.target.value)}
-                          className={`${inputCls} text-white`} />
-                      </div>
+                          className={inputCls} />
+                      </FormField>
                     </div>
                     <DocFields
                       prefix={`guest_${i}`}
@@ -801,21 +791,20 @@ export default function Bookings() {
                       warnings={docWarnings}
                     />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className={labelCls}>Fecha nacimiento</label>
+                      <FormField label="Fecha nacimiento">
                         <input type="date" value={g.birthDate} onChange={e => updateGuest(i, 'birthDate', e.target.value)}
                           className={inputCls} />
-                      </div>
+                      </FormField>
                       <div>
                         <label className={labelCls}>Teléfono</label>
                         <div className="flex gap-2">
                           <select value={g.phoneCode} onChange={e => updateGuest(i, 'phoneCode', e.target.value)}
-                            className="px-2 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 w-28">
+                            className="px-2 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 w-28 disabled:opacity-50 disabled:cursor-not-allowed">
                             {COUNTRIES.map(c => <option key={c.code} value={c.phone}>{c.phone} {c.code}</option>)}
                           </select>
                           <input value={g.phoneNumber} onChange={e => updateGuest(i, 'phoneNumber', e.target.value)}
                             placeholder="600000000"
-                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
+                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed" />
                         </div>
                       </div>
                     </div>
@@ -827,25 +816,22 @@ export default function Bookings() {
               <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-4">
                 <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">Datos de la reserva</p>
 
-                <div>
-                  <label className={labelCls}>{t('bookings.property')} *</label>
+                <FormField label={t('bookings.property')} required>
                   <select value={form.propertyId} onChange={f('propertyId')} className={inputCls}>
                     <option value="">— {t('bookings.property')} —</option>
                     {properties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
-                </div>
+                </FormField>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelCls}>{t('bookings.checkIn')} *</label>
+                  <FormField label={t('bookings.checkIn')} required>
                     <input type="date" value={form.checkInDate} onChange={f('checkInDate')}
                       className={`${inputCls} ${dateError ? 'border-red-500' : ''}`} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>{t('bookings.checkOut')} *</label>
+                  </FormField>
+                  <FormField label={t('bookings.checkOut')} required>
                     <input type="date" value={form.checkOutDate} onChange={f('checkOutDate')}
                       className={`${inputCls} ${dateError ? 'border-red-500' : ''}`} />
-                  </div>
+                  </FormField>
                 </div>
                 {dateError && (
                   <p className="text-red-400 text-xs -mt-2">⚠ {dateError}</p>
@@ -855,25 +841,22 @@ export default function Bookings() {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelCls}>{t('common.total')} (€) *</label>
+                  <FormField label={`${t('common.total')} (€)`} required>
                     <input type="number" value={form.totalAmount} onChange={f('totalAmount')} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>{t('bookings.source')}</label>
+                  </FormField>
+                  <FormField label={t('bookings.source')}>
                     <select value={form.source} onChange={f('source')} className={inputCls}>
                       {['direct','airbnb','booking','vrbo','manual_block'].map(s => (
                         <option key={s} value={s}>{t(`bookings.sources.${s}`)}</option>
                       ))}
                     </select>
-                  </div>
+                  </FormField>
                 </div>
 
-                <div>
-                  <label className={labelCls}>{t('common.notes')}</label>
+                <FormField label={t('common.notes')}>
                   <textarea value={form.notes} onChange={f('notes')} rows={2}
                     className={`${inputCls} resize-none`} />
-                </div>
+                </FormField>
               </div>
 
               {/* ── Botones ───────────────────────────────────────── */}
