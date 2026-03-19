@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
+import { bookingStatusColor, inputCls, labelCls, selCls } from '../lib/ui';
 import ExcelButtons from '../components/ExcelButtons';
 
 // ── Datos de países ───────────────────────────────────────────────────────
@@ -71,22 +72,13 @@ const LANGUAGE_NAMES: Record<string, string> = {
   nb: 'Norsk', sv: 'Svenska',
 };
 
-const statusColor: Record<string, string> = {
-  created:    'bg-amber-500/10 text-amber-400',
-  registered: 'bg-blue-500/10 text-blue-400',
-  processed:  'bg-emerald-500/10 text-emerald-400',
-  error:      'bg-red-500/10 text-red-400',
-  cancelled:  'bg-slate-500/10 text-slate-400',
-};
+const statusColor = bookingStatusColor;
 
 const emptyGuest = () => ({
   firstName: '', lastName: '', docType: 'passport', docNumber: '',
   docCountry: 'ES', birthDate: '', phoneCode: '+34', phoneNumber: '',
 });
 
-const inputCls = "w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
-const labelCls = "block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1";
-const selCls   = "px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
 
 function DocFields({ prefix, docType, docNumber, docCountry, onDocType, onDocNumber, onDocCountry, readonly, warnings }: {
   prefix: string; docType: string; docNumber: string; docCountry: string;

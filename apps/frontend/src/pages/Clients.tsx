@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
+import { inputCls, labelCls, selCls } from '../lib/ui';
 import ExcelButtons from '../components/ExcelButtons';
 import { WORLD_COUNTRIES } from '../data/countries';
 
@@ -84,9 +85,6 @@ const emptyForm = {
   street: '', city: '', postalCode: '', province: '', country: '',
 };
 
-const inputCls = "w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
-const labelCls = "block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1";
-const selCls   = "px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
 
 function Stars({ score }: { score: number }) {
   return (

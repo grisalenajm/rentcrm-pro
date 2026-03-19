@@ -1,13 +1,6 @@
 import { useState } from 'react';
 import { api } from '../lib/api';
-
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  created:    { label: 'Creada',      color: 'bg-amber-500/10 text-amber-400' },
-  registered: { label: 'Registrada',  color: 'bg-blue-500/10 text-blue-400' },
-  processed:  { label: 'Procesada',   color: 'bg-emerald-500/10 text-emerald-400' },
-  error:      { label: 'Error',       color: 'bg-red-500/10 text-red-400' },
-  cancelled:  { label: 'Cancelada',   color: 'bg-slate-500/10 text-slate-400' },
-};
+import { bookingStatusConfig as STATUS_CONFIG } from '../lib/ui';
 
 export default function BookingStatusWorkflow({ booking, onUpdate }: { booking: any; onUpdate: () => void }) {
   const status: string = booking.status;

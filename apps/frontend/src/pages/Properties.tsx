@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
+import { inputCls, labelCls, platformBadgeColor } from '../lib/ui';
 import ExcelButtons from '../components/ExcelButtons';
 import NruaExport from '../components/NruaExport';
 import { WORLD_COUNTRIES } from '../data/countries';
@@ -36,11 +37,7 @@ interface Feed {
 
 const emptyForm = { name:'', address:'', city:'', province:'', postalCode:'', country:'ES', rooms:'1', bathrooms:'', maxGuests:'', pricePerNight:'', purchasePrice:'', status: 'active', sesCodigoEstablecimiento:'' };
 
-const fmtEur = (n: number) =>
-  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 
-const inputCls = "w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500";
-const labelCls = "block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1";
 
 export default function Properties() {
   const { t } = useTranslation();
@@ -124,14 +121,7 @@ export default function Properties() {
   const exportUrl = (propertyId: string) =>
     `${(import.meta as any).env.VITE_API_URL || 'http://192.168.1.123:3001'}/api/ical/export/${propertyId}`;
 
-  const platformBadge = (platform: string) => {
-    const colors: Record<string, string> = {
-      airbnb: 'bg-rose-500/10 text-rose-400',
-      booking: 'bg-blue-500/10 text-blue-400',
-      other: 'bg-slate-700 text-slate-400',
-    };
-    return colors[platform] || colors.other;
-  };
+  const platformBadge = platformBadgeColor;
 
   const loadFeeds = async (propertyId: string) => {
     setIcalLoading(true);

@@ -4,42 +4,14 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import {
+  bookingStatusConfig as STATUS_CONFIG,
+  bookingStatusTransitions as TRANSITIONS,
+  bookingStatusBtn as STATUS_BTN,
+  contractStatusColor,
+  LANGUAGES,
+} from '../lib/ui';
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  created:    { label: 'Creada',     color: 'bg-amber-500/10 text-amber-400' },
-  registered: { label: 'Registrada', color: 'bg-blue-500/10 text-blue-400' },
-  processed:  { label: 'Procesada',  color: 'bg-emerald-500/10 text-emerald-400' },
-  error:      { label: 'Error',      color: 'bg-red-500/10 text-red-400' },
-  cancelled:  { label: 'Cancelada',  color: 'bg-slate-500/10 text-slate-400' },
-};
-
-const TRANSITIONS: Record<string, string[]> = {
-  created:    ['registered', 'cancelled'],
-  registered: ['processed', 'error', 'cancelled'],
-  error:      ['registered', 'processed', 'cancelled'],
-  processed:  [],
-  cancelled:  [],
-};
-
-const STATUS_BTN: Record<string, string> = {
-  registered: 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-300',
-  processed:  'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300',
-  error:      'bg-red-500/10 hover:bg-red-500/20 text-red-300',
-  cancelled:  'bg-slate-700 hover:bg-slate-600 text-slate-300',
-};
-
-const LANGUAGES = [
-  { code: 'es', name: 'Español' },
-  { code: 'en', name: 'English' },
-  { code: 'fr', name: 'Français' },
-  { code: 'de', name: 'Deutsch' },
-  { code: 'it', name: 'Italiano' },
-  { code: 'pt', name: 'Português' },
-  { code: 'nl', name: 'Nederlands' },
-  { code: 'da', name: 'Dansk' },
-  { code: 'nb', name: 'Norsk' },
-  { code: 'sv', name: 'Svenska' },
-];
 
 function Stars({ score, onChange }: { score: number; onChange?: (s: number) => void }) {
   return (
@@ -89,12 +61,6 @@ export default function BookingDetail() {
   const [notesDraft, setNotesDraft] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
 
-  const contractStatusColor: Record<string, string> = {
-    draft:     'bg-slate-500/10 text-slate-400',
-    sent:      'bg-amber-500/10 text-amber-400',
-    signed:    'bg-emerald-500/10 text-emerald-400',
-    cancelled: 'bg-red-500/10 text-red-400',
-  };
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ['booking', id],

@@ -3,19 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { LANGUAGES } from '../lib/ui';
 
-const LANGUAGES = [
-  { code: 'es', name: 'Español' },
-  { code: 'en', name: 'English' },
-  { code: 'fr', name: 'Français' },
-  { code: 'de', name: 'Deutsch' },
-  { code: 'it', name: 'Italiano' },
-  { code: 'pt', name: 'Português' },
-  { code: 'nl', name: 'Nederlands' },
-  { code: 'da', name: 'Dansk' },
-  { code: 'nb', name: 'Norsk' },
-  { code: 'sv', name: 'Svenska' },
-];
 
 function Stars({ score, onChange }: { score: number; onChange?: (s: number) => void }) {
   return (
