@@ -2,13 +2,14 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import { CHART_COLORS, TOOLTIP_STYLE, KPI_CARD } from '../lib/ui';
+import KpiCard from '../components/KpiCard';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell,
 } from 'recharts';
 
 const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-const PIE_COLORS = ['#10b981','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16','#a855f7','#ec4899'];
 const TABS = ['Resumen','Negocio','Clientes','Cumplimiento'];
 const NOW = new Date();
 const CURRENT_YEAR = NOW.getFullYear();
@@ -23,16 +24,6 @@ function nightsBetween(checkIn: string, checkOut: string) {
   return Math.max(0, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000));
 }
 
-function kpiCard(label: string, value: string | number, sub?: string) {
-  return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-      <div className="text-2xl font-bold text-emerald-400">{value}</div>
-      <div className="text-sm font-medium text-white mt-1">{label}</div>
-      {sub && <div className="text-xs text-slate-400 mt-0.5">{sub}</div>}
-    </div>
-  );
-}
-
 // ── MEJORA 2: PieEntry con breakdown para "Otros" ──────────────────────────
 type PieEntry = { name: string; value: number; others?: { name: string; value: number }[] };
 
@@ -45,13 +36,11 @@ function toTop10WithOthers(counts: Record<string, number>): PieEntry[] {
   return top10;
 }
 
-const tooltipStyle = { backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: 8 };
-
 function PieCustomTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   const entry: PieEntry = payload[0].payload;
   return (
-    <div style={{ ...tooltipStyle, padding: '10px 14px', maxWidth: 220 }}>
+    <div style={{ ...TOOLTIP_STYLE, padding: '10px 14px', maxWidth: 220 }}>
       <div className="font-semibold text-sm mb-1">{entry.name}: {entry.value}</div>
       {entry.others && entry.others.length > 0 && (
         <div className="space-y-0.5 mt-1 border-t border-slate-700 pt-1">
@@ -146,12 +135,14 @@ export default function Dashboard() {
   const [bizMonth, setBizMonth] = useState(NOW.getMonth());
   const [bizQuarter, setBizQuarter] = useState(Math.floor(NOW.getMonth() / 3));
 
-  const { data: bookings = [] }   = useQuery({ queryKey: ['bookings'],    queryFn: () => api.get('/bookings').then(r => r.data) });
-  const { data: properties = [] } = useQuery({ queryKey: ['properties'],  queryFn: () => api.get('/properties').then(r => r.data) });
-  const { data: clients = [] }    = useQuery({ queryKey: ['clients'],     queryFn: () => api.get('/clients').then(r => r.data) });
-  const { data: financials = [] } = useQuery({ queryKey: ['financials-dashboard'], queryFn: () => api.get('/financials').then(r => r.data) });
-  const { data: expenses = [] }   = useQuery({ queryKey: ['expenses-dashboard'],   queryFn: () => api.get('/expenses').then(r => r.data) });
-  const { data: contracts = [] }  = useQuery({ queryKey: ['contracts'],   queryFn: () => api.get('/contracts').then(r => r.data) });
+  const { data: bookings = [],   isLoading: loadingBookings }   = useQuery({ queryKey: ['bookings'],    queryFn: () => api.get('/bookings').then(r => r.data) });
+  const { data: properties = [], isLoading: loadingProperties } = useQuery({ queryKey: ['properties'],  queryFn: () => api.get('/properties').then(r => r.data) });
+  const { data: clients = [] }                                   = useQuery({ queryKey: ['clients'],     queryFn: () => api.get('/clients').then(r => r.data) });
+  const { data: financials = [], isLoading: loadingFinancials } = useQuery({ queryKey: ['financials-dashboard'], queryFn: () => api.get('/financials').then(r => r.data) });
+  const { data: expenses = [],   isLoading: loadingExpenses }   = useQuery({ queryKey: ['expenses-dashboard'],   queryFn: () => api.get('/expenses').then(r => r.data) });
+  const { data: contracts = [] }                                 = useQuery({ queryKey: ['contracts'],   queryFn: () => api.get('/contracts').then(r => r.data) });
+
+  const kpisLoading = loadingBookings || loadingProperties || loadingFinancials || loadingExpenses;
 
   // ── TAB 1: RESUMEN ────────────────────────────────────────────────────────
 
@@ -488,10 +479,10 @@ export default function Dashboard() {
         <div className="space-y-6">
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {kpiCard('Ocupación actual', `${occupancyToday}%`, `${properties.length} propiedades`)}
-            {kpiCard('Ingresos del mes', `€${monthIncome.toLocaleString('es-ES', { maximumFractionDigits: 0 })}`, MONTHS[NOW.getMonth()])}
-            {kpiCard('Reservas activas', activeBookings, 'en curso o próximas')}
-            {kpiCard('Checkins hoy', checkinsPendingToday, 'pendientes de completar')}
+            <KpiCard loading={kpisLoading} label="Ocupación actual"  value={`${occupancyToday}%`}  sub={`${properties.length} propiedades`} />
+            <KpiCard loading={kpisLoading} label="Ingresos del mes"  value={`€${monthIncome.toLocaleString('es-ES', { maximumFractionDigits: 0 })}`} sub={MONTHS[NOW.getMonth()]} />
+            <KpiCard loading={kpisLoading} label="Reservas activas"  value={activeBookings}         sub="en curso o próximas" />
+            <KpiCard loading={kpisLoading} label="Checkins hoy"      value={checkinsPendingToday}   sub="pendientes de completar" />
           </div>
 
           {/* Bar: ingresos vs gastos — selector per-chart */}
@@ -515,19 +506,19 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} />
                 <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={v => `€${v}`} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`€${Number(v).toLocaleString('es-ES')}`, '']} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: any) => [`€${Number(v).toLocaleString('es-ES')}`, '']} />
                 <Legend wrapperStyle={{ color: '#94a3b8', fontSize: 13 }} />
                 {barView === 'compare' ? (
                   <>
-                    <Bar dataKey={`ing.${barYear}`}  fill="#10b981" name={`Ingresos ${barYear}`}  radius={[3,3,0,0]} />
-                    <Bar dataKey={`gas.${barYear}`}  fill="#ef4444" name={`Gastos ${barYear}`}    radius={[3,3,0,0]} />
-                    <Bar dataKey={`ing.${barYearB}`} fill="#06b6d4" name={`Ingresos ${barYearB}`} radius={[3,3,0,0]} />
-                    <Bar dataKey={`gas.${barYearB}`} fill="#f97316" name={`Gastos ${barYearB}`}   radius={[3,3,0,0]} />
+                    <Bar dataKey={`ing.${barYear}`}  fill={CHART_COLORS[0]} name={`Ingresos ${barYear}`}  radius={[3,3,0,0]} />
+                    <Bar dataKey={`gas.${barYear}`}  fill={CHART_COLORS[1]} name={`Gastos ${barYear}`}    radius={[3,3,0,0]} />
+                    <Bar dataKey={`ing.${barYearB}`} fill={CHART_COLORS[5]} name={`Ingresos ${barYearB}`} radius={[3,3,0,0]} />
+                    <Bar dataKey={`gas.${barYearB}`} fill={CHART_COLORS[6]} name={`Gastos ${barYearB}`}   radius={[3,3,0,0]} />
                   </>
                 ) : (
                   <>
-                    <Bar dataKey="ingresos" fill="#10b981" radius={[3,3,0,0]} />
-                    <Bar dataKey="gastos"   fill="#ef4444" radius={[3,3,0,0]} />
+                    <Bar dataKey="ingresos" fill={CHART_COLORS[0]} radius={[3,3,0,0]} />
+                    <Bar dataKey="gastos"   fill={CHART_COLORS[1]} radius={[3,3,0,0]} />
                   </>
                 )}
               </BarChart>
@@ -566,15 +557,15 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} />
                 <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={v => `${v}%`} domain={[0, 100]} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`, '']} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: any) => [`${v}%`, '']} />
                 <Legend wrapperStyle={{ color: '#94a3b8', fontSize: 13 }} />
                 {lineView === 'compare' ? (
                   <>
-                    <Line type="monotone" dataKey={`Ocup.${lineYear}`}  stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 3 }} name={`Ocup. ${lineYear}`} />
-                    <Line type="monotone" dataKey={`Ocup.${lineYearB}`} stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6', r: 3 }} name={`Ocup. ${lineYearB}`} />
+                    <Line type="monotone" dataKey={`Ocup.${lineYear}`}  stroke={CHART_COLORS[0]} strokeWidth={2} dot={{ fill: CHART_COLORS[0], r: 3 }} name={`Ocup. ${lineYear}`} />
+                    <Line type="monotone" dataKey={`Ocup.${lineYearB}`} stroke={CHART_COLORS[2]} strokeWidth={2} dot={{ fill: CHART_COLORS[2], r: 3 }} name={`Ocup. ${lineYearB}`} />
                   </>
                 ) : (
-                  <Line type="monotone" dataKey="Ocupación %" stroke="#10b981" strokeWidth={2} dot={{ fill: '#10b981', r: 3 }} />
+                  <Line type="monotone" dataKey="Ocupación %" stroke={CHART_COLORS[0]} strokeWidth={2} dot={{ fill: CHART_COLORS[0], r: 3 }} />
                 )}
               </LineChart>
             </ResponsiveContainer>
@@ -698,7 +689,7 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className={KPI_CARD}>
               <div className="text-2xl font-bold text-emerald-400">
                 €{bizMetrics.avgPrice.toLocaleString('es-ES')}
                 {delta(bizMetrics.avgPrice, bizMetrics.prevAvgPrice)}
@@ -706,7 +697,7 @@ export default function Dashboard() {
               <div className="text-sm text-white mt-1">Precio medio reserva</div>
               <div className="text-xs text-slate-400">{bizMetrics.count} reservas · {bizMetrics.prevCount} año ant.</div>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className={KPI_CARD}>
               <div className="text-2xl font-bold text-emerald-400">
                 {bizMetrics.avgNights} noches
                 {delta(bizMetrics.avgNights, bizMetrics.prevAvgNights)}
@@ -714,7 +705,7 @@ export default function Dashboard() {
               <div className="text-sm text-white mt-1">Estancia media</div>
               <div className="text-xs text-slate-400">{bizMetrics.prevAvgNights} noches año anterior</div>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 col-span-2 md:col-span-1">
+            <div className={`${KPI_CARD} col-span-2 md:col-span-1`}>
               <div className="text-2xl font-bold text-blue-400">{bizMetrics.count}</div>
               <div className="text-sm text-white mt-1">Reservas en el periodo</div>
               <div className="text-xs text-slate-400">{bizMetrics.prevCount} mismo periodo año anterior</div>
@@ -770,8 +761,8 @@ export default function Dashboard() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
                     <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={v => `€${v}`} />
                     <YAxis type="category" dataKey="name" tick={{ fill: '#e2e8f0', fontSize: 12 }} width={100} />
-                    <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`€${Number(v).toLocaleString('es-ES')}`, 'Ingresos']} />
-                    <Bar dataKey="income" fill="#10b981" radius={[0,3,3,0]} />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: any) => [`€${Number(v).toLocaleString('es-ES')}`, 'Ingresos']} />
+                    <Bar dataKey="income" fill={CHART_COLORS[0]} radius={[0,3,3,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -787,7 +778,7 @@ export default function Dashboard() {
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
                       <Pie data={sourcePieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`} labelLine={false}>
-                        {sourcePieData.map((_: any, i: number) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                        {sourcePieData.map((_: any, i: number) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                       </Pie>
                       <Tooltip content={<PieCustomTooltip />} />
                     </PieChart>
@@ -795,7 +786,7 @@ export default function Dashboard() {
                   <div className="flex flex-wrap gap-2 justify-center mt-2">
                     {sourcePieData.map((s: any, i: number) => (
                       <div key={s.name} className="flex items-center gap-1.5 text-xs text-slate-300">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
                         {s.name} ({s.value})
                       </div>
                     ))}
@@ -813,13 +804,12 @@ export default function Dashboard() {
       {activeTab === 2 && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {kpiCard('Clientes únicos', clientData.top10.length + (Object.keys(clientData).length > 3 ? '...' : ''), 'con reservas')}
-            {kpiCard('Clientes nuevos', clientData.newClients, '1 sola estancia')}
-            {kpiCard('Clientes repetidores', clientData.returningClients,
-              clientData.newClients + clientData.returningClients > 0
+            <KpiCard label="Clientes únicos"      value={clientData.top10.length + (Object.keys(clientData).length > 3 ? '...' : '')} sub="con reservas" />
+            <KpiCard label="Clientes nuevos"      value={clientData.newClients}      sub="1 sola estancia" />
+            <KpiCard label="Clientes repetidores" value={clientData.returningClients}
+              sub={clientData.newClients + clientData.returningClients > 0
                 ? `${Math.round(clientData.returningClients / (clientData.newClients + clientData.returningClients) * 100)}% del total`
-                : '—'
-            )}
+                : '—'} />
           </div>
 
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
@@ -865,7 +855,7 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie data={nationalityPie} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({ name, percent }) => percent > 0.04 ? `${name} ${Math.round(percent * 100)}%` : ''} labelLine={false}>
-                      {nationalityPie.map((_: any, i: number) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      {nationalityPie.map((_: any, i: number) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                     </Pie>
                     <Tooltip content={<PieCustomTooltip />} />
                   </PieChart>
@@ -873,7 +863,7 @@ export default function Dashboard() {
                 <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                   {nationalityPie.map((n: any, i: number) => (
                     <div key={n.name} className="flex items-center gap-1.5 text-xs text-slate-300">
-                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
                       {n.name} ({n.value})
                     </div>
                   ))}
@@ -892,15 +882,15 @@ export default function Dashboard() {
           <div>
             <h2 className="font-semibold mb-3 text-slate-300">Partes SES — {MONTHS[NOW.getMonth()]} {NOW.getFullYear()}</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <div className={KPI_CARD}>
                 <div className="text-2xl font-bold text-emerald-400">✅ {sesData.sent}</div>
                 <div className="text-sm text-white mt-1">Enviados</div>
               </div>
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+              <div className={KPI_CARD}>
                 <div className="text-2xl font-bold text-red-400">❌ {sesData.error}</div>
                 <div className="text-sm text-white mt-1">Con error</div>
               </div>
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 col-span-2 md:col-span-1">
+              <div className={`${KPI_CARD} col-span-2 md:col-span-1`}>
                 <div className="text-2xl font-bold text-amber-400">⏳ {sesData.pending}</div>
                 <div className="text-sm text-white mt-1">Pendientes</div>
               </div>

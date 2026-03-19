@@ -2,6 +2,7 @@
 // Tokens UI centralizados — RentalSuite
 // Importar desde aquí en lugar de definir constantes locales en cada página.
 // ─────────────────────────────────────────────────────────────────────────────
+import type React from 'react';
 
 // ── Booking status ────────────────────────────────────────────────────────────
 
@@ -70,6 +71,40 @@ export const labelCls =
 /** Para selects de filtro en barra de herramientas (sin w-full, bg más oscuro) */
 export const selCls =
   'px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed';
+
+// ── Chart colors ──────────────────────────────────────────────────────────────
+
+/** Paleta de 10 colores para Recharts (PieChart cells, Bar fills, Line strokes) */
+export const CHART_COLORS = [
+  '#10b981', // emerald-500   → ingresos / positivo
+  '#ef4444', // red-500       → gastos / negativo
+  '#3b82f6', // blue-500
+  '#f59e0b', // amber-500
+  '#8b5cf6', // violet-500
+  '#06b6d4', // cyan-500
+  '#f97316', // orange-500
+  '#84cc16', // lime-500
+  '#a855f7', // purple-500
+  '#ec4899', // pink-500
+];
+
+/** contentStyle para todos los <Tooltip> de Recharts */
+export const TOOLTIP_STYLE: React.CSSProperties = {
+  backgroundColor: '#1e293b',
+  border: '1px solid #334155',
+  color: '#f1f5f9',
+  borderRadius: 8,
+};
+
+// ── KPI card ──────────────────────────────────────────────────────────────────
+
+/** Clase base del contenedor de tarjeta KPI */
+export const KPI_CARD = 'bg-slate-900 border border-slate-800 rounded-xl p-5';
+
+// ── Skeleton loader ────────────────────────────────────────────────────────────
+
+/** Clase base para placeholders de skeleton (añadir dimensiones en el sitio de uso) */
+export const SKELETON = 'animate-pulse bg-slate-800 rounded-lg';
 
 // ── Languages ─────────────────────────────────────────────────────────────────
 
