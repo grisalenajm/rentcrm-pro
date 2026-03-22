@@ -161,20 +161,22 @@ model Property {
   purchasePrice            Float?
   sesCodigoEstablecimiento String?
   nrua                     String?   // NRUA Comunidad Valenciana, 46 chars
-  paperlessCorrespondentId Int?
+  paperlessCorrespondentId Int?      // ID del correspondent en Paperless-ngx
   organizationId           String
   notes                    String?
 }
 
 model Expense {
-  id             String   @id @default(uuid())
-  propertyId     String
-  date           DateTime
-  amount         Float
-  type           String   // tasas|agua|luz|internet|limpieza|otros
-  deductible     Boolean  @default(false)
-  notes          String?
-  organizationId String
+  id                   String   @id @default(uuid())
+  propertyId           String
+  date                 DateTime
+  amount               Float
+  type                 String   // tasas|agua|luz|internet|limpieza|otros
+  deductible           Boolean  @default(false)
+  notes                String?
+  organizationId       String
+  paperlessDocumentId  Int?     // ID del documento en Paperless-ngx (si fue creado por webhook)
+  paperlessAmount      Float?   // Importe extraído del documento Paperless
 }
 
 model RecurringExpense {
@@ -218,6 +220,7 @@ model Organization {
   paperlessUrl          String?
   paperlessToken        String?
   paperlessDocTypeId    Int?
+  paperlessSecret       String?   // Secreto para validar el webhook (X-Paperless-Secret)
   // sesCodigoEstablecimiento NO va aquí, va en Property
 }
 
@@ -301,6 +304,23 @@ GET /api/financials/property/:propertyId/report?year=YYYY
 // Tags: resolver nombres → IDs numéricos (resolveTagId)
 // Error en Paperless NO bloquea el flujo principal
 // SMTP y Paperless config: siempre desde Organization en BD
+```
+
+### Paperless webhook
+```
+POST /api/paperless/webhook  ← @Public(), sin JWT
+Header: X-Paperless-Secret: <organization.paperlessSecret>
+
+Flujo:
+1. Valida secret (si está configurado en Organization)
+2. Filtra: document_type_name === "Factura"
+3. Busca Property por paperlessCorrespondentId === body.correspondent
+4. Llama getDocument() para obtener metadatos completos
+5. Infiere type desde tags: agua|luz|internet|limpieza|tasas → "otros"
+6. Extrae importe de custom_fields (campo con "importe" en el nombre)
+7. Crea Expense con paperlessDocumentId + enlace preview en notes
+
+URL a configurar en Paperless: {FRONTEND_URL}/api/paperless/webhook
 ```
 
 ### Contratos — rutas públicas

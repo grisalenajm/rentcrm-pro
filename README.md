@@ -27,6 +27,7 @@ Spain's Ministry of Interior traveller registration system).
 | **Contracts** | Template engine, digital signature canvas (tenant + landlord), public signing link, Paperless-ngx upload |
 | **SES Compliance** | SOAP submission to Spain's Ministry of Interior, XML/PDF download, per-property codes |
 | **Financials** | Income/expense tracking, recurring expenses with cron, property ROI reports, deductible flag |
+| **Paperless-ngx** | Auto-upload signed contracts, webhook to auto-create expenses from invoices, correspondent per property |
 | **Dashboard** | 4-tab analytics (recharts): KPIs, business metrics, client stats, compliance summary |
 | **iCal Sync** | Import feeds from Airbnb/Booking.com (cron every 6 h), export `.ics` |
 | **Excel** | Import/export clients, bookings, expenses, properties |

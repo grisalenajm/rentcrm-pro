@@ -219,6 +219,30 @@ Campo `deductible` (boolean, default false): si true, el gasto es deducible fisc
 
 ---
 
+## Paperless-ngx
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| POST | `/paperless/webhook` | 🔓 (valida `X-Paperless-Secret`) | Webhook para crear gastos automáticos desde facturas. Filtra por `document_type_name = "Factura"`, busca propiedad por `correspondent` (id numérico = `Property.paperlessCorrespondentId`), infiere tipo de gasto desde tags (`agua\|luz\|internet\|limpieza\|tasas`→`otros`), crea `Expense` con `paperlessDocumentId` y enlace preview en `notes`. |
+
+**Payload de Paperless-ngx:**
+```json
+{
+  "document_id": 123,
+  "document_type_name": "Factura",
+  "correspondent": 5,
+  "original_file_name": "factura_luz_enero.pdf",
+  "tags": ["luz", "2026"]
+}
+```
+
+**Campos nuevos en BD:**
+- `Property.paperlessCorrespondentId` (Int?) — vincula propiedad con correspondent de Paperless
+- `Expense.paperlessDocumentId` (Int?) — ID del documento en Paperless
+- `Expense.paperlessAmount` (Float?) — importe extraído del documento
+- `Organization.paperlessSecret` (String?) — secreto para validar el webhook
+
+---
+
 ## Roles y permisos (resumen)
 | Rol | Acceso |
 |-----|--------|

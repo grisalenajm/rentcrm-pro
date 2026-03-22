@@ -1,7 +1,7 @@
 # 🏘️ RentCRM Pro — Estado del Proyecto
 
-**Última actualización:** 17/03/2026
-**Versión:** 1.3.0
+**Última actualización:** 22/03/2026
+**Versión:** 1.4.0
 **Entorno:** LXC Docker · 192.168.1.123 · Frontend :3000 · API :3001
 
 ---
@@ -20,6 +20,7 @@
 - **Organization** — configuración completa (logo, SMTP, moneda, fecha, NIF, **credenciales SES**)
 - **iCal** — importar feeds Airbnb/Booking.com, sincronización manual y auto (cron cada 6h), exportar .ics por propiedad
 - **SES Hospedajes** — envío de partes al webservice MIR, descarga XML/PDF, campos lote y estado en Booking
+- **Paperless-ngx** — subida automática al firmar contrato + **webhook** para crear gastos automáticos desde facturas; correspondent por propiedad; enlace "Ver factura" en Financials
 
 ### Frontend (React + Vite + TypeScript + Tailwind)
 - **Login** — autenticación JWT + **flujo 2FA** (paso 2 con código OTP si activado)
@@ -138,6 +139,18 @@ POSTGRES_PASSWORD=...
 ---
 
 ## 📋 Historial de Sesiones
+
+### Sesión 22/03/2026 — v1.4.0
+- ✅ **Webhook Paperless-ngx → Expense automático** — `POST /api/paperless/webhook` (@Public)
+  - Valida `X-Paperless-Secret` contra `Organization.paperlessSecret`
+  - Filtra documentos por `document_type_name = "Factura"`
+  - Busca `Property` por `paperlessCorrespondentId` (nuevo campo Int?)
+  - Infiere tipo de gasto desde tags: `agua|luz|internet|limpieza|tasas` → `otros`
+  - Crea `Expense` con `paperlessDocumentId`, `paperlessAmount`, y enlace preview en `notes`
+  - Nuevos campos en BD: `Property.paperlessCorrespondentId`, `Expense.paperlessDocumentId`, `Expense.paperlessAmount`, `Organization.paperlessSecret`
+- ✅ **Settings** — campo "Secret webhook" (password) + URL webhook readonly en pestaña Paperless
+- ✅ **PropertyEdit** — campo "ID Correspondent Paperless" (número opcional)
+- ✅ **Financials** — enlace "Ver factura" en gastos con `paperlessDocumentId`
 
 ### Sesión 17/03/2026 — v1.3.0
 - ✅ **Autenticación 2FA con OTP (TOTP)** — compatible Google Authenticator / Authy

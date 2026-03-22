@@ -1,5 +1,5 @@
 # RentalSuite — Tareas pendientes
-> Actualizado 18/03/2026
+> Actualizado 22/03/2026
 
 ## En progreso
 (ninguna)
@@ -12,11 +12,8 @@
 
 
 ### Gestión documental — Integración Paperless-ngx
-- [ ] Correspondent por propiedad en Paperless para rutas de almacenamiento estructuradas
-  - Campo `paperlessCorrespondentId` en modelo Property
-  - Al subir contrato: pasar correspondent_id según la propiedad del contrato
-  - Storage Path sugerido: `inversiones/{correspondent}/{created_year}/{title}`
-- [ ] Settings: añadir campo Document Type ID de Paperless (para clasificar documentos)
+- [ ] Al subir contrato: pasar `correspondent_id` según `property.paperlessCorrespondentId` (campo ya existe)
+- [ ] Settings: añadir campo Document Type ID de Paperless (para clasificar documentos automáticamente)
 
 ### Edición masiva
 - [ ] Mass update precios de reservas desde Excel (por ID reserva o por propiedad + fecha entrada)
