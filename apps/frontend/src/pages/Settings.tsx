@@ -430,6 +430,38 @@ export default function Settings() {
                   : 'Profile → API Token in your Paperless-ngx'}
               </p>
             </div>
+            <div>
+              <label className={labelCls}>
+                Secret webhook
+              </label>
+              <input
+                type="password"
+                value={currentValue('paperlessSecret')}
+                onChange={f('paperlessSecret')}
+                placeholder="Clave secreta para validar webhooks"
+                className={inputCls}
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                {language === 'es'
+                  ? 'Clave secreta para autenticar los webhooks entrantes de Paperless-ngx'
+                  : 'Secret key to authenticate incoming webhooks from Paperless-ngx'}
+              </p>
+            </div>
+            <div>
+              <label className={labelCls}>
+                URL Webhook
+              </label>
+              <input
+                readOnly
+                value={`${window.location.origin}/api/paperless/webhook`}
+                className={inputCls + ' cursor-text select-all'}
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                {language === 'es'
+                  ? 'Configura esta URL en Paperless-ngx → Ajustes → Webhooks'
+                  : 'Configure this URL in Paperless-ngx → Settings → Webhooks'}
+              </p>
+            </div>
             <div className="border-t border-slate-700 pt-4">
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                 {language === 'es' ? 'Probar conexión' : 'Test connection'}

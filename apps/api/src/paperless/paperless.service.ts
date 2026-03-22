@@ -92,6 +92,21 @@ export class PaperlessService {
     return created.id as number;
   }
 
+  async getDocument(
+    paperlessUrl: string,
+    paperlessToken: string,
+    documentId: number,
+  ): Promise<any> {
+    const url = `${paperlessUrl.replace(/\/$/, '')}/api/documents/${documentId}/`;
+    const response = await fetch(url, {
+      headers: { Authorization: `Token ${paperlessToken}` },
+    });
+    if (!response.ok) {
+      throw new Error(`Paperless getDocument respondió ${response.status}`);
+    }
+    return response.json();
+  }
+
   async testConnection(
     paperlessUrl: string,
     paperlessToken: string,

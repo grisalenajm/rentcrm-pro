@@ -28,6 +28,7 @@ model Organization {
   sesEndpoint         String?  @map("ses_endpoint") @db.VarChar(255)
   paperlessUrl        String?  @map("paperless_url") @db.VarChar(255)
   paperlessToken      String?  @map("paperless_token") @db.VarChar(500)
+  paperlessSecret     String?  @map("paperless_secret") @db.VarChar(255)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -95,6 +96,7 @@ model Property {
   sesCodigoEstablecimiento String? @map("ses_codigo_establecimiento") @db.VarChar(20)
   nrua           String?   @map("nrua") @db.VarChar(80)
   purchasePrice  Float?    @map("purchase_price")
+  paperlessCorrespondentId Int? @map("paperless_correspondent_id")
   notes          String?   @db.Text
   createdBy      String?   @map("created_by") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at")
@@ -126,6 +128,8 @@ model Expense {
   type       String
   notes      String?
   deductible Boolean  @default(false)
+  paperlessDocumentId Int?   @map("paperless_document_id")
+  paperlessAmount     Float? @map("paperless_amount")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 

@@ -21,6 +21,7 @@ import { TranslationModule } from './translation/translation.module';
 import { PropertyContentModule } from './property-content/property-content.module';
 import { PropertyRulesModule } from './property-rules/property-rules.module';
 import { RecurringExpensesModule } from './recurring-expenses/recurring-expenses.module';
+import { PaperlessModule } from './paperless/paperless.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { RecurringExpensesModule } from './recurring-expenses/recurring-expenses
     PropertyContentModule,
     PropertyRulesModule,
     RecurringExpensesModule,
+    PaperlessModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

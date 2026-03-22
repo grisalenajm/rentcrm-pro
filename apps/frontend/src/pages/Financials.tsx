@@ -93,6 +93,12 @@ export default function Financials() {
     queryFn: () => api.get('/properties').then((r) => r.data),
   });
 
+  const { data: org } = useQuery({
+    queryKey: ['organization'],
+    queryFn: () => api.get('/organization').then((r) => r.data),
+    staleTime: 60_000,
+  });
+
   // Ingresos de reservas (Booking.totalAmount, status != cancelled)
   const { data: bookingsRaw = [] } = useQuery({
     queryKey: ['bookings-income', selectedYear, filters.propertyId],
@@ -633,6 +639,16 @@ export default function Financials() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end">
+                        {exp.paperlessDocumentId && org?.paperlessUrl && (
+                          <a
+                            href={`${(org.paperlessUrl as string).replace(/\/$/, '')}/documents/${exp.paperlessDocumentId}/preview/`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors whitespace-nowrap"
+                          >
+                            Ver factura
+                          </a>
+                        )}
                         <button
                           onClick={() => openEdit(exp)}
                           className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"
@@ -681,6 +697,16 @@ export default function Financials() {
                     {new Date(exp.date).toLocaleDateString('es-ES')}
                   </span>
                   <div className="flex gap-2">
+                    {exp.paperlessDocumentId && org?.paperlessUrl && (
+                      <a
+                        href={`${(org.paperlessUrl as string).replace(/\/$/, '')}/documents/${exp.paperlessDocumentId}/preview/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2 py-1 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        Ver factura
+                      </a>
+                    )}
                     <button
                       onClick={() => openEdit(exp)}
                       className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"

@@ -48,6 +48,7 @@ export default function PropertyEdit() {
         status: form.status,
         sesCodigoEstablecimiento: form.sesCodigoEstablecimiento || undefined,
         nrua: form.nrua || undefined,
+        paperlessCorrespondentId: form.paperlessCorrespondentId ? Number(form.paperlessCorrespondentId) : undefined,
       });
       await qc.invalidateQueries({ queryKey: ['property', id] });
       await qc.invalidateQueries({ queryKey: ['properties'] });
@@ -146,6 +147,9 @@ export default function PropertyEdit() {
           </FormField>
           <FormField label="NRUA (Comunidad Valenciana)">
             <input value={form.nrua || ''} onChange={f('nrua')} placeholder="ESFCTU..." maxLength={46} className={inputCls} />
+          </FormField>
+          <FormField label="ID Correspondent Paperless">
+            <input type="number" min="1" step="1" value={form.paperlessCorrespondentId ?? ''} onChange={f('paperlessCorrespondentId')} placeholder="ID numérico del correspondent en Paperless-ngx" className={inputCls} />
           </FormField>
         </div>
       </div>

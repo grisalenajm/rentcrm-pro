@@ -67,4 +67,9 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  paperlessCorrespondentId?: number;
 }
