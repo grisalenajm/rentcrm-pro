@@ -108,12 +108,14 @@ export class PaperlessController {
       }
 
       // Parse amount from custom_fields
+      // Field arrives as { value: "EUR1234.00", field: 8 } — no name, only numeric ID
       let amount = 0;
       if (doc?.custom_fields) {
         for (const cf of doc.custom_fields) {
-          if (cf.field?.name?.toLowerCase().includes('importe') && cf.value) {
-            const parsed = parseFloat(String(cf.value).replace(',', '.'));
-            if (!isNaN(parsed)) { amount = parsed; break; }
+          if (cf.value) {
+            const cleaned = String(cf.value).replace(/[^0-9.,]/g, '').replace(',', '.');
+            const parsed = parseFloat(cleaned);
+            if (!isNaN(parsed) && parsed > 0) { amount = parsed; break; }
           }
         }
       }
