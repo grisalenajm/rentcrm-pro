@@ -55,6 +55,7 @@ export default function Properties() {
   const [icalSaving, setIcalSaving] = useState(false);
   const [icalError, setIcalError] = useState('');
   const [icalCopied, setIcalCopied] = useState(false);
+  const [icalExportUrl, setIcalExportUrl] = useState('');
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ['properties'],
@@ -92,10 +93,20 @@ export default function Properties() {
     setForm({ ...form, [k]: e.target.value });
 
   // iCal helpers
-  const exportUrl = (propertyId: string) =>
-    `${(import.meta as any).env.VITE_API_URL || 'http://192.168.1.123:3001'}/api/ical/export/${propertyId}`;
-
   const platformBadge = platformBadgeColor;
+
+  const copyToClipboard = (text: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+    } else {
+      const el = document.createElement('textarea');
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+  };
 
   const loadFeeds = async (propertyId: string) => {
     setIcalLoading(true);
@@ -113,6 +124,8 @@ export default function Properties() {
     setIcalShowAdd(false);
     setIcalSyncResult(null);
     setIcalError('');
+    setIcalExportUrl('');
+    api.get(`/ical/export-url/${p.id}`).then(r => setIcalExportUrl(r.data.url)).catch(() => {});
     await loadFeeds(p.id);
   };
 
@@ -398,13 +411,13 @@ export default function Properties() {
                 <div className="flex items-center gap-2">
                   <input
                     readOnly
-                    value={exportUrl(icalProperty.id)}
+                    value={icalExportUrl}
                     className="text-xs text-emerald-400 bg-slate-900 px-3 py-2 rounded-lg w-full min-w-0 outline-none cursor-text select-all"
                     onFocus={(e) => e.target.select()}
                   />
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(exportUrl(icalProperty.id));
+                      copyToClipboard(icalExportUrl);
                       setIcalCopied(true);
                       setTimeout(() => setIcalCopied(false), 1500);
                     }}

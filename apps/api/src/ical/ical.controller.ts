@@ -39,6 +39,12 @@ export class ICalController {
     return this.icalService.syncFeed(id);
   }
 
+  @Get('export-url/:propertyId')
+  @Roles('admin', 'gestor', 'owner', 'viewer')
+  getExportUrl(@Param('propertyId') propertyId: string) {
+    return { url: this.icalService.getExportUrl(propertyId) };
+  }
+
   @Get('export/:propertyId')
   async exportICal(
     @Param('propertyId') propertyId: string,

@@ -146,6 +146,11 @@ export class ICalService {
     return { imported, skipped, total: vevents.length };
   }
 
+  getExportUrl(propertyId: string): string {
+    const base = process.env.API_PUBLIC_URL || 'https://crm.greywoodhome.es';
+    return `${base}/api/ical/export/${propertyId}`;
+  }
+
   async exportPropertyICal(propertyId: string, organizationId: string): Promise<string> {
     const property = await this.prisma.property.findFirst({
       where: { id: propertyId, organizationId },
