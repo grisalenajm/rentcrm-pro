@@ -54,6 +54,7 @@ export default function Properties() {
   const [icalForm, setIcalForm] = useState({ url: '', platform: 'airbnb' });
   const [icalSaving, setIcalSaving] = useState(false);
   const [icalError, setIcalError] = useState('');
+  const [icalCopied, setIcalCopied] = useState(false);
 
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ['properties'],
@@ -395,13 +396,20 @@ export default function Properties() {
               <div className="bg-slate-800 rounded-xl p-4">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t('properties.ical.exportUrl')}</p>
                 <div className="flex items-center gap-2">
-                  <code className="text-xs text-emerald-400 bg-slate-900 px-3 py-2 rounded-lg flex-1 truncate">
-                    {exportUrl(icalProperty.id)}
-                  </code>
+                  <input
+                    readOnly
+                    value={exportUrl(icalProperty.id)}
+                    className="text-xs text-emerald-400 bg-slate-900 px-3 py-2 rounded-lg w-full min-w-0 outline-none cursor-text select-all"
+                    onFocus={(e) => e.target.select()}
+                  />
                   <button
-                    onClick={() => navigator.clipboard.writeText(exportUrl(icalProperty.id))}
-                    className="text-xs text-slate-400 hover:text-white px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors shrink-0">
-                    📋 {t('properties.ical.copy')}
+                    onClick={() => {
+                      navigator.clipboard.writeText(exportUrl(icalProperty.id));
+                      setIcalCopied(true);
+                      setTimeout(() => setIcalCopied(false), 1500);
+                    }}
+                    className="text-xs text-slate-400 hover:text-white px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors shrink-0 whitespace-nowrap">
+                    {icalCopied ? `✅ ${t('properties.ical.copied')}` : `📋 ${t('properties.ical.copy')}`}
                   </button>
                 </div>
               </div>
