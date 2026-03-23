@@ -97,7 +97,8 @@ model Property {
   sesCodigoEstablecimiento String? @map("ses_codigo_establecimiento") @db.VarChar(20)
   nrua           String?   @map("nrua") @db.VarChar(80)
   purchasePrice  Float?    @map("purchase_price")
-  paperlessCorrespondentId Int? @map("paperless_correspondent_id")
+  paperlessCorrespondentId   Int?    @map("paperless_correspondent_id")
+  paperlessCorrespondentName String? @map("paperless_correspondent_name")
   notes          String?   @db.Text
   createdBy      String?   @map("created_by") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at")
