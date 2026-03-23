@@ -109,13 +109,19 @@ export class ICalService {
       const dtstart = event.startDate?.toJSDate();
       const dtend = event.endDate?.toJSDate();
 
-      if (!dtstart || !dtend || !uid) { skipped++; continue; }
+      if (!dtstart || !dtend || !uid) {
+        this.logger.warn(`iCal skip: uid=${uid} dtstart=${dtstart} dtend=${dtend} summary="${summary}"`);
+        skipped++; continue;
+      }
 
       const existing = await this.prisma.availabilityBlock.findUnique({
         where: { propertyId_externalUid: { propertyId: feed.propertyId, externalUid: uid } },
       });
 
-      if (existing) { skipped++; continue; }
+      if (existing) {
+        this.logger.log(`iCal skip duplicate: uid=${uid} summary="${summary}"`);
+        skipped++; continue;
+      }
 
       await this.prisma.availabilityBlock.create({
         data: {
