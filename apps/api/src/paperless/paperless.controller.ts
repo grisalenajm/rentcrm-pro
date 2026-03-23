@@ -1,4 +1,5 @@
-import { Controller, Post, Body, Headers, HttpCode, Logger } from '@nestjs/common';
+import { Controller, Post, HttpCode, Logger, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { PrismaService } from '../prisma.service';
 import { PaperlessService } from './paperless.service';
 import { Public } from '../auth/public.decorator';
@@ -15,12 +16,12 @@ export class PaperlessController {
   @Public()
   @Post('webhook')
   @HttpCode(200)
-  async webhook(
-    @Body() body: any,
-    @Headers('x-paperless-secret') secret: string,
-  ) {
-    this.logger.log('Paperless webhook body: ' + JSON.stringify(body));
+  async webhook(@Req() req: Request): Promise<any> {
     try {
+    const body = req.body;
+    const secret = req.headers['x-paperless-secret'] as string;
+    this.logger.log('RAW BODY: ' + JSON.stringify(body));
+    this.logger.log('CONTENT-TYPE: ' + req.headers['content-type']);
     const org = await this.prisma.organization.findFirst();
     if (!org) return { ok: false };
 

@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import * as express from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
 
   app.use(helmet());
   app.use(express.json({ limit: '2mb' }));
