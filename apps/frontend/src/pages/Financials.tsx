@@ -35,6 +35,12 @@ const EMPTY_REC_FORM = {
 const EMPTY_FORM    = { propertyId: '', date: '', amount: '', type: 'otros', notes: '', deductible: false };
 const EMPTY_FILTERS = { propertyId: '', type: '', from: '', to: '' };
 
+async function openPaperlessDoc(documentId: number) {
+  const res = await api.post(`/paperless/document/${documentId}/token`);
+  const token: string = res.data.token;
+  window.open(`/api/paperless/document/${documentId}?access_token=${token}`, '_blank');
+}
+
 export default function Financials() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -641,7 +647,7 @@ export default function Financials() {
                       <div className="flex items-center gap-1 justify-end">
                         {exp.paperlessDocumentId && (
                           <button
-                            onClick={() => window.open(`/api/paperless/document/${exp.paperlessDocumentId}`, '_blank')}
+                            onClick={() => openPaperlessDoc(exp.paperlessDocumentId!)}
                             className="px-3 py-1 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors whitespace-nowrap"
                           >
                             Ver factura
@@ -697,7 +703,7 @@ export default function Financials() {
                   <div className="flex gap-2">
                     {exp.paperlessDocumentId && (
                       <button
-                        onClick={() => window.open(`/api/paperless/document/${exp.paperlessDocumentId}`, '_blank')}
+                        onClick={() => openPaperlessDoc(exp.paperlessDocumentId!)}
                         className="px-2 py-1 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors whitespace-nowrap"
                       >
                         Ver factura

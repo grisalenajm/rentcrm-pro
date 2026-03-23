@@ -1,10 +1,13 @@
-import { Controller, Post, Get, HttpCode, Logger, Req, Res, Param } from '@nestjs/common';
+import { Controller, Post, Get, HttpCode, Logger, Req, Res, Param, Query, UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma.service';
 import { PaperlessService } from './paperless.service';
+import { RedisService } from './redis.service';
 import { Public } from '../auth/public.decorator';
 
 const INVOICE_TYPES = ['factura', 'invoice'];
+const DOC_TOKEN_TTL = 300; // seconds
 
 @Controller('paperless')
 export class PaperlessController {
@@ -13,6 +16,7 @@ export class PaperlessController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paperless: PaperlessService,
+    private readonly redis: RedisService,
   ) {}
 
   @Public()
@@ -150,8 +154,55 @@ export class PaperlessController {
     }
   }
 
+  // Issue a one-time token for a specific document (requires JWT)
+  @Post('document/:id/token')
+  async issueDocumentToken(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<{ token: string }> {
+    const user = (req as any).user;
+    const token = randomUUID();
+    const payload = JSON.stringify({ documentId: id, userId: user?.id ?? '' });
+    await this.redis.client.set(`paperless:doctoken:${token}`, payload, 'EX', DOC_TOKEN_TTL);
+    return { token };
+  }
+
+  // Proxy Paperless PDF — @Public(), validated via one-time token in query param
+  @Public()
   @Get('document/:id')
-  async proxyDocument(@Param('id') id: string, @Res() res: Response): Promise<void> {
+  async proxyDocument(
+    @Param('id') id: string,
+    @Query('access_token') accessToken: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    // Validate one-time token
+    if (!accessToken) {
+      res.status(401).json({ error: 'Missing access_token' });
+      return;
+    }
+
+    const raw = await this.redis.client.get(`paperless:doctoken:${accessToken}`);
+    if (!raw) {
+      res.status(401).json({ error: 'Invalid or expired token' });
+      return;
+    }
+
+    let payload: { documentId: string; userId: string };
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      res.status(401).json({ error: 'Malformed token payload' });
+      return;
+    }
+
+    if (payload.documentId !== id) {
+      res.status(401).json({ error: 'Token document mismatch' });
+      return;
+    }
+
+    // Consume token immediately (one-time use)
+    await this.redis.client.del(`paperless:doctoken:${accessToken}`);
+
     const org = await this.prisma.organization.findFirst();
     if (!org?.paperlessUrl || !org?.paperlessToken) {
       res.status(503).json({ error: 'Paperless not configured' });
