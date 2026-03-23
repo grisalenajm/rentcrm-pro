@@ -19,6 +19,8 @@ export class PaperlessController {
     @Body() body: any,
     @Headers('x-paperless-secret') secret: string,
   ) {
+    this.logger.log('Paperless webhook body: ' + JSON.stringify(body));
+    try {
     const org = await this.prisma.organization.findFirst();
     if (!org) return { ok: false };
 
@@ -57,9 +59,21 @@ export class PaperlessController {
     }
 
     // Determine expense type from tags
-    const tags: string[] = (doc.tags_name ?? doc.tags ?? []).map((t: any) =>
-      typeof t === 'string' ? t.toLowerCase() : '',
-    );
+    // doc.tags is an array of numeric IDs — resolve names via API
+    const tagIds: number[] = Array.isArray(doc.tags) ? doc.tags.filter((t: any) => typeof t === 'number') : [];
+    const tagNames: string[] = [];
+    for (const tagId of tagIds) {
+      try {
+        const tagRes = await fetch(
+          `${(org.paperlessUrl ?? '').replace(/\/$/, '')}/api/tags/${tagId}/`,
+          { headers: { Authorization: `Token ${org.paperlessToken}` } },
+        );
+        if (tagRes.ok) {
+          const tagData: any = await tagRes.json();
+          if (tagData.name) tagNames.push(tagData.name.toLowerCase());
+        }
+      } catch { /* skip */ }
+    }
     const tagMap: Record<string, string> = {
       agua: 'agua',
       luz: 'luz',
@@ -68,7 +82,7 @@ export class PaperlessController {
       tasas: 'tasas',
     };
     let type = 'otros';
-    for (const tag of tags) {
+    for (const tag of tagNames) {
       if (tagMap[tag]) { type = tagMap[tag]; break; }
     }
 
@@ -100,5 +114,9 @@ export class PaperlessController {
 
     this.logger.log(`Paperless webhook: created Expense for property ${property.id}, doc ${body.document_id}`);
     return { ok: true };
+    } catch (err: any) {
+      this.logger.error('Webhook error', err.stack);
+      return { ok: false, error: 'unexpected_error' };
+    }
   }
 }
