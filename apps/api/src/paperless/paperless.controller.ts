@@ -1,5 +1,5 @@
-import { Controller, Post, HttpCode, Logger, Req } from '@nestjs/common';
-import type { Request } from 'express';
+import { Controller, Post, Get, HttpCode, Logger, Req, Res, Param } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { PrismaService } from '../prisma.service';
 import { PaperlessService } from './paperless.service';
 import { Public } from '../auth/public.decorator';
@@ -125,11 +125,6 @@ export class PaperlessController {
         ? new Date(body.created)
         : (doc?.created ? new Date(doc.created) : new Date());
 
-      // Preview URL
-      const previewUrl = docUrl
-        ? docUrl.replace(/\/?$/, '') + '/preview/'
-        : '';
-
       const fileName: string = body.original_file_name ?? doc?.original_file_name ?? '';
 
       await this.prisma.expense.create({
@@ -141,7 +136,7 @@ export class PaperlessController {
           deductible: false,
           paperlessDocumentId: documentId,
           paperlessAmount: amount,
-          notes: `${fileName}${previewUrl ? ' — ' + previewUrl : ''}`.trim(),
+          notes: fileName || null,
         },
       });
 
@@ -153,5 +148,38 @@ export class PaperlessController {
       this.logger.error('Webhook error', err.stack);
       return { ok: false, error: 'unexpected_error' };
     }
+  }
+
+  @Get('document/:id')
+  async proxyDocument(@Param('id') id: string, @Res() res: Response): Promise<void> {
+    const org = await this.prisma.organization.findFirst();
+    if (!org?.paperlessUrl || !org?.paperlessToken) {
+      res.status(503).json({ error: 'Paperless not configured' });
+      return;
+    }
+
+    const url = `${org.paperlessUrl.replace(/\/$/, '')}/api/documents/${id}/download/`;
+    const upstream = await fetch(url, {
+      headers: { Authorization: `Token ${org.paperlessToken}` },
+    });
+
+    if (!upstream.ok) {
+      res.status(upstream.status).json({ error: 'Document not found in Paperless' });
+      return;
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="documento.pdf"');
+
+    const reader = upstream.body?.getReader();
+    if (!reader) { res.end(); return; }
+
+    const pump = async (): Promise<void> => {
+      const { done, value } = await reader.read();
+      if (done) { res.end(); return; }
+      res.write(Buffer.from(value));
+      return pump();
+    };
+    await pump();
   }
 }

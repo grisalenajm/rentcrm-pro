@@ -639,15 +639,13 @@ export default function Financials() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end">
-                        {exp.paperlessDocumentId && org?.paperlessUrl && (
-                          <a
-                            href={`${(org.paperlessUrl as string).replace(/\/$/, '')}/documents/${exp.paperlessDocumentId}/preview/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        {exp.paperlessDocumentId && (
+                          <button
+                            onClick={() => window.open(`/api/paperless/document/${exp.paperlessDocumentId}`, '_blank')}
                             className="px-3 py-1 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors whitespace-nowrap"
                           >
                             Ver factura
-                          </a>
+                          </button>
                         )}
                         <button
                           onClick={() => openEdit(exp)}
@@ -697,15 +695,13 @@ export default function Financials() {
                     {new Date(exp.date).toLocaleDateString('es-ES')}
                   </span>
                   <div className="flex gap-2">
-                    {exp.paperlessDocumentId && org?.paperlessUrl && (
-                      <a
-                        href={`${(org.paperlessUrl as string).replace(/\/$/, '')}/documents/${exp.paperlessDocumentId}/preview/`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    {exp.paperlessDocumentId && (
+                      <button
+                        onClick={() => window.open(`/api/paperless/document/${exp.paperlessDocumentId}`, '_blank')}
                         className="px-2 py-1 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors whitespace-nowrap"
                       >
                         Ver factura
-                      </a>
+                      </button>
                     )}
                     <button
                       onClick={() => openEdit(exp)}
