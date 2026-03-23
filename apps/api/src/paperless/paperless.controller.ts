@@ -39,20 +39,24 @@ export class PaperlessController {
         return { ok: true };
       }
 
-      // Find property by correspondent_name (case-insensitive)
+      // Find property by matching normalized correspondent_name to property name
       const correspondentName: string | undefined = body.correspondent_name;
       if (!correspondentName) {
         this.logger.warn('Paperless webhook: no correspondent_name in payload');
         return { ok: true };
       }
 
-      const property = await this.prisma.property.findFirst({
-        where: {
-          paperlessCorrespondentName: { equals: correspondentName, mode: 'insensitive' },
-        },
+      const normalizedCorrespondent = correspondentName.replace(/_/g, ' ').trim().toLowerCase();
+
+      const allProperties = await this.prisma.property.findMany({
+        where: { organizationId: org.id },
       });
+      const property = allProperties.find(
+        (p) => p.name.replace(/_/g, ' ').trim().toLowerCase() === normalizedCorrespondent,
+      ) ?? null;
+
       if (!property) {
-        this.logger.warn(`Paperless webhook: no property found for correspondent_name="${correspondentName}"`);
+        this.logger.warn(`Paperless webhook: no property found for correspondent_name="${correspondentName}" (normalized: "${normalizedCorrespondent}")`);
         return { ok: true };
       }
 
