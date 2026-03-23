@@ -43,7 +43,6 @@ export default function Properties() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<Property | null>(null);
   const [form, setForm] = useState<any>(emptyForm);
   // iCal state
   const [icalProperty, setIcalProperty] = useState<Property | null>(null);
@@ -66,36 +65,12 @@ export default function Properties() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['properties'] }); setShowForm(false); setForm(emptyForm); },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: any) => api.put(`/properties/${id}`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['properties'] }); setEditing(null); setShowForm(false); },
-  });
-
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/properties/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['properties'] }),
   });
 
-  const openCreate = () => { setEditing(null); setForm(emptyForm); setShowForm(true); };
-  const openEdit = (p: Property) => {
-    setEditing(p);
-    setForm({
-      name: p.name,
-      address: p.address,
-      city: p.city,
-      province: p.province || '',
-      postalCode: p.postalCode || '',
-      country: p.country || 'ES',
-      rooms: String(p.rooms),
-      bathrooms: p.bathrooms ? String(p.bathrooms) : '',
-      maxGuests: p.maxGuests ? String(p.maxGuests) : '',
-      pricePerNight: p.pricePerNight ? String(p.pricePerNight) : '',
-      purchasePrice: p.purchasePrice ? String(p.purchasePrice) : '',
-      status: p.status || 'active',
-      sesCodigoEstablecimiento: p.sesCodigoEstablecimiento || '',
-    });
-    setShowForm(true);
-  };
+  const openCreate = () => { setForm(emptyForm); setShowForm(true); };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,8 +84,7 @@ export default function Properties() {
       postalCode: form.postalCode || undefined,
       country: form.country || undefined,
     };
-    if (editing) updateMutation.mutate({ id: editing.id, data });
-    else createMutation.mutate(data);
+    createMutation.mutate(data);
   };
 
   const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -240,7 +214,7 @@ export default function Properties() {
                           className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg transition-colors">
                           📅 iCal
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+                        <button onClick={(e) => { e.stopPropagation(); navigate(`/properties/${p.id}/edit`); }}
                           className="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">{t('common.edit')}</button>
                         <button onClick={(e) => { e.stopPropagation(); if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(p.id); }}
                           className={BTN_DANGER}>{t('common.delete')}</button>
@@ -279,7 +253,7 @@ export default function Properties() {
                     className="flex-1 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg transition-colors text-center">
                     📅 iCal
                   </button>
-                  <button onClick={() => openEdit(p)}
+                  <button onClick={() => navigate(`/properties/${p.id}/edit`)}
                     className="flex-1 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors text-center">{t('common.edit')}</button>
                   <button onClick={() => { if(confirm(t('common.confirm_delete'))) deleteMutation.mutate(p.id); }}
                     className={`flex-1 ${BTN_DANGER}`}>{t('common.delete')}</button>
@@ -295,7 +269,7 @@ export default function Properties() {
         <div className={MODAL_OVERLAY}>
           <div className={`${MODAL_PANEL} md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto`}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
-              <h2 className="text-lg font-bold text-white">{editing ? t('common.edit') : t('properties.new')}</h2>
+              <h2 className="text-lg font-bold text-white">{t('properties.new')}</h2>
               <button type="button" onClick={() => setShowForm(false)}
                 className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
             </div>
@@ -383,34 +357,12 @@ export default function Properties() {
                 </div>
               </div>
 
-              {editing && (
-                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-3">
-                  <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">iCal</p>
-                  <div>
-                    <p className="text-xs text-slate-400 mb-1">URL exportación</p>
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs text-emerald-400 bg-slate-800 px-2 py-1 rounded flex-1 truncate">
-                        {exportUrl(editing.id)}
-                      </code>
-                      <button type="button" onClick={() => navigator.clipboard.writeText(exportUrl(editing.id))}
-                        className="text-xs text-slate-400 hover:text-white px-2 py-1 bg-slate-800 rounded transition-colors shrink-0">
-                        Copiar
-                      </button>
-                    </div>
-                  </div>
-                  <button type="button" onClick={() => { setShowForm(false); openIcal(editing); }}
-                    className="text-xs text-slate-400 hover:text-emerald-400 transition-colors">
-                    ⚙️ Gestionar feeds iCal
-                  </button>
-                </div>
-              )}
-
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)}
                   className={`flex-1 ${BTN_SECONDARY}`}>{t('common.cancel')}</button>
                 <button type="submit"
                   className={`flex-1 ${BTN_PRIMARY}`}>
-                  {editing ? t('common.save') : t('properties.new')}
+                  {t('properties.new')}
                 </button>
               </div>
             </form>
