@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 3000,
+    allowedHosts: ['crm.greywoodhome.es'],
     proxy: {
       '/api': {
         target: 'http://api:3001',

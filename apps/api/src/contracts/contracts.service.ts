@@ -206,6 +206,8 @@ export class ContractsService {
       pdfBuffer,
       title,
       tags,
+      b.property.paperlessCorrespondentId ?? null,
+      (org as any).paperlessDocTypeId ?? null,
     );
 
     if (docId !== null) {

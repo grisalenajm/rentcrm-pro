@@ -10,6 +10,8 @@ export class PaperlessService {
     pdfBuffer: Buffer,
     title: string,
     tags: string[],
+    correspondentId?: number | null,
+    docTypeId?: number | null,
   ): Promise<number | null> {
     if (!paperlessUrl || !paperlessToken) {
       throw new Error(
@@ -34,6 +36,8 @@ export class PaperlessService {
     );
     formData.append('title', title);
     tagIds.forEach(id => formData.append('tags', String(id)));
+    if (correspondentId) formData.append('correspondent', String(correspondentId));
+    if (docTypeId) formData.append('document_type', String(docTypeId));
 
     const response = await fetch(url, {
       method: 'POST',

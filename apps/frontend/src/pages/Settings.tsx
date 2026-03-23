@@ -432,6 +432,25 @@ export default function Settings() {
             </div>
             <div>
               <label className={labelCls}>
+                Document Type ID
+              </label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={currentValue('paperlessDocTypeId')}
+                onChange={f('paperlessDocTypeId')}
+                placeholder="ID numérico del tipo de documento en Paperless-ngx"
+                className={inputCls}
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                {language === 'es'
+                  ? 'ID del tipo de documento para clasificar contratos (opcional). Paperless-ngx → Ajustes → Tipos de documento.'
+                  : 'Document type ID to classify contracts (optional). Paperless-ngx → Settings → Document Types.'}
+              </p>
+            </div>
+            <div>
+              <label className={labelCls}>
                 Secret webhook
               </label>
               <input

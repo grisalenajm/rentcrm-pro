@@ -25,6 +25,12 @@ export class OrganizationService {
       data.smtpPort = isNaN(port) ? null : port;
     }
 
+    // paperlessDocTypeId siempre como Int
+    if (dto.paperlessDocTypeId !== undefined) {
+      const docTypeId = parseInt(dto.paperlessDocTypeId, 10);
+      data.paperlessDocTypeId = isNaN(docTypeId) ? null : docTypeId;
+    }
+
     return this.prisma.organization.update({ where: { id }, data });
   }
 

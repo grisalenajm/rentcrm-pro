@@ -29,6 +29,7 @@ model Organization {
   paperlessUrl        String?  @map("paperless_url") @db.VarChar(255)
   paperlessToken      String?  @map("paperless_token") @db.VarChar(500)
   paperlessSecret     String?  @map("paperless_secret") @db.VarChar(255)
+  paperlessDocTypeId  Int?     @map("paperless_doc_type_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
