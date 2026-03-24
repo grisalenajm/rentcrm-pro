@@ -78,6 +78,11 @@ export default function BookingDetail() {
     enabled: !!id,
   });
 
+  const { data: org } = useQuery({
+    queryKey: ['organization'],
+    queryFn: () => api.get('/organization').then(r => r.data),
+  });
+
   useEffect(() => {
     if (booking?.client?.language) setCheckinLang(booking.client.language);
   }, [booking?.client?.language]);
@@ -207,7 +212,8 @@ export default function BookingDetail() {
   };
 
   const copyCheckinLink = async () => {
-    const url = `${window.location.origin}/checkin/${booking.checkinToken}`;
+    const base = (org?.publicBaseUrl || window.location.origin).replace(/\/$/, '');
+    const url = `${base}/checkin/${booking.checkinToken}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -355,14 +361,9 @@ export default function BookingDetail() {
             <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider mb-3">{t('bookings.client')}</h3>
             {!booking.clientId ? (
               <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-4 py-3">
-                <p className="text-amber-400 text-sm font-medium mb-2">
+                <p className="text-amber-400 text-sm font-medium">
                   Reserva sin cliente — envía el enlace de check-in al huésped para recoger sus datos
                 </p>
-                <button
-                  onClick={copyCheckinLink}
-                  className="px-3 py-1.5 text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg transition-colors font-semibold">
-                  {copied ? '✓ Enlace copiado' : '📋 Copiar enlace de check-in'}
-                </button>
               </div>
             ) : (
               <>
@@ -597,6 +598,12 @@ export default function BookingDetail() {
                   className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
                   {sendingCheckin ? 'Enviando...' : booking.checkinStatus === 'pending' ? '🔄 Reenviar enlace' : '📧 Enviar checkin al cliente'}
                 </button>
+                {booking.checkinToken && (
+                  <button onClick={copyCheckinLink}
+                    className="w-full mt-2 px-3 py-2 text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors font-semibold">
+                    {copied ? '✓ Enlace copiado' : '📋 Copiar enlace de check-in'}
+                  </button>
+                )}
               </div>
             )}
           </div>
