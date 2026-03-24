@@ -69,7 +69,7 @@ export default function BookingDetail() {
   const [notesDraft, setNotesDraft] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
   const [manualEmail, setManualEmail] = useState('');
-  const [copiedLink, setCopiedLink] = useState(false);
+  const [copied, setCopied] = useState(false);
 
 
   const { data: booking, isLoading } = useQuery({
@@ -206,18 +206,22 @@ export default function BookingDetail() {
     }
   };
 
-  const getCheckinUrl = () => {
-    const base = import.meta.env.VITE_FRONTEND_URL || `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}`;
-    return booking?.checkinToken ? `${base}/checkin/${booking.checkinToken}` : null;
-  };
-
-  const handleCopyCheckinLink = () => {
-    const url = getCheckinUrl();
-    if (!url) return;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    });
+  const copyCheckinLink = async () => {
+    const url = `${window.location.origin}/checkin/${booking.checkinToken}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const input = document.createElement('input');
+      input.value = url;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleSendCheckin = async () => {
@@ -355,9 +359,9 @@ export default function BookingDetail() {
                   Reserva sin cliente — envía el enlace de check-in al huésped para recoger sus datos
                 </p>
                 <button
-                  onClick={handleCopyCheckinLink}
+                  onClick={copyCheckinLink}
                   className="px-3 py-1.5 text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg transition-colors font-semibold">
-                  {copiedLink ? '✓ Enlace copiado' : '📋 Copiar enlace de check-in'}
+                  {copied ? '✓ Enlace copiado' : '📋 Copiar enlace de check-in'}
                 </button>
               </div>
             ) : (
