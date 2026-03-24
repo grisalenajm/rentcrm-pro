@@ -299,13 +299,15 @@ export class BookingsService {
     await this.sendEmail(organizationId, { to: recipientEmail, subject, html });
   }
 
-  async sendCheckinLink(bookingId: string, organizationId: string, language?: string): Promise<void> {
+  async sendCheckinLink(bookingId: string, organizationId: string, language?: string, emailOverride?: string): Promise<void> {
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, organizationId },
       include: { client: true, property: true },
     });
     if (!booking) throw new NotFoundException('Reserva no encontrada');
-    if (!booking.client?.email) throw new BadRequestException('El cliente no tiene email');
+
+    const recipientEmail = emailOverride || booking.client?.email;
+    if (!recipientEmail) throw new BadRequestException('El cliente no tiene email');
 
     const token = randomUUID();
     await this.prisma.booking.update({
@@ -317,13 +319,14 @@ export class BookingsService {
       },
     });
 
-    const lang = language || (booking.client as any).language || 'es';
+    const lang = language || (booking.client as any)?.language || 'es';
     const checkinUrl = `${process.env.FRONTEND_URL}/checkin/${token}`;
     const propertyName = booking.property.name;
     const date = new Date(booking.checkInDate).toLocaleDateString('es-ES');
 
     // Use pre-translated templates — no LibreTranslate call needed
-    const greeting  = renderEmailTemplate('checkinGreeting', lang, { name: booking.client.firstName });
+    const clientName = booking.client?.firstName || 'Huésped';
+    const greeting  = renderEmailTemplate('checkinGreeting', lang, { name: clientName });
     const finalBodyText = renderEmailTemplate('checkinBody', lang, { property: propertyName, date });
     const [buttonText, footerText] = await this.translationService.translateMany([
       'Completar checkin',
@@ -333,7 +336,7 @@ export class BookingsService {
     const subject = `Checkin online — ${propertyName}`;
 
     await this.sendEmail(organizationId, {
-      to: booking.client.email,
+      to: recipientEmail,
       subject,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">

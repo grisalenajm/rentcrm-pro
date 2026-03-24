@@ -95,8 +95,8 @@ export class BookingsController {
   // ── Checkin Online ─────────────────────────────────────────────────────────
   @Post(':id/checkin/send')
   @Roles('admin', 'gestor')
-  async sendCheckin(@Param('id') id: string, @Body() body: { language?: string }, @Request() req) {
-    await this.bookingsService.sendCheckinLink(id, req.user.organizationId, body?.language);
+  async sendCheckin(@Param('id') id: string, @Body() body: { language?: string; email?: string }, @Request() req) {
+    await this.bookingsService.sendCheckinLink(id, req.user.organizationId, body?.language, body?.email);
     return { ok: true };
   }
 

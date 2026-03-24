@@ -26,6 +26,7 @@ model Organization {
   sesCodigoArrendador String?  @map("ses_codigo_arrendador") @db.VarChar(20)
   sesCodigoEstablecimiento String? @map("ses_codigo_establecimiento") @db.VarChar(20)
   sesEndpoint         String?  @map("ses_endpoint") @db.VarChar(255)
+  publicUrl           String?  @map("public_url") @db.VarChar(255)
   paperlessUrl        String?  @map("paperless_url") @db.VarChar(255)
   paperlessToken      String?  @map("paperless_token") @db.VarChar(500)
   paperlessSecret     String?  @map("paperless_secret") @db.VarChar(255)
@@ -175,12 +176,12 @@ model Client {
 model Booking {
   id             String   @id @default(uuid()) @db.Uuid
   organizationId String   @map("organization_id") @db.Uuid
-  clientId       String   @map("client_id") @db.Uuid
+  clientId       String?  @map("client_id") @db.Uuid
   propertyId     String   @map("property_id") @db.Uuid
   checkInDate    DateTime @map("check_in_date") @db.Date
   checkOutDate   DateTime @map("check_out_date") @db.Date
-  totalAmount    Decimal  @map("total_amount") @db.Decimal(10, 2)
-  status         String   @default("pending") @db.VarChar(20)
+  totalAmount    Decimal? @map("total_amount") @db.Decimal(10, 2)
+  status         String   @default("created") @db.VarChar(20)
   source         String   @default("direct") @db.VarChar(20)
   externalId     String?  @map("external_id") @db.VarChar(255)
   createdBy      String?  @map("created_by") @db.Uuid
@@ -188,7 +189,7 @@ model Booking {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  client        Client             @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  client        Client?            @relation(fields: [clientId], references: [id], onDelete: Restrict)
   property      Property           @relation(fields: [propertyId], references: [id], onDelete: Restrict)
   creator       User?              @relation("BookingCreatedBy", fields: [createdBy], references: [id])
   guests        BookingGuest[]

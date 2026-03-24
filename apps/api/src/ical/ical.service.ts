@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { lookup } from 'dns/promises';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
@@ -77,7 +77,10 @@ export class ICalService {
   }
 
   async syncFeed(id: string) {
-    const feed = await this.prisma.availabilitySync.findUnique({ where: { id } });
+    const feed = await this.prisma.availabilitySync.findUnique({
+      where: { id },
+      include: { property: { select: { id: true, name: true, organizationId: true } } },
+    });
     if (!feed || !feed.icalUrl) throw new NotFoundException('Feed not found or no URL');
 
     await this.validateExternalUrl(feed.icalUrl);
@@ -135,6 +138,38 @@ export class ICalService {
         },
       });
 
+      // Auto-create Booking for Airbnb / Booking.com imports
+      const platform = feed.platform?.toLowerCase() ?? '';
+      const bookingSource =
+        platform === 'airbnb' ? 'airbnb' :
+        platform === 'booking' ? 'booking' : null;
+
+      if (bookingSource) {
+        const existingBooking = await this.prisma.booking.findFirst({
+          where: { externalId: uid },
+        });
+
+        if (!existingBooking) {
+          await this.prisma.booking.create({
+            data: {
+              propertyId: feed.propertyId,
+              organizationId: (feed as any).property.organizationId,
+              checkInDate: dtstart,
+              checkOutDate: dtend,
+              status: 'created',
+              source: bookingSource,
+              externalId: uid,
+              clientId: null,
+              totalAmount: null,
+              checkinToken: randomUUID(),
+              checkinStatus: 'pending',
+              notes: bookingSource === 'airbnb' ? 'Airbnb' : 'Booking.com',
+            },
+          });
+          this.logger.log(`iCal auto-booking created: uid=${uid} source=${bookingSource}`);
+        }
+      }
+
       imported++;
     }
 
@@ -172,7 +207,7 @@ export class ICalService {
       const vevent = new ICAL.Component('vevent');
       const event = new ICAL.Event(vevent);
       event.uid = booking.id;
-      event.summary = `${booking.client.firstName} ${booking.client.lastName}`;
+      event.summary = booking.client ? `${booking.client.firstName} ${booking.client.lastName}` : (booking.source || 'Reserva importada');
       event.startDate = ICAL.Time.fromJSDate(new Date(booking.checkInDate), true);
       event.endDate = ICAL.Time.fromJSDate(new Date(booking.checkOutDate), true);
       cal.addSubcomponent(vevent);

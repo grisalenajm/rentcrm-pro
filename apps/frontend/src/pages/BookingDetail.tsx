@@ -68,6 +68,8 @@ export default function BookingDetail() {
   const [notesEditing, setNotesEditing] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
+  const [manualEmail, setManualEmail] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
 
 
   const { data: booking, isLoading } = useQuery({
@@ -204,10 +206,26 @@ export default function BookingDetail() {
     }
   };
 
+  const getCheckinUrl = () => {
+    const base = import.meta.env.VITE_FRONTEND_URL || `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}`;
+    return booking?.checkinToken ? `${base}/checkin/${booking.checkinToken}` : null;
+  };
+
+  const handleCopyCheckinLink = () => {
+    const url = getCheckinUrl();
+    if (!url) return;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    });
+  };
+
   const handleSendCheckin = async () => {
     setSendingCheckin(true);
     try {
-      await api.post(`/bookings/${booking.id}/checkin/send`, { language: checkinLang });
+      const body: any = { language: checkinLang };
+      if (!booking.clientId && manualEmail) body.email = manualEmail;
+      await api.post(`/bookings/${booking.id}/checkin/send`, body);
       qc.invalidateQueries({ queryKey: ['booking', id] });
     } catch (e: any) {
       alert(e.response?.data?.message || 'Error al enviar el checkin');
@@ -331,16 +349,31 @@ export default function BookingDetail() {
           {/* Cliente */}
           <div className={CARD}>
             <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider mb-3">{t('bookings.client')}</h3>
-            <button onClick={() => navigate(`/clients/${booking.client?.id}`)}
-              className="text-lg font-bold hover:text-emerald-400 transition-colors text-left">
-              {booking.client?.firstName} {booking.client?.lastName}
-            </button>
-            <div className="mt-3 space-y-1 text-sm text-slate-400">
-              {booking.client?.dniPassport && <div>{t('clients.dni')}: <span className="font-mono text-white">{booking.client.dniPassport}</span></div>}
-              {booking.client?.email && <div>{t('common.email')}: <span className="text-white">{booking.client.email}</span></div>}
-              {booking.client?.phone && <div>{t('common.phone')}: <span className="text-white">{booking.client.phone}</span></div>}
-              {booking.client?.nationality && <div>{t('clients.nationality')}: <span className="text-white">{booking.client.nationality}</span></div>}
-            </div>
+            {!booking.clientId ? (
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-4 py-3">
+                <p className="text-amber-400 text-sm font-medium mb-2">
+                  Reserva sin cliente — envía el enlace de check-in al huésped para recoger sus datos
+                </p>
+                <button
+                  onClick={handleCopyCheckinLink}
+                  className="px-3 py-1.5 text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg transition-colors font-semibold">
+                  {copiedLink ? '✓ Enlace copiado' : '📋 Copiar enlace de check-in'}
+                </button>
+              </div>
+            ) : (
+              <>
+                <button onClick={() => navigate(`/clients/${booking.client?.id}`)}
+                  className="text-lg font-bold hover:text-emerald-400 transition-colors text-left">
+                  {booking.client?.firstName} {booking.client?.lastName}
+                </button>
+                <div className="mt-3 space-y-1 text-sm text-slate-400">
+                  {booking.client?.dniPassport && <div>{t('clients.dni')}: <span className="font-mono text-white">{booking.client.dniPassport}</span></div>}
+                  {booking.client?.email && <div>{t('common.email')}: <span className="text-white">{booking.client.email}</span></div>}
+                  {booking.client?.phone && <div>{t('common.phone')}: <span className="text-white">{booking.client.phone}</span></div>}
+                  {booking.client?.nationality && <div>{t('clients.nationality')}: <span className="text-white">{booking.client.nationality}</span></div>}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Valoración */}
@@ -544,7 +577,19 @@ export default function BookingDetail() {
                     {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
                   </select>
                 </div>
-                <button onClick={handleSendCheckin} disabled={sendingCheckin}
+                {!booking.clientId && (
+                  <div className="mb-3">
+                    <label className="text-xs text-slate-400 mb-1 block">Email del huésped (opcional)</label>
+                    <input
+                      type="email"
+                      value={manualEmail}
+                      onChange={e => setManualEmail(e.target.value)}
+                      placeholder="correo@ejemplo.com"
+                      className={inputCls}
+                    />
+                  </div>
+                )}
+                <button onClick={handleSendCheckin} disabled={sendingCheckin || (!booking.clientId && !manualEmail)}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors">
                   {sendingCheckin ? 'Enviando...' : booking.checkinStatus === 'pending' ? '🔄 Reenviar enlace' : '📧 Enviar checkin al cliente'}
                 </button>
