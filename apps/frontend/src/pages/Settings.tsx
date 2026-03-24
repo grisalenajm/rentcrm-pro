@@ -239,6 +239,28 @@ export default function Settings() {
               <textarea value={currentValue('address')} onChange={f('address')} rows={2}
                 className={`${inputCls} resize-none`} />
             </div>
+            <div>
+              <label className={labelCls}>{language === 'es' ? 'URL pública del CRM' : 'CRM public URL'}</label>
+              <input type="url" value={currentValue('publicUrl')} onChange={f('publicUrl')}
+                placeholder="https://crm.greywoodhome.es"
+                className={inputCls} />
+              <p className="text-xs text-slate-500 mt-1">
+                {language === 'es'
+                  ? 'Se usa para generar los enlaces de exportación iCal. Si está vacío se usa el dominio actual.'
+                  : 'Used to generate iCal export links. If empty, the current domain is used.'}
+              </p>
+            </div>
+            <div>
+              <label className={labelCls}>{language === 'es' ? 'URL pública' : 'Public base URL'}</label>
+              <input type="url" value={currentValue('publicBaseUrl')} onChange={f('publicBaseUrl')}
+                placeholder="https://crm.greywoodhome.es"
+                className={inputCls} />
+              <p className="text-xs text-slate-500 mt-1">
+                {language === 'es'
+                  ? 'Dominio público para enlaces de checkin, contratos e iCal. Ej: https://crm.greywoodhome.es. Si está vacío se usa FRONTEND_URL del servidor.'
+                  : 'Public domain for checkin, contract and iCal links. E.g. https://crm.greywoodhome.es. If empty, the server FRONTEND_URL is used.'}
+              </p>
+            </div>
           </>
         )}
 

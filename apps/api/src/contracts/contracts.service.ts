@@ -6,6 +6,7 @@ import { CreateContractDto } from './dto/create-contract.dto';
 import { SignContractDto } from './dto/sign-contract.dto';
 import * as crypto from 'crypto';
 import * as nodemailer from 'nodemailer';
+import { getPublicBaseUrl } from '../common/public-url.helper';
 import PDFDocument from 'pdfkit';
 
 @Injectable()
@@ -100,7 +101,7 @@ export class ContractsService {
     });
   }
 
-  async send(id: string, organizationId: string, baseUrl: string) {
+  async send(id: string, organizationId: string) {
     this.logger.log('Iniciando envío contrato id: ' + id);
     const contract = await this.findOne(id, organizationId);
     if (contract.status !== 'draft' && contract.status !== 'sent') {
@@ -127,7 +128,7 @@ export class ContractsService {
       auth: { user: org.smtpUser as string, pass: org.smtpPass as string },
     });
 
-    const signUrl = `${baseUrl}/contracts/sign/${contract.token}`;
+    const signUrl = `${getPublicBaseUrl(org as any)}/contracts/sign/${contract.token}`;
 
     try {
       await transporter.sendMail({

@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from 'crypto';
 import { lookup } from 'dns/promises';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
+import { getPublicBaseUrl } from '../common/public-url.helper';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ICAL = require('ical.js');
@@ -181,8 +182,9 @@ export class ICalService {
     return { imported, skipped, total: vevents.length };
   }
 
-  getExportUrl(propertyId: string): string {
-    const base = process.env.API_PUBLIC_URL || 'https://crm.greywoodhome.es';
+  async getExportUrl(propertyId: string, organizationId: string): Promise<string> {
+    const org = await this.prisma.organization.findFirst({ where: { id: organizationId } });
+    const base = getPublicBaseUrl(org as any);
     return `${base}/api/ical/export/${propertyId}`;
   }
 

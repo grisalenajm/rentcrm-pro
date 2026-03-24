@@ -27,6 +27,7 @@ model Organization {
   sesCodigoEstablecimiento String? @map("ses_codigo_establecimiento") @db.VarChar(20)
   sesEndpoint         String?  @map("ses_endpoint") @db.VarChar(255)
   publicUrl           String?  @map("public_url") @db.VarChar(255)
+  publicBaseUrl       String?  @map("public_base_url") @db.VarChar(255)
   paperlessUrl        String?  @map("paperless_url") @db.VarChar(255)
   paperlessToken      String?  @map("paperless_token") @db.VarChar(500)
   paperlessSecret     String?  @map("paperless_secret") @db.VarChar(255)

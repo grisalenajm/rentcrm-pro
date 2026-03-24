@@ -10,6 +10,7 @@ import { PropertyRulesService } from '../property-rules/property-rules.service';
 import { renderEmailTemplate } from '../translation/ui-translations';
 import { randomUUID } from 'crypto';
 import * as nodemailer from 'nodemailer';
+import { getPublicBaseUrl } from '../common/public-url.helper';
 
 @Injectable()
 export class BookingsService {
@@ -319,8 +320,9 @@ export class BookingsService {
       },
     });
 
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
     const lang = language || (booking.client as any)?.language || 'es';
-    const checkinUrl = `${process.env.FRONTEND_URL}/checkin/${token}`;
+    const checkinUrl = `${getPublicBaseUrl(org as any)}/checkin/${token}`;
     const propertyName = booking.property.name;
     const date = new Date(booking.checkInDate).toLocaleDateString('es-ES');
 

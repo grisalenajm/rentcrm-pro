@@ -21,6 +21,7 @@ export default function ICalFeeds() {
   const { t } = useTranslation();
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [publicUrl, setPublicUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ feedId: string; imported: number; skipped: number; total: number } | null>(null);
@@ -28,16 +29,19 @@ export default function ICalFeeds() {
   const [form, setForm] = useState({ propertyId: '', url: '', platform: 'airbnb' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [feedsRes, propsRes] = await Promise.all([
+      const [feedsRes, propsRes, orgRes] = await Promise.all([
         api.get('/ical/feeds'),
         api.get('/properties'),
+        api.get('/organization'),
       ]);
       setFeeds(feedsRes.data);
       setProperties(propsRes.data?.data || propsRes.data);
+      setPublicUrl(orgRes.data?.publicUrl || window.location.origin);
     } finally {
       setLoading(false);
     }
@@ -90,7 +94,36 @@ export default function ICalFeeds() {
   };
 
   const exportUrl = (propertyId: string) =>
-    `${(import.meta as any).env.VITE_API_URL || 'http://192.168.1.123:3001'}/api/ical/export/${propertyId}`;
+    `${publicUrl}/api/ical/export/${propertyId}`;
+
+  const handleCopy = async (text: string, id: string) => {
+    let success = false;
+
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        success = true;
+      } catch { /* fall through */ }
+    }
+
+    if (!success) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try { success = document.execCommand('copy'); } catch { /* fall through */ }
+      document.body.removeChild(ta);
+    }
+
+    if (success) {
+      setCopied(id);
+      setTimeout(() => setCopied(null), 2000);
+    } else {
+      window.prompt('Copia la URL manualmente:', text);
+    }
+  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -162,10 +195,10 @@ export default function ICalFeeds() {
                     {exportUrl(feed.propertyId)}
                   </code>
                   <button
-                    onClick={() => navigator.clipboard.writeText(exportUrl(feed.propertyId))}
-                    className="text-xs text-blue-500 hover:text-blue-700 shrink-0"
+                    onClick={() => handleCopy(exportUrl(feed.propertyId), feed.propertyId)}
+                    className="text-xs text-blue-500 hover:text-blue-700 shrink-0 transition"
                   >
-                    📋
+                    {copied === feed.propertyId ? '✅' : '📋'}
                   </button>
                 </div>
               </div>

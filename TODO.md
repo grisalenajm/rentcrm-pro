@@ -12,8 +12,8 @@
 
 
 ### Gestión documental — Integración Paperless-ngx
-- [ ] Al subir contrato: pasar `correspondent_id` según `property.paperlessCorrespondentId` (campo ya existe)
-- [ ] Settings: añadir campo Document Type ID de Paperless (para clasificar documentos automáticamente)
+- [x] Al subir contrato: pasar `correspondent_id` según `property.paperlessCorrespondentId` (23/03/2026)
+- [x] Settings: añadir campo Document Type ID de Paperless (23/03/2026)
 
 ### Edición masiva
 - [ ] Mass update precios de reservas desde Excel (por ID reserva o por propiedad + fecha entrada)

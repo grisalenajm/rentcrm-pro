@@ -87,8 +87,7 @@ export class ContractsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'gestor')
   send(@Param('id') id: string, @Request() req) {
-    const baseUrl = process.env.FRONTEND_URL!;
-    return this.contractsService.send(id, req.user.organizationId, baseUrl);
+    return this.contractsService.send(id, req.user.organizationId);
   }
 
   @Post(':id/paperless/upload')
