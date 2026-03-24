@@ -1,63 +1,59 @@
-# RentCRM Pro — Best Practices
+# RentalSuite — Best Practices
+> Actualizado 23/03/2026
 
 ## Deploy (CRÍTICO)
-- El Dockerfile de la API copia el `dist/` precompilado del host — NUNCA compila dentro de Docker
-- **API cambiada**: `npm run build --workspace=apps/api && docker compose build api && docker compose up -d api`
-- **Frontend cambiado**: `docker compose up -d --build frontend`
-- **Conflicto contenedor**: `docker rm -f rentcrm-api && docker compose up -d api`
-- NUNCA solo `restart` — no recarga código
-- Si el log de debug no aparece tras rebuild: el build no incluyó los cambios → repetir `npm run build` explícito
-- Tras cada tarea: `git add -A && git commit -m 'message in English (public repo)' && git push origin main`
+- API: `npm run build --workspace=apps/api && docker compose build api && docker compose up -d api`
+- Frontend: `docker compose up -d --build frontend`
+- NUNCA solo `docker compose restart`
+- Si log de debug no aparece: repetir `npm run build` explícito
+- Conflicto contenedor: `docker rm -f rentcrm-api && docker compose up -d api`
 
 ## Prisma (CRÍTICO)
-- SIEMPRE desde el host, NUNCA desde dentro del contenedor
-- SIEMPRE pasar DATABASE_URL explícita:
+- SIEMPRE desde el host, NUNCA desde el contenedor
+- El `apps/api/.env` usa Prisma Accelerate — NO sirve para CLI
+- Usar siempre la password de `~/rentcrm-pro/.env`:
 ```bash
-DATABASE_URL='postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm' npx prisma migrate dev --name nombre
+cat ~/rentcrm-pro/.env | grep POSTGRES_PASSWORD
+DATABASE_URL='postgresql://rentcrm:<pwd>@127.0.0.1:5432/rentcrm' npx prisma migrate dev --name nombre
+DATABASE_URL='postgresql://rentcrm:<pwd>@127.0.0.1:5432/rentcrm' npx prisma generate
 ```
-- Si `migrate dev` falla 'migration modified': usar `prisma db push`
-- SIEMPRE verificar nombres exactos de campos en schema.prisma antes de usarlos
+- Si `migrate dev` falla "migration modified": usar `prisma db push`
 - Tras cambios en schema: `npx prisma generate` antes de build
 
 ## Nombres de campos (CRÍTICO)
-- Booking: `checkInDate`, `checkOutDate`, `totalAmount` (NO `startDate`/`endDate`/`totalPrice`)
-- Booking.status: `created`, `registered`, `processed`, `error`, `cancelled`
-- Client y BookingGuestSes: dirección con `street`, `city`, `postalCode`, `province`, `country`
-- Property: `sesCodigoEstablecimiento`
-- Organization: `sesUsuarioWs`, `sesPasswordWs`, `sesCodigoArrendador`, `sesEndpoint`
+- Booking: `checkInDate`, `checkOutDate`, `totalAmount`, `externalId`
+- Booking.status: `created|registered|processed|error|cancelled`
+- Booking.source: `direct|airbnb|booking|vrbo|manual_block`
+- Property: `sesCodigoEstablecimiento`, `paperlessCorrespondentId`, `nrua`
+- Expense: `deductible`, `paperlessDocumentId`, `paperlessAmount`
+- Organization: `paperlessUrl`, `paperlessToken`, `paperlessSecret`
+
+## Git
+- Commits en inglés (repo público), SIN Co-Authored-By
+- Push a develop tras cada tarea
+- Merge a main solo cuando está verificado
 
 ## Frontend
 - Vite NO tiene hot reload real en Docker — siempre rebuild
-- `api.ts` usa `baseURL: '/api'` relativo — NUNCA `http://api:3001` desde el navegador
-- Usar siempre `WORLD_COUNTRIES` desde `src/data/countries.ts`
-- Patrón responsive: sin prefijo = móvil, `md:` = 768px desktop
-- Tabla→tarjetas: `hidden md:block` / `md:hidden`
-- Modal fullscreen móvil: `items-end md:items-center`, `rounded-t-2xl md:rounded-2xl`
-
-## i18n
-- Traducciones en `apps/frontend/src/i18n/index.ts` — NO ficheros JSON separados
-- Al añadir estados o textos: actualizar TODOS los idiomas
-- Al añadir valores de `status`: actualizar también `statusColor` en cada página
+- `api.ts` usa `baseURL: '/api'` relativo
+- Tokens UI centralizados en `src/lib/ui.ts` — NUNCA hardcodear clases
+- Clipboard API solo funciona en HTTPS
+- Arrays async (DOC_TYPES, etc.) → `useMemo` dentro del componente
+- React Query: `staleTime` + `keepPreviousData` en listados
 
 ## Backend NestJS
 - Rutas fijas SIEMPRE antes de `:id` en el controlador
-- Rutas públicas: `@Public()` decorator, NO `@UseGuards()` vacío
-- `ValidationPipe whitelist`: TODOS los campos del DTO con decoradores
-- JWT payload: `id`, `email`, `organizationId`, `role`
+- Rutas públicas: `@Public()` decorator
+- ValidationPipe whitelist: todos los campos del DTO con decoradores
+- SMTP y Paperless config: siempre desde Organization en BD
 
-## Llamadas externas HTTPS
-- SES Ministerio: `rejectUnauthorized: false` en el `httpsAgent` de axios
-- NUNCA deshabilitar SSL globalmente
-- Siempre loguear `err.response?.data` Y `err.message` en el catch
+## Llamadas externas
+- SES Ministerio: `rejectUnauthorized: false` solo en esa llamada
+- Siempre loguear `err.response?.data` Y `err.message` en catch
+- Paperless webhook: validar X-Paperless-Secret antes de procesar
 
-## SES Hospedajes
-- `sesCodigoEstablecimiento` en `Property`, NO en `Organization`
-- Endpoint correcto: `https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion` (SIN `/v1/`)
-- La cuenta debe estar dada de alta en el Ministerio para que las peticiones funcionen
-- Verificar si el Ministerio espera XML comprimido (deflate) o plano en base64
-
-## Debugging
-- Logs temporales: editar archivo → `npm run build --workspace=apps/api` → rebuild Docker
-- Si el log no aparece: el build no recogió los cambios — repetir build
-- Verificar valor en BD: `docker exec rentcrm-postgres psql -U rentcrm -d rentcrm -c "SELECT campo FROM tabla;"`
-- Verificar respuesta de errores externos: loguear `err.response?.data` y `err.message`
+## Infraestructura
+- Corre en LXC Proxmox (no VM) — acceder con `pct enter 123`
+- Acceso externo: Nginx + Let's Encrypt
+- HTTPS local: mkcert con CA de Proxmox (ver CLAUDE.md)
+- Clipboard API requiere HTTPS — no funciona en HTTP local

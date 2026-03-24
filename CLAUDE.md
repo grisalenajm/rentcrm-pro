@@ -1,32 +1,41 @@
 # RentalSuite — Guía para Claude Code
-> Antes llamado RentCRM Pro. Documento actualizado 17/03/2026.
+> Actualizado 23/03/2026
 
 ## Identidad del proyecto
 - **Nombre**: RentalSuite (rebranding pendiente de integrar SVG logo en la app)
 - **Repo GitHub**: `grisalenajm/rentcrm-pro`
-- **Ramas**: `develop` (trabajo diario) → `main` (producción estable, merge cuando está probado)
+- **Ramas**: `develop` (trabajo diario) → `main` (producción estable)
 - **Tags semánticos**: v1.0.0, v1.1.0... en cada release
+- **Commits**: en inglés, SIN Co-Authored-By
 
 ## Entorno
 - **Repo local**: `/home/rentcrm/rentcrm-pro` (monorepo npm workspaces)
-- **Frontend**: `apps/frontend/` → puerto 3000 (Vite — **requiere rebuild** para ver cambios)
+- **Frontend**: `apps/frontend/` → puerto 3000 (Vite — requiere rebuild)
 - **API**: `apps/api/` → puerto 3001 (NestJS, prefijo `/api`)
-- **DB**: PostgreSQL → `postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm`
+- **DB**: PostgreSQL 16 → `postgresql://rentcrm:<pwd>@localhost:5432/rentcrm`
+  - PASSWORD real en `/root/rentcrm-pro/.env` → POSTGRES_PASSWORD
+  - Para Prisma CLI usar: `postgresql://rentcrm:<pwd>@127.0.0.1:5432/rentcrm`
+  - El .env de apps/api usa Prisma Accelerate (prisma+postgres://) — NO usar para CLI
 - **Redis**: `redis://:rentcrm_redis_pass@localhost:6379`
-- **LibreTranslate**: `http://localhost:5000` (externo) / `http://libretranslate:5000` (interno Docker)
+- **LibreTranslate**: `http://libretranslate:5000` (interno Docker)
 
 ## Contenedores Docker
-```
 rentcrm-api        → NestJS API (puerto 3001)
 rentcrm-frontend   → Vite React (puerto 3000)
-rentcrm-postgres   → PostgreSQL 15
+rentcrm-postgres   → PostgreSQL 16
 rentcrm-redis      → Redis 7
 rentcrm-translate  → LibreTranslate (puerto 5000)
-```
+
+## Infraestructura
+- Corre en contenedor **LXC en Proxmox** (no VM)
+- Acceso externo: Nginx con Let's Encrypt → subdominio propio
+- Acceso local: HTTP por IP (192.168.1.123) — clipboard API no funciona en HTTP
+- HTTPS local: mkcert con CA de Proxmox (en progreso)
+- Para entrar al contenedor desde Proxmox: `pct enter 123`
 
 ## Comandos esenciales
 
-### Deploy API (SIEMPRE así, nunca solo restart)
+### Deploy API (SIEMPRE así)
 ```bash
 cd ~/rentcrm-pro
 npm run build --workspace=apps/api
@@ -34,88 +43,41 @@ docker compose build api && docker compose up -d api
 docker logs rentcrm-api --tail=20
 ```
 
-### Migraciones Prisma (SIEMPRE desde el host, nunca desde el contenedor)
+### Migraciones Prisma (SIEMPRE desde el host)
 ```bash
 cd ~/rentcrm-pro/apps/api
-DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma migrate dev --name nombre-migracion
-DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma generate
+# Obtener password real:
+cat ~/rentcrm-pro/.env | grep POSTGRES_PASSWORD
+DATABASE_URL='postgresql://rentcrm:<pwd>@127.0.0.1:5432/rentcrm' npx prisma migrate dev --name nombre
+DATABASE_URL='postgresql://rentcrm:<pwd>@127.0.0.1:5432/rentcrm' npx prisma generate
 # Si falla "migration modified":
-DATABASE_URL="postgresql://rentcrm:c5ede5edf3e89584e63cd4b1d1e4aced@localhost:5432/rentcrm" npx prisma db push
+DATABASE_URL='postgresql://rentcrm:<pwd>@127.0.0.1:5432/rentcrm' npx prisma db push
 ```
 
-### Frontend (requiere rebuild — NO hay hot reload real en el contenedor)
+### Frontend
 ```bash
-docker compose build frontend && docker compose up -d frontend
+docker compose up -d --build frontend
 docker logs rentcrm-frontend --tail=5
 ```
 
 ### Git
 ```bash
-cd ~/rentcrm-pro && git add -A && git commit -m "message in English (public repo)" && git push origin develop
-```
-> Los commits NO llevan Co-Authored-By.
-> Merge a main solo cuando el usuario confirma que está probado y estable.
-
-## Estructura de archivos clave
-```
-rentcrm-pro/
-├── apps/
-│   ├── api/
-│   │   ├── prisma/
-│   │   │   ├── schema.prisma
-│   │   │   └── migrations/
-│   │   └── src/
-│   │       ├── auth/                  ← login, JWT, OTP/2FA
-│   │       ├── bookings/
-│   │       ├── clients/
-│   │       ├── properties/
-│   │       ├── expenses/
-│   │       ├── recurring-expenses/
-│   │       ├── financials/
-│   │       ├── excel/
-│   │       ├── organization/
-│   │       ├── paperless/
-│   │       ├── translation/
-│   │       └── prisma/prisma.service.ts
-│   └── frontend/
-│       └── src/
-│           ├── context/AuthContext.tsx ← JWT, idle detection, 2FA flow
-│           ├── data/countries.ts
-│           ├── components/
-│           │   ├── Layout.tsx
-│           │   ├── ExcelButtons.tsx
-│           │   └── BookingStatusWorkflow.tsx
-│           └── pages/
-│               ├── Dashboard.tsx
-│               ├── Bookings.tsx
-│               ├── BookingDetail.tsx
-│               ├── Clients.tsx
-│               ├── ClientDetail.tsx
-│               ├── ClientEdit.tsx
-│               ├── Properties.tsx
-│               ├── PropertyDetail.tsx
-│               ├── PropertyEdit.tsx
-│               ├── Financials.tsx
-│               ├── PropertyFinancialDetail.tsx
-│               ├── OccupancyCalendar.tsx
-│               ├── Contracts.tsx        ← tabs Contratos + Plantillas
-│               ├── Police.tsx           ← "En desarrollo"
-│               ├── Settings.tsx
-│               ├── Profile.tsx          ← perfil, cambio pwd, 2FA
-│               └── CheckinPage.tsx      ← pública /checkin/:token
+cd ~/rentcrm-pro && git add -A && git commit -m "message in English" && git push origin develop
+# Merge a main solo cuando está verificado
 ```
 
-## Modelos Prisma principales (schema.prisma)
+## Modelos Prisma principales
 ```prisma
 model Booking {
   id             String    @id @default(uuid())
   propertyId     String
-  clientId       String?
-  checkInDate    DateTime              // ← OJO: checkInDate, NO startDate
-  checkOutDate   DateTime              // ← OJO: checkOutDate, NO endDate
-  totalAmount    Float?                // ← OJO: totalAmount, NO totalPrice
-  status         String    @default("created")  // created|registered|processed|error|cancelled
-  source         String?
+  clientId       String?   // NULL para reservas importadas de iCal sin cliente
+  checkInDate    DateTime  // OJO: checkInDate, NO startDate
+  checkOutDate   DateTime  // OJO: checkOutDate, NO endDate
+  totalAmount    Float?    // OJO: totalAmount, NO totalPrice
+  status         String    @default("created") // created|registered|processed|error|cancelled
+  source         String?   // direct|airbnb|booking|vrbo|manual_block
+  externalId     String?   // UID del evento iCal (para deduplicación)
   notes          String?
   checkinToken   String?   @unique
   checkinStatus  String?   @default("pending")
@@ -124,311 +86,133 @@ model Booking {
   sesLote        String?
   sesStatus      String?
   sesSentAt      DateTime?
-  property       Property  @relation(...)
-  client         Client?   @relation(...)
-  guests         BookingGuestSes[]
-}
-
-model Client {
-  id             String    @id @default(uuid())
-  firstName      String
-  lastName       String
-  dniPassport    String?
-  nationality    String?
-  birthDate      DateTime?
-  email          String?
-  phone          String?
-  street         String?
-  city           String?
-  postalCode     String?   @map("postal_code")
-  province       String?
-  country        String?   @db.VarChar(5)
-  notes          String?
-  language       String?   @default("es")
-  organizationId String
 }
 
 model Property {
-  id                       String  @id @default(uuid())
-  name                     String
-  address                  String?
-  city                     String?
-  province                 String?
-  postalCode               String? @map("postal_code")
-  country                  String? @db.VarChar(5)
-  photo                    String?
-  icalUrl                  String?
-  purchasePrice            Float?
-  sesCodigoEstablecimiento String?
-  nrua                     String?   // NRUA Comunidad Valenciana, 46 chars
-  paperlessCorrespondentId Int?      // ID del correspondent en Paperless-ngx
-  organizationId           String
-  notes                    String?
+  paperlessCorrespondentId  Int?    // ID del correspondent en Paperless-ngx
+  nrua                      String? // NRUA Comunidad Valenciana, 46 chars
+  purchasePrice             Float?
+  sesCodigoEstablecimiento  String?
+  // sesCodigoEstablecimiento NO va en Organization
 }
 
 model Expense {
-  id                   String   @id @default(uuid())
-  propertyId           String
-  date                 DateTime
-  amount               Float
-  type                 String   // tasas|agua|luz|internet|limpieza|otros
-  deductible           Boolean  @default(false)
-  notes                String?
-  organizationId       String
-  paperlessDocumentId  Int?     // ID del documento en Paperless-ngx (si fue creado por webhook)
-  paperlessAmount      Float?   // Importe extraído del documento Paperless
-}
-
-model RecurringExpense {
-  id             String    @id @default(uuid())
-  propertyId     String
-  organizationId String
-  type           String
-  amount         Float
-  deductible     Boolean   @default(false)
-  frequency      String    // monthly|quarterly|yearly
-  dayOfMonth     Int       // 1-28
-  notes          String?
-  active         Boolean   @default(true)
-  nextRunDate    DateTime
-  lastRunDate    DateTime?
-}
-
-model BookingGuestSes {
-  id         String    @id @default(uuid())
-  bookingId  String
-  firstName  String
-  lastName   String
-  docType    String
-  docNumber  String
-  docCountry String
-  birthDate  DateTime?
-  phone      String?
-  street     String?
-  city       String?
-  postalCode String?   @map("postal_code")
-  province   String?
-  country    String?
-  booking    Booking   @relation(...)
+  paperlessDocumentId  Int?    // ID documento Paperless (si creado por webhook)
+  paperlessAmount      Float?  // Importe extraído de Paperless
+  deductible           Boolean @default(false)
 }
 
 model Organization {
-  sesUsuarioWs          String?
-  sesPasswordWs         String?
-  sesCodigoArrendador   String?
-  sesEndpoint           String?
-  paperlessUrl          String?
-  paperlessToken        String?
-  paperlessDocTypeId    Int?
-  paperlessSecret       String?   // Secreto para validar el webhook (X-Paperless-Secret)
-  // sesCodigoEstablecimiento NO va aquí, va en Property
-}
-
-model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
-  password       String
-  role           String    // admin|gestor|owner|viewer
-  otpSecret      String?
-  otpEnabled     Boolean   @default(false)
-  otpVerifiedAt  DateTime?
-  organizationId String
-}
-
-model PropertyRules {
-  id                 String   @id @default(uuid())
-  propertyId         String   @unique
-  organizationId     String
-  baseLanguage       String   @default("es")
-  baseContent        String   @db.Text
-  translations       Json     @default("{}")
-  translationsEdited Json     @default("[]")
-  updatedAt          DateTime @updatedAt
+  paperlessUrl     String?
+  paperlessToken   String?
+  paperlessSecret  String?  // Header X-Paperless-Secret para validar webhook
+  // sesCodigoEstablecimiento NO va aquí → va en Property
 }
 ```
-
-## Roles de usuario
-| Rol | Permisos |
-|-----|----------|
-| `admin` | Todo |
-| `gestor` | Crear/editar bookings, clients, properties, contracts, SES, checkin |
-| `owner` | Solo gastos |
-| `viewer` | Solo lectura (GET) |
-
-JWT payload: `{ id, email, organizationId, role }`
 
 ## Patrones importantes
 
-### Autenticación — flujo 2FA
-```
-Sin 2FA:  POST /auth/login → { access_token, user }
-Con 2FA:  POST /auth/login → { requiresOtp: true, tempToken }
-          POST /auth/otp/validate { tempToken, otpToken } → { access_token, user }
-Gestión:  POST /users/otp/setup → /otp/verify → /otp/disable
-```
-- 2FA es opcional por usuario, se configura en Profile.tsx
-- `tempToken` es un JWT `{ sub, type:'otp-pending' }` con expiración de 5 min
-
-### Sesión idle
-```typescript
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000
-// 401 en cualquier llamada → mensaje "Sesión expirada" → redirect login
-// 30 min sin actividad → aviso → 2 min → logout automático
+### Prisma CLI — credenciales
+```bash
+# El .env de apps/api/ usa Prisma Accelerate (NO sirve para CLI)
+# Usar siempre la password real de ~/rentcrm-pro/.env
+cat ~/rentcrm-pro/.env | grep POSTGRES_PASSWORD
+DATABASE_URL='postgresql://rentcrm:<pwd>@127.0.0.1:5432/rentcrm' npx prisma ...
 ```
 
-### Financials — fuente de ingresos (CRÍTICO)
-```
-Ingresos = Booking.totalAmount (status != cancelled) + Financial type='income'
-Gastos   = Financial type='expense' + Expense
-```
-- Usar `/api/financials/combined-summary` para totales que sumen ambas fuentes
-- NO usar solo `/api/financials` para calcular ingresos totales
+### iCal sync → Booking automática
+Booking.com/Airbnb iCal → availability_block + Booking (sin cliente)
 
-### Endpoint reporte financiero por propiedad
-```typescript
-GET /api/financials/property/:propertyId/report?year=YYYY
-// ⚠️ ANTES de /:id en el controlador
-```
+source: 'airbnb' | 'booking'
+status: 'created'
+clientId: null
+externalId: UID del evento iCal (deduplicación)
+checkinToken: generado automáticamente
+notes: 'Airbnb' | 'Booking.com'
 
-### Dashboard — estructura
-- KPIs SIEMPRE encima del selector de gráfico
-- ROI = (beneficio anual / purchasePrice) * 100; mostrar "—" si no hay purchasePrice
-- Pestaña Negocio: selector mensual/trimestral/anual con navegación de periodos
-
-### PropertyFinancialDetail
-- KPIs anuales ENCIMA del selector de periodo
-- Selector de periodo afecta solo al gráfico
-
-### Paperless-ngx
-```typescript
-// Tags: resolver nombres → IDs numéricos (resolveTagId)
-// Error en Paperless NO bloquea el flujo principal
-// SMTP y Paperless config: siempre desde Organization en BD
-```
+- Solo se crea Booking si source es airbnb o booking (no manual_block)
+- BookingDetail muestra aviso + botón "Copiar enlace check-in" si clientId es null
 
 ### Paperless webhook
-```
-POST /api/paperless/webhook  ← @Public(), sin JWT
+POST /api/paperless/webhook — @Public()
 Header: X-Paperless-Secret: <organization.paperlessSecret>
+Parámetros Jinja en Paperless (sintaxis correcta):
+{{ document_type }}  {{ correspondent }}  {{ original_filename }}
+{{ doc_url }}        {{ created }}
+Variables disponibles: correspondent, document_type, original_filename,
+doc_url, created, title, added (NO {{ document.pk }})
+- Busca Property por nombre normalizado (reemplaza _ por espacio, case-insensitive)
+- Extrae document_id de doc_url con regex: `/\/documents\/(\d+)\//`
+- Importe en custom_field con valor "EUR1234.00" → limpiar con `/[^0-9.,]/g`
+- Proxy PDF: `GET /api/paperless/document/:id?access_token=TOKEN`
+  Token temporal (5 min) en Redis: `paperless:doctoken:{uuid}`
 
-Flujo:
-1. Valida secret (si está configurado en Organization)
-2. Filtra: document_type_name === "Factura"
-3. Busca Property por paperlessCorrespondentId === body.correspondent
-4. Llama getDocument() para obtener metadatos completos
-5. Infiere type desde tags: agua|luz|internet|limpieza|tasas → "otros"
-6. Extrae importe de custom_fields (campo con "importe" en el nombre)
-7. Crea Expense con paperlessDocumentId + enlace preview en notes
+### Paperless — configuración Workflow
+Trigger: Document updated
+Condición: Document type = Factura/Invoice
+Condición: Tag NOT includes "to-be-reviewed"
+Condición: Tag NOT includes "synced-to-rentalsuite"
+Acción: Webhook
+URL: {API_URL}/api/paperless/webhook
+Header: X-Paperless-Secret: {secret}
+JSON: activado
+Parámetros:
+document_type_name → {{ document_type }}
+correspondent_name → {{ correspondent }}
+original_file_name → {{ original_filename }}
+doc_url            → {{ doc_url }}
+created            → {{ created }}
+Acción adicional: añadir tag "synced-to-rentalsuite"
 
-URL a configurar en Paperless: {FRONTEND_URL}/api/paperless/webhook
+### HTTPS local con mkcert
+```bash
+# En el LXC de RentalSuite (pct enter 123 desde Proxmox)
+# CA de Proxmox copiada via: pct push 123 /root/.local/share/mkcert/rootCA*.pem
+apt install mkcert -y
+mkdir -p /root/.local/share/mkcert
+# copiar rootCA.pem y rootCA-key.pem
+mkcert -install
+mkcert 192.168.1.123
+# Luego configurar Nginx con los certificados generados
 ```
 
-### Contratos — rutas públicas
-```typescript
-@Public() GET/POST /contracts/sign/:token
-@Public() GET      /contracts/view/:token
-// URLs públicas: siempre signToken, NUNCA el ID
-// Email: {FRONTEND_URL}/contracts/sign/{signToken}
-```
-
-### SMTP — regla crítica
-```typescript
-// SIEMPRE desde Organization en BD
-const org = await this.prisma.organization.findFirst()
-// Si smtpHost no definido: lanzar error, NO marcar como enviado
-```
-
-### Gastos recurrentes
-```typescript
-@Cron('0 8 * * *') // genera Expense real + email
-// dayOfMonth máximo 28
-// RecurringExpense es plantilla, Expense es el registro contable
-```
+### Financials (CRÍTICO)
+Ingresos = Booking.totalAmount (status != cancelled) + Financial type='income'
+Gastos   = Financial type='expense' + Expense
 
 ### Workflow estados de reserva
+created → registered | cancelled
+registered → processed | error | cancelled
+error → registered | cancelled
+processed → (final), cancelled → (final)
+Colores: created=amber, registered=blue, processed=emerald, error=red, cancelled=slate
+
+### UI tokens centralizados
+```typescript
+// apps/frontend/src/lib/ui.ts — NUNCA hardcodear clases de botones/inputs/cards
+// Tipografía: Inter (Google Fonts)
+// Paleta: indigo como acento, fondos #0f0f1a / #1a1a2e
+// Componentes: FormField.tsx, DataTable.tsx, KpiCard.tsx
 ```
-created    → registered | cancelled
-registered → processed  | error | cancelled
-error      → registered | processed | cancelled
-processed  → (final)
-cancelled  → (final)
-```
-- Colores: created=amber, registered=blue, processed=emerald, error=red, cancelled=slate
 
-### Frontend — routing API
-- `api.ts` usa `baseURL: '/api'` relativo → Vite proxy redirige a `http://api:3001`
-- `CheckinPage.tsx` usa `VITE_API_URL + '/api'` directo (página pública)
-- NO usar `http://api:3001` desde el navegador
-
-### i18n
-- TODAS las traducciones en `apps/frontend/src/i18n/index.ts` — NO ficheros JSON
-- Al añadir estados nuevos: actualizar todos los idiomas Y los `statusColor` de cada página
-
-### Filtros y ordenación de tablas
-- Se hacen en el **frontend** sobre los datos ya cargados (no query params al backend)
-- Patrón: `useState` para filtro texto + columna/dirección ordenación, `useMemo` para derivar lista filtrada
-
-### Navegación entre registros
-- Pasar `{ state: { ids: string[], index: number } }` al navegar al detalle desde el listado
-- En el detalle: `const navState = useLocation().state` → flechas ← → con contador
-- Sin state (acceso directo por URL) → no se muestran flechas
-
-### Edición masiva (bulk)
-- Disponible en Bookings, Clients y Expenses
-- Endpoints bulk con `@SkipThrottle()` para evitar rate limit
-- Llamadas secuenciales con delay 300ms para evitar ThrottlerException
-
-### PropertyRules — traducciones
-- `translations` es un JSON `{ "en": "...", "fr": "..." }` con los 10 idiomas como clave
-- `translationsEdited` es un array de códigos de idioma editados manualmente
-- El endpoint `POST /api/properties/:id/rules/translate` respeta `translationsEdited`
-- En checkin: si existe `translations[lang]` → se usa; si no → se devuelve `baseContent`
-
-## SES Hospedajes
-
-### Endpoint correcto (CRÍTICO)
-```
-https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion
-```
-- ⚠️ `/ws/v1/comunicacion` → 404 (incorrecto)
-- `/ws/comunicacion` → 500 con body vacío = endpoint existe ✅
-
-### Estado (17/03/2026)
-- Endpoint actualizado en BD a `/ws/comunicacion`
-- Sigue dando 404 con XML completo — causa probable: cuenta no activada en el Ministerio
-- **Pendiente**: darse de alta en https://hospedajes.ses.mir.es
-- SSL: `rejectUnauthorized: false` ya aplicado
-- El XML se comprime con `deflate` — pendiente verificar si el Ministerio lo requiere o espera plano
-- El catch en ses.service.ts (~línea 279) no loguea `err.response?.data` — añadir para debugging
-
-### Exportación N2 (NRUA)
-- Endpoint: `GET /api/excel/export/nrua?year=YYYY&propertyId=XXX`
-- Un CSV por propiedad; descarga secuencial si se seleccionan varias
-- Solo propiedades con `nrua` definido (devuelve 400 si no hay NRUA)
-- Formato fechas: `dd-mm-yyyy`, separador: `;`, finalidad: constante `1`
-- `huespedes`: `BookingGuestSes.count` si existen, si no `1`
-- Frontend: componente `NruaExport.tsx` en Properties.tsx (checkboxes + selector año)
+### SES Hospedajes
+Endpoint: https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion (SIN /v1/)
+SSL: rejectUnauthorized: false
+sesCodigoEstablecimiento: en Property, NO en Organization
+Pendiente: alta en hospedajes.ses.mir.es
 
 ## Problemas conocidos
-
 | Problema | Solución |
 |----------|----------|
-| Checkin/contrato 401 | `@Public()` + ruta fija ANTES de `:id` |
-| Docker no recarga | `npm run build` + `docker compose build + up -d` |
-| Log debug no aparece | Build no incluyó cambios — repetir `npm run build` explícito |
-| Prisma unknown arg | Verificar nombres en schema.prisma |
-| `migrate dev` falla | Usar `prisma db push` en desarrollo |
-| Conflicto contenedor | `docker rm -f rentcrm-api && docker compose up -d api` |
-| SES 404 | Endpoint sin `/v1/`, pendiente alta en Ministerio |
-| UPDATE BD no persiste | Verificar WHERE con SELECT inmediatamente después |
-| ClientDetail sin reservas | Usar `GET /api/bookings?clientId=` |
-| Email contrato no llega | SMTP desde Organization en BD |
-| Paperless 400 tags | resolveTagId: nombres → IDs numéricos |
-| Dashboard sin ingresos | Sumar bookings.totalAmount + financials income |
-| Estado 'pending' en reserva | No existe, el correcto es 'created' |
-| Edición masiva throttle | Llamadas secuenciales con delay 300ms |
-| LibreTranslate `no` | Usar `nb` |
-| ValidationPipe whitelist | Todos los campos del DTO con decoradores |
+| Prisma CLI falla auth | Usar pwd de ~/rentcrm-pro/.env, no la del apps/api/.env |
+| Clipboard no funciona | Solo funciona en HTTPS — usar dominio externo o mkcert local |
+| Paperless body vacío | Activar parámetros con sintaxis {{ variable }} |
+| Paperless IP bloqueada | PAPERLESS_WEBHOOKS_ALLOW_INTERNAL_REQUESTS=true |
+| Paperless `document` undefined | Usar {{ correspondent }}, no {{ document.correspondent }} |
+| iCal bloque no crea Booking | Borrar availability_block y re-sincronizar |
+| Booking sin cliente | Normal para reservas iCal — copiar enlace checkin |
+| Docker no recarga | npm run build + docker compose build + up -d |
+| SES 404 | Endpoint sin /v1/, pendiente alta Ministerio |
 
 ## Pendiente
-Ver `TODO.md`
+Ver TODO.md
