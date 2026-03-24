@@ -15,6 +15,17 @@
 - [x] Al subir contrato: pasar `correspondent_id` según `property.paperlessCorrespondentId` (23/03/2026)
 - [x] Settings: añadir campo Document Type ID de Paperless (23/03/2026)
 
+### Pagos de reserva
+- [ ] Sección "Pagos" en BookingDetail con botón "+" para añadir conceptos
+- [ ] Conceptos predefinidos: Fianza, Pago reserva, Pago final, Devolución fianza
+- [ ] Cada pago: concepto, importe, fecha (presente o futura)
+- [ ] Devolución fianza: importe negativo automático
+- [ ] Total pagado vs total reserva visible en la sección
+- [ ] Nuevo modelo BookingPayment en schema.prisma:
+      bookingId, concept (fianza|pago_reserva|pago_final|devolucion_fianza),
+      amount (Float, negativo si devolución), date (DateTime), notes?
+- [ ] CRUD: GET/POST/DELETE /api/bookings/:id/payments
+
 ### Edición masiva
 - [ ] Mass update precios de reservas desde Excel (por ID reserva o por propiedad + fecha entrada)
 
