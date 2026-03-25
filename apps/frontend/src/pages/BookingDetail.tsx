@@ -18,6 +18,7 @@ import {
   MODAL_PANEL,
   BTN_PRIMARY,
   BTN_SECONDARY,
+  BTN_DANGER,
 } from '../lib/ui';
 
 
@@ -64,6 +65,10 @@ export default function BookingDetail() {
   const [dateError, setDateError] = useState('');
   const [overlapError, setOverlapError] = useState('');
 
+  // Pagos
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({ concept: 'fianza', amount: '', date: new Date().toISOString().slice(0, 10), notes: '' });
+
   // Notas inline
   const [notesEditing, setNotesEditing] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
@@ -100,6 +105,27 @@ export default function BookingDetail() {
       setShowEdit(false);
     },
     onError: (e: any) => alert(e.response?.data?.message || 'Error al guardar')
+  });
+
+  const { data: payments = [] } = useQuery({
+    queryKey: ['booking-payments', id],
+    queryFn: () => api.get(`/bookings/${id}/payments`).then(r => r.data),
+    enabled: !!id,
+  });
+
+  const createPaymentMutation = useMutation({
+    mutationFn: (data: any) => api.post(`/bookings/${id}/payments`, data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['booking-payments', id] });
+      setShowPaymentForm(false);
+      setPaymentForm({ concept: 'fianza', amount: '', date: new Date().toISOString().slice(0, 10), notes: '' });
+    },
+    onError: (e: any) => alert(e.response?.data?.message || 'Error al guardar pago'),
+  });
+
+  const deletePaymentMutation = useMutation({
+    mutationFn: (paymentId: string) => api.delete(`/bookings/${id}/payments/${paymentId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['booking-payments', id] }),
   });
 
   // Validación local inmediata de fechas
@@ -380,6 +406,142 @@ export default function BookingDetail() {
               </>
             )}
           </div>
+
+          {/* Pagos de reserva */}
+          {(() => {
+            const CONCEPT_LABELS: Record<string, string> = {
+              fianza: 'Fianza',
+              pago_reserva: 'Pago reserva',
+              pago_final: 'Pago final',
+              devolucion_fianza: 'Devolución fianza',
+            };
+            const totalPaid = (payments as any[]).reduce((s: number, p: any) => s + p.amount, 0);
+            const fianzaPayment = (payments as any[]).find((p: any) => p.concept === 'fianza');
+
+            const handleConceptChange = (concept: string) => {
+              if (concept === 'devolucion_fianza') {
+                const fianzaAmt = fianzaPayment ? String(-Math.abs(fianzaPayment.amount)) : '';
+                setPaymentForm(f => ({ ...f, concept, amount: fianzaAmt }));
+              } else {
+                setPaymentForm(f => ({ ...f, concept }));
+              }
+            };
+
+            return (
+              <div className={CARD}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-sm text-slate-400 uppercase tracking-wider">Pagos</h3>
+                  <button
+                    onClick={() => setShowPaymentForm(v => !v)}
+                    className="px-3 py-1.5 text-xs bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg transition-colors font-semibold">
+                    {showPaymentForm ? '✕ Cancelar' : '+ Añadir pago'}
+                  </button>
+                </div>
+
+                {showPaymentForm && (
+                  <div className="mb-4 p-3 bg-slate-800 rounded-xl space-y-3">
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1 block">Concepto</label>
+                      <select
+                        value={paymentForm.concept}
+                        onChange={e => handleConceptChange(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500">
+                        <option value="fianza">Fianza</option>
+                        <option value="pago_reserva">Pago reserva</option>
+                        <option value="pago_final">Pago final</option>
+                        <option value="devolucion_fianza">Devolución fianza</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-slate-400 mb-1 block">
+                          Importe €{paymentForm.concept === 'devolucion_fianza' ? ' (negativo)' : ''}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={paymentForm.amount}
+                          readOnly={paymentForm.concept === 'devolucion_fianza' && !!fianzaPayment}
+                          onChange={e => setPaymentForm(f => ({ ...f, amount: e.target.value }))}
+                          className={`w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500 ${paymentForm.concept === 'devolucion_fianza' && fianzaPayment ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-400 mb-1 block">Fecha</label>
+                        <input
+                          type="date"
+                          value={paymentForm.date}
+                          onChange={e => setPaymentForm(f => ({ ...f, date: e.target.value }))}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1 block">Notas (opcional)</label>
+                      <input
+                        type="text"
+                        value={paymentForm.notes}
+                        onChange={e => setPaymentForm(f => ({ ...f, notes: e.target.value }))}
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <button
+                      disabled={!paymentForm.amount || !paymentForm.date || createPaymentMutation.isPending}
+                      onClick={() => createPaymentMutation.mutate({
+                        concept: paymentForm.concept,
+                        amount: parseFloat(paymentForm.amount),
+                        date: paymentForm.date,
+                        notes: paymentForm.notes || undefined,
+                      })}
+                      className={`w-full ${BTN_PRIMARY}`}>
+                      {createPaymentMutation.isPending ? 'Guardando...' : 'Guardar pago'}
+                    </button>
+                  </div>
+                )}
+
+                {(payments as any[]).length === 0 ? (
+                  <p className="text-slate-500 text-sm">Sin pagos registrados</p>
+                ) : (
+                  <div className="space-y-2">
+                    {(payments as any[]).map((p: any) => (
+                      <div key={p.id} className="flex items-center justify-between bg-slate-800 rounded-lg px-4 py-3 text-sm gap-2">
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
+                          <span className="shrink-0 text-xs font-semibold px-2 py-1 rounded-full bg-slate-700 text-slate-300">
+                            {CONCEPT_LABELS[p.concept] ?? p.concept}
+                          </span>
+                          <span className="text-slate-400 text-xs">{new Date(p.date).toLocaleDateString('es-ES')}</span>
+                          {p.notes && <span className="text-slate-500 text-xs truncate">{p.notes}</span>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`font-semibold ${p.amount < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {p.amount < 0 ? '' : '+'}€{Number(p.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                          </span>
+                          <button
+                            onClick={() => deletePaymentMutation.mutate(p.id)}
+                            disabled={deletePaymentMutation.isPending}
+                            className="text-slate-600 hover:text-red-400 transition-colors text-xs">
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-3 pt-3 border-t border-slate-700 flex items-center justify-between text-sm">
+                  <span className="text-slate-400">Total pagado</span>
+                  <div className="flex items-center gap-3">
+                    <span className={`font-bold ${totalPaid < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                      €{totalPaid.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                    </span>
+                    {booking.totalAmount && (
+                      <span className="text-slate-500 text-xs">/ €{Number(booking.totalAmount).toLocaleString('es-ES', { minimumFractionDigits: 2 })} reserva</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Valoración */}
           <div className={CARD}>

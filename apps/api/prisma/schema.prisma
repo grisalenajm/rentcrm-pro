@@ -198,6 +198,8 @@ model Booking {
   financials    Financial[]
   policeReports PoliceReport[]
 
+  payments      BookingPayment[]
+
   @@index([propertyId, checkInDate, checkOutDate])
   @@index([clientId])
   contracts     Contract[]
@@ -462,6 +464,20 @@ model BookingGuestSes {
 
   @@index([bookingId])
   @@map("booking_guests_ses")
+}
+
+model BookingPayment {
+  id        String   @id @default(uuid()) @db.Uuid
+  bookingId String   @map("booking_id") @db.Uuid
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  concept   String   @db.VarChar(30)
+  amount    Float
+  date      DateTime @db.Date
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([bookingId])
+  @@map("booking_payments")
 }
 
 model BookingStatusHistory {
