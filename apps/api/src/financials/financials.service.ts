@@ -42,11 +42,12 @@ export class FinancialsService {
       },
     });
 
-    // Ingresos de reservas (Booking.totalAmount, status != cancelled)
+    // Ingresos de reservas (Booking.totalAmount, status != cancelled, excluye manual_block)
     const bookings = await this.prisma.booking.findMany({
       where: {
         organizationId,
         status: { not: 'cancelled' },
+        source: { not: 'manual_block' },
         ...(fromDate || toDate ? { checkInDate: { ...(fromDate ? { gte: fromDate } : {}), ...(toDate ? { lte: toDate } : {}) } } : {}),
       },
       select: { totalAmount: true, checkInDate: true },
@@ -174,6 +175,7 @@ export class FinancialsService {
         propertyId,
         organizationId,
         status: { not: 'cancelled' },
+        source: { not: 'manual_block' },
         checkInDate: { lte: to },
         checkOutDate: { gte: from },
       },

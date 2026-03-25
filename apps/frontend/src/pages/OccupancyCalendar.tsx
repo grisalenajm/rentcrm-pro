@@ -34,6 +34,7 @@ function bookingCoversDay(b: Booking, day: Date) {
 }
 
 function bookingColor(b: Booking, dark: boolean) {
+  if (b.source === 'manual_block') return { solid: '#64748b', bg: dark ? '#33415580' : '#94a3b866', text: dark ? '#cbd5e1' : '#475569' };
   if (b.source === 'airbnb')    return { solid: '#e8414a', bg: dark ? '#e8414aee' : '#e8414acc', text: dark ? '#ffb3b6' : '#9b1c23' };
   if (b.source === 'booking')   return { solid: '#1a6fc4', bg: dark ? '#1a6fc4ee' : '#1a6fc4cc', text: dark ? '#93c5fd' : '#0e4d8f' };
   if (b.status === 'confirmed') return { solid: '#059669', bg: dark ? '#059669ee' : '#059669cc', text: dark ? '#6ee7b7' : '#047857' };
@@ -248,7 +249,7 @@ export default function OccupancyCalendar() {
                       return (
                         <div
                           key={bk.id}
-                          onClick={() => navigate(`/bookings/${bk.id}`)}
+                          onClick={() => { if (bk.source !== 'manual_block') navigate(`/bookings/${bk.id}`); }}
                           onMouseEnter={e => setTooltip({b:bk, x:e.clientX, y:e.clientY})}
                           onMouseLeave={() => setTooltip(null)}
                           style={{
@@ -262,16 +263,22 @@ export default function OccupancyCalendar() {
                             borderBottom: `1px solid ${col.solid}80`,
                             borderRadius: startsHere&&endsHere ? 5 : startsHere ? '5px 0 0 5px' : endsHere ? '0 5px 5px 0' : 0,
                             display:'flex', alignItems:'center', overflow:'hidden',
-                            cursor:'pointer', zIndex:20, pointerEvents:'all',
+                            cursor: bk.source === 'manual_block' ? 'default' : 'pointer',
+                            zIndex:20, pointerEvents:'all',
                           }}>
                           {startsHere && startIdx >= 0 && (
                             <div style={{padding:'0 10px',overflow:'hidden',whiteSpace:'nowrap'}}>
-                              <span style={{fontSize:11,fontWeight:700,color:'#ffffff'}}>
-                                {bk.client.firstName} {bk.client.lastName[0]}.
-                              </span>
-                              <span style={{fontSize:10,color:'#000000',marginLeft:12}}>
-                                {Number(bk.totalAmount).toLocaleString()}€
-                              </span>
+                              {bk.source === 'manual_block'
+                                ? <span style={{fontSize:11,fontWeight:600,color:'#94a3b8',fontStyle:'italic'}}>Bloqueado</span>
+                                : <>
+                                    <span style={{fontSize:11,fontWeight:700,color:'#ffffff'}}>
+                                      {bk.client?.firstName} {bk.client?.lastName?.[0]}.
+                                    </span>
+                                    <span style={{fontSize:10,color:'#000000',marginLeft:12}}>
+                                      {Number(bk.totalAmount).toLocaleString()}€
+                                    </span>
+                                  </>
+                              }
                             </div>
                           )}
                         </div>
@@ -414,7 +421,7 @@ export default function OccupancyCalendar() {
                   return (
                     <div
                       key={bk.id+wi}
-                      onClick={() => navigate(`/bookings/${bk.id}`)}
+                      onClick={() => { if (bk.source !== 'manual_block') navigate(`/bookings/${bk.id}`); }}
                       onMouseEnter={e => setTooltip({b:bk,x:e.clientX,y:e.clientY})}
                       onMouseLeave={() => setTooltip(null)}
                       style={{
@@ -427,18 +434,23 @@ export default function OccupancyCalendar() {
                         borderBottom: `1px solid ${col.solid}50`,
                         borderRadius: radius,
                         display:'flex', alignItems:'center',
-                        overflow:'hidden', cursor:'pointer', zIndex:10,
+                        overflow:'hidden',
+                        cursor: bk.source === 'manual_block' ? 'default' : 'pointer',
+                        zIndex:10,
                         boxShadow: `0 2px 6px ${col.solid}35`,
                       }}>
                       {startsThisWeek && (
                         <div style={{padding:'0 10px',overflow:'hidden',whiteSpace:'nowrap',display:'flex',alignItems:'center',gap:5}}>
-                          <span style={{
-                            fontSize:11, fontWeight:700, color:'#ffffff',
-                            textOverflow:'ellipsis', overflow:'hidden',
-                            display:'inline-block', maxWidth:120,
-                          }}>
-                            {bk.client.firstName} {bk.client.lastName[0]}.
-                          </span>
+                          {bk.source === 'manual_block'
+                            ? <span style={{fontSize:11,fontWeight:600,color:'#94a3b8',fontStyle:'italic'}}>Bloqueado</span>
+                            : <span style={{
+                                fontSize:11, fontWeight:700, color:'#ffffff',
+                                textOverflow:'ellipsis', overflow:'hidden',
+                                display:'inline-block', maxWidth:120,
+                              }}>
+                                {bk.client?.firstName} {bk.client?.lastName?.[0]}.
+                              </span>
+                          }
                         </div>
                       )}
                     </div>
@@ -528,6 +540,7 @@ export default function OccupancyCalendar() {
           {label:'Airbnb',    color:'#e8414a'},
           {label:'Booking.com',color:'#1a6fc4'},
           {label:'Cancelada', color:'#dc2626'},
+          {label:'Bloqueado', color:'#64748b'},
         ].map(l=>(
           <div key={l.label} style={{display:'flex',alignItems:'center',gap:5}}>
             <div style={{width:8,height:8,borderRadius:2,background:l.color}} />
@@ -564,31 +577,48 @@ export default function OccupancyCalendar() {
             borderRadius:10,boxShadow:'0 20px 40px #00000050',
             padding:'12px 14px',minWidth:190,
           }}>
-            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
-              <div style={{width:7,height:7,borderRadius:'50%',background:bookingColor(tooltip.b,dark).solid}}/>
-              <span style={{fontWeight:700,color:'#f1f5f9',fontSize:13}}>
-                {tooltip.b.client.firstName} {tooltip.b.client.lastName}
-              </span>
-            </div>
-            <div style={{fontSize:11,color:'#94a3b8',marginBottom:3}}>{tooltip.b.property?.name}</div>
-            <div style={{fontSize:11,color:'#64748b'}}>
-              {getCheckIn(tooltip.b).toLocaleDateString('es',{day:'numeric',month:'short'})}
-              {' → '}
-              {getCheckOut(tooltip.b).toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}
-            </div>
-            <div style={{marginTop:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <span style={{fontWeight:700,fontSize:14,color:dark?'#34d399':'#059669'}}>
-                {Number(tooltip.b.totalAmount).toLocaleString()}€
-              </span>
-              <span style={{
-                fontSize:10,padding:'2px 7px',borderRadius:20,
-                background:bookingColor(tooltip.b,dark).bg,
-                color:bookingColor(tooltip.b,dark).text,
-                fontWeight:600,textTransform:'capitalize',
-              }}>
-                {tooltip.b.source!=='direct'?tooltip.b.source:tooltip.b.status}
-              </span>
-            </div>
+            {tooltip.b.source === 'manual_block' ? (
+              <>
+                <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+                  <div style={{width:7,height:7,borderRadius:'50%',background:'#64748b'}}/>
+                  <span style={{fontWeight:700,color:'#94a3b8',fontSize:13}}>Período bloqueado</span>
+                </div>
+                <div style={{fontSize:11,color:'#94a3b8',marginBottom:3}}>{tooltip.b.property?.name}</div>
+                <div style={{fontSize:11,color:'#64748b'}}>
+                  {getCheckIn(tooltip.b).toLocaleDateString('es',{day:'numeric',month:'short'})}
+                  {' → '}
+                  {getCheckOut(tooltip.b).toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+                  <div style={{width:7,height:7,borderRadius:'50%',background:bookingColor(tooltip.b,dark).solid}}/>
+                  <span style={{fontWeight:700,color:'#f1f5f9',fontSize:13}}>
+                    {tooltip.b.client?.firstName} {tooltip.b.client?.lastName}
+                  </span>
+                </div>
+                <div style={{fontSize:11,color:'#94a3b8',marginBottom:3}}>{tooltip.b.property?.name}</div>
+                <div style={{fontSize:11,color:'#64748b'}}>
+                  {getCheckIn(tooltip.b).toLocaleDateString('es',{day:'numeric',month:'short'})}
+                  {' → '}
+                  {getCheckOut(tooltip.b).toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'})}
+                </div>
+                <div style={{marginTop:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <span style={{fontWeight:700,fontSize:14,color:dark?'#34d399':'#059669'}}>
+                    {Number(tooltip.b.totalAmount).toLocaleString()}€
+                  </span>
+                  <span style={{
+                    fontSize:10,padding:'2px 7px',borderRadius:20,
+                    background:bookingColor(tooltip.b,dark).bg,
+                    color:bookingColor(tooltip.b,dark).text,
+                    fontWeight:600,textTransform:'capitalize',
+                  }}>
+                    {tooltip.b.source!=='direct'?tooltip.b.source:tooltip.b.status}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

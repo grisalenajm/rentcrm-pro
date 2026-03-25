@@ -152,6 +152,7 @@ export default function Dashboard() {
     const occupied = new Set(
       bookings.filter((b: any) =>
         b.status !== 'cancelled' &&
+        b.source !== 'manual_block' &&
         b.checkInDate.slice(0, 10) <= todayStr &&
         b.checkOutDate.slice(0, 10) > todayStr
       ).map((b: any) => b.propertyId)
@@ -166,20 +167,20 @@ export default function Dashboard() {
     }).reduce((s: number, f: any) => s + Number(f.amount), 0);
     const bookingIncome = bookings.filter((b: any) => {
       const d = new Date(b.checkInDate);
-      return b.status !== 'cancelled' && d.getFullYear() === CURRENT_YEAR && d.getMonth() === NOW.getMonth();
+      return b.status !== 'cancelled' && b.source !== 'manual_block' && d.getFullYear() === CURRENT_YEAR && d.getMonth() === NOW.getMonth();
     }).reduce((s: number, b: any) => s + Number(b.totalAmount || 0), 0);
     return financialIncome + bookingIncome;
   }, [financials, bookings]);
 
   const activeBookings = useMemo(() =>
     bookings.filter((b: any) =>
-      b.status !== 'cancelled' && b.checkOutDate.slice(0, 10) >= todayStr
+      b.status !== 'cancelled' && b.source !== 'manual_block' && b.checkOutDate.slice(0, 10) >= todayStr
     ).length,
     [bookings, todayStr]);
 
   const checkinsPendingToday = useMemo(() =>
     bookings.filter((b: any) =>
-      b.checkInDate.slice(0, 10) === todayStr && b.checkinStatus !== 'completed'
+      b.source !== 'manual_block' && b.checkInDate.slice(0, 10) === todayStr && b.checkinStatus !== 'completed'
     ).length,
     [bookings, todayStr]);
 
@@ -190,7 +191,7 @@ export default function Dashboard() {
     }).reduce((s: number, f: any) => s + Number(f.amount), 0);
     const bookingIncome = bookings.filter((b: any) => {
       const d = new Date(b.checkInDate);
-      return b.status !== 'cancelled' && d.getFullYear() === yr && (mo === undefined || d.getMonth() === mo);
+      return b.status !== 'cancelled' && b.source !== 'manual_block' && d.getFullYear() === yr && (mo === undefined || d.getMonth() === mo);
     }).reduce((s: number, b: any) => s + Number(b.totalAmount || 0), 0);
     return financialIncome + bookingIncome;
   };
@@ -233,7 +234,7 @@ export default function Dashboard() {
   const getMonthOccupancy = (yr: number, mo: number, pid: string) => {
     const days = daysInMonth(yr, mo);
     const occupied = new Set<number>();
-    bookings.filter((b: any) => b.propertyId === pid && b.status !== 'cancelled').forEach((b: any) => {
+    bookings.filter((b: any) => b.propertyId === pid && b.status !== 'cancelled' && b.source !== 'manual_block').forEach((b: any) => {
       const start = new Date(b.checkInDate), end = new Date(b.checkOutDate);
       for (const d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
         if (d.getFullYear() === yr && d.getMonth() === mo) occupied.add(d.getDate());
@@ -245,7 +246,7 @@ export default function Dashboard() {
   const getYearOccupancy = (yr: number, pid: string) => {
     const totalDays = MONTHS.reduce((s, _, mo) => s + daysInMonth(yr, mo), 0);
     const occupied = new Set<string>();
-    bookings.filter((b: any) => b.propertyId === pid && b.status !== 'cancelled').forEach((b: any) => {
+    bookings.filter((b: any) => b.propertyId === pid && b.status !== 'cancelled' && b.source !== 'manual_block').forEach((b: any) => {
       const start = new Date(b.checkInDate), end = new Date(b.checkOutDate);
       for (const d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
         if (d.getFullYear() === yr) occupied.add(`${d.getMonth()}-${d.getDate()}`);
@@ -324,7 +325,7 @@ export default function Dashboard() {
       }).reduce((s: number, f: any) => s + Number(f.amount), 0);
       const bookingIncome = bookings.filter((b: any) => {
         const d = new Date(b.checkInDate);
-        return b.propertyId === p.id && b.status !== 'cancelled' && d.getFullYear() === selectedYear;
+        return b.propertyId === p.id && b.status !== 'cancelled' && b.source !== 'manual_block' && d.getFullYear() === selectedYear;
       }).reduce((s: number, b: any) => s + Number(b.totalAmount || 0), 0);
       const income = financialIncome + bookingIncome;
       const expense = expenses.filter((e: any) => {
@@ -342,7 +343,7 @@ export default function Dashboard() {
     const counts: Record<string, number> = {};
     bookings.filter((b: any) => {
       const d = new Date(b.checkInDate);
-      return b.status !== 'cancelled' && d >= from && d <= to;
+      return b.status !== 'cancelled' && b.source !== 'manual_block' && d >= from && d <= to;
     }).forEach((b: any) => {
       const src = b.source || 'direct';
       counts[src] = (counts[src] || 0) + 1;
@@ -354,13 +355,13 @@ export default function Dashboard() {
     const { from, to } = getBizRange(bizPeriod);
     const periodBkgs = bookings.filter((b: any) => {
       const d = new Date(b.checkInDate);
-      return b.status !== 'cancelled' && d >= from && d <= to;
+      return b.status !== 'cancelled' && b.source !== 'manual_block' && d >= from && d <= to;
     });
     const prevFrom = new Date(from); prevFrom.setFullYear(prevFrom.getFullYear() - 1);
     const prevTo   = new Date(to);   prevTo.setFullYear(prevTo.getFullYear() - 1);
     const prevBkgs = bookings.filter((b: any) => {
       const d = new Date(b.checkInDate);
-      return b.status !== 'cancelled' && d >= prevFrom && d <= prevTo;
+      return b.status !== 'cancelled' && b.source !== 'manual_block' && d >= prevFrom && d <= prevTo;
     });
     const avgPrice = (bkgs: any[]) => bkgs.length > 0
       ? Math.round(bkgs.reduce((s: number, b: any) => s + Number(b.totalAmount || 0), 0) / bkgs.length)

@@ -140,10 +140,15 @@ export class ICalService {
       });
 
       // Auto-create Booking for Airbnb / Booking.com imports
+      const BLOCK_KEYWORDS = ['closed', 'not available', 'blocked', 'unavailable'];
+      const isBlock = (s?: string) => BLOCK_KEYWORDS.some(k => s?.toLowerCase().includes(k));
+
       const platform = feed.platform?.toLowerCase() ?? '';
-      const bookingSource =
+      const platformSource =
         platform === 'airbnb' ? 'airbnb' :
         platform === 'booking' ? 'booking' : null;
+
+      const bookingSource = isBlock(summary) ? 'manual_block' : platformSource;
 
       if (bookingSource) {
         const existingBooking = await this.prisma.booking.findFirst({
@@ -164,7 +169,7 @@ export class ICalService {
               totalAmount: null,
               checkinToken: randomUUID(),
               checkinStatus: 'pending',
-              notes: bookingSource === 'airbnb' ? 'Airbnb' : 'Booking.com',
+              notes: bookingSource === 'airbnb' ? 'Airbnb' : bookingSource === 'booking' ? 'Booking.com' : summary,
             },
           });
           this.logger.log(`iCal auto-booking created: uid=${uid} source=${bookingSource}`);
