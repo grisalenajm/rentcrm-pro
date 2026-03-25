@@ -180,7 +180,7 @@ export default function Dashboard() {
 
   const checkinsPendingToday = useMemo(() =>
     bookings.filter((b: any) =>
-      b.source !== 'manual_block' && b.checkInDate.slice(0, 10) === todayStr && b.checkinStatus !== 'completed'
+      b.status !== 'cancelled' && b.source !== 'manual_block' && b.checkInDate.slice(0, 10) === todayStr && b.checkinStatus !== 'completed'
     ).length,
     [bookings, todayStr]);
 
@@ -282,7 +282,7 @@ export default function Dashboard() {
       Array.from({ length: 31 }, () => ({ count: 0, checkin: false, checkout: false }))
     );
     bookings.filter((b: any) =>
-      b.status !== 'cancelled' && (!heatMapPropId || b.propertyId === heatMapPropId)
+      b.status !== 'cancelled' && b.source !== 'manual_block' && (!heatMapPropId || b.propertyId === heatMapPropId)
     ).forEach((b: any) => {
       const start = new Date(b.checkInDate);
       const end   = new Date(b.checkOutDate);
