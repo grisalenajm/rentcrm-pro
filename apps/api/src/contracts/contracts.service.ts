@@ -200,7 +200,7 @@ export class ContractsService {
     const title = `Contrato ${propertyName} - ${clientName} - ${year}`;
     const tags = ['contrato', propertyName, String(year)];
 
-    const pdfBuffer = await this.generateContractPdf(contract);
+    const pdfBuffer = await this.generateContractPdf(contract, org);
     const docId = await this.paperlessService.uploadDocument(
       (org as any).paperlessUrl,
       (org as any).paperlessToken,
@@ -220,8 +220,8 @@ export class ContractsService {
     }
   }
 
-  private async generateContractPdf(contract: any): Promise<Buffer> {
-    const content = this.fillVariables(contract.template.content, contract);
+  private async generateContractPdf(contract: any, org?: any): Promise<Buffer> {
+    const content = this.fillVariables(contract.template.content, contract, org);
     const doc = new PDFDocument({ margin: 60 });
     const chunks: Buffer[] = [];
 
@@ -265,25 +265,36 @@ export class ContractsService {
     });
   }
 
-  private fillVariables(content: string, contract: any): string {
+  private fillVariables(content: string, contract: any, org?: any): string {
     const b = contract.booking;
     const t = contract.template;
+    const durationDays = Math.round(
+      (new Date(b.checkOutDate).getTime() - new Date(b.checkInDate).getTime()) / 86400000,
+    );
     return content
       .replace(/\{\{clienteNombre\}\}/g, `${b.client.firstName} ${b.client.lastName}`)
       .replace(/\{\{clienteDni\}\}/g, b.client.dniPassport || '—')
+      .replace(/\{\{client\.docNumber\}\}/g, b.client.dniPassport || '—')
+      .replace(/\{\{client\.docType\}\}/g, (b.client as any).docType || '—')
       .replace(/\{\{propietarioNombre\}\}/g, t.ownerName)
       .replace(/\{\{propietarioNif\}\}/g, t.ownerNif)
       .replace(/\{\{propietarioDireccion\}\}/g, t.ownerAddress || '—')
       .replace(/\{\{propiedadDireccion\}\}/g, b.property.address || '—')
       .replace(/\{\{propiedadCiudad\}\}/g, b.property.city || '—')
+      .replace(/\{\{property\.cadastralRef\}\}/g, (b.property as any).cadastralRef || '—')
       .replace(/\{\{fechaEntrada\}\}/g, new Date(b.checkInDate).toLocaleDateString('es-ES'))
       .replace(/\{\{fechaSalida\}\}/g, new Date(b.checkOutDate).toLocaleDateString('es-ES'))
+      .replace(/\{\{booking\.durationDays\}\}/g, String(durationDays))
       .replace(/\{\{precioTotal\}\}/g, b.totalAmount)
       .replace(/\{\{fianza\}\}/g, String(contract.depositAmount || t.depositAmount || '—'))
       .replace(/\{\{clausulas\}\}/g, t.clauses || '')
       .replace(/\{\{ciudad\}\}/g, b.property.city || '—')
+      .replace(/\{\{signCity\}\}/g, b.property.city || '—')
       .replace(/\{\{fecha\}\}/g, new Date(contract.createdAt).toLocaleDateString('es-ES'))
-      .replace(/\{\{fechaFirma\}\}/g, contract.signedAt ? new Date(contract.signedAt).toLocaleDateString('es-ES') : '—');
+      .replace(/\{\{fechaFirma\}\}/g, contract.signedAt ? new Date(contract.signedAt).toLocaleDateString('es-ES') : '—')
+      .replace(/\{\{owner\.bankSwift\}\}/g, org?.bankSwift || '—')
+      .replace(/\{\{owner\.bankIban\}\}/g, org?.bankIban || '—')
+      .replace(/\{\{owner\.bankBeneficiary\}\}/g, org?.bankBeneficiary || '—');
   }
 
   async renderContractHtmlByToken(token: string): Promise<string> {
@@ -292,7 +303,8 @@ export class ContractsService {
       include: { template: true, booking: { include: { client: true, property: true } } },
     });
     if (!contract) throw new NotFoundException('Contrato no encontrado');
-    const content = this.fillVariables(contract.template.content, contract);
+    const org = await this.prisma.organization.findUnique({ where: { id: contract.organizationId } });
+    const content = this.fillVariables(contract.template.content, contract, org);
     const lines = content.split('\n').map(l => `<p>${l || '&nbsp;'}</p>`).join('');
 
     const signatureSection = contract.status === 'signed' ? `

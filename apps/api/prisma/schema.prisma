@@ -32,6 +32,9 @@ model Organization {
   paperlessToken      String?  @map("paperless_token") @db.VarChar(500)
   paperlessSecret     String?  @map("paperless_secret") @db.VarChar(255)
   paperlessDocTypeId  Int?     @map("paperless_doc_type_id")
+  bankSwift           String?  @map("bank_swift") @db.VarChar(20)
+  bankIban            String?  @map("bank_iban") @db.VarChar(50)
+  bankBeneficiary     String?  @map("bank_beneficiary") @db.VarChar(255)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -100,6 +103,7 @@ model Property {
   nrua           String?   @map("nrua") @db.VarChar(80)
   purchasePrice  Float?    @map("purchase_price")
   paperlessCorrespondentId   Int?    @map("paperless_correspondent_id")
+  cadastralRef   String?   @map("cadastral_ref") @db.VarChar(100)
   notes          String?   @db.Text
   createdBy      String?   @map("created_by") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at")

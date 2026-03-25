@@ -276,6 +276,23 @@ export default function Settings() {
               <p className="font-semibold text-white mb-1">ℹ️ {language === 'es' ? 'Datos fiscales' : 'Tax information'}</p>
               <p>{t('settings.fiscalNote')}</p>
             </div>
+            <div className="mt-2">
+              <p className="text-sm font-semibold text-slate-300 mb-3">{language === 'es' ? 'Datos bancarios' : 'Bank details'}</p>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className={labelCls}>Swift / BIC</label>
+                  <input value={currentValue('bankSwift')} onChange={f('bankSwift')} placeholder="Ej: CAIXESBBXXX" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>IBAN</label>
+                  <input value={currentValue('bankIban')} onChange={f('bankIban')} placeholder="Ej: ES91 2100 0418 4502 0005 1332" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{language === 'es' ? 'Beneficiario' : 'Beneficiary'}</label>
+                  <input value={currentValue('bankBeneficiary')} onChange={f('bankBeneficiary')} placeholder={language === 'es' ? 'Nombre del titular de la cuenta' : 'Account holder name'} className={inputCls} />
+                </div>
+              </div>
+            </div>
           </>
         )}
 

@@ -72,4 +72,8 @@ export class CreatePropertyDto {
   @IsInt()
   @Type(() => Number)
   paperlessCorrespondentId?: number;
+
+  @IsOptional()
+  @IsString()
+  cadastralRef?: string;
 }

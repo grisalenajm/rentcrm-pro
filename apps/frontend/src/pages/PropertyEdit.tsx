@@ -49,6 +49,7 @@ export default function PropertyEdit() {
         sesCodigoEstablecimiento: form.sesCodigoEstablecimiento || undefined,
         nrua: form.nrua || undefined,
         paperlessCorrespondentId: form.paperlessCorrespondentId ? Number(form.paperlessCorrespondentId) : undefined,
+        cadastralRef: form.cadastralRef || undefined,
       });
       await qc.invalidateQueries({ queryKey: ['property', id] });
       await qc.invalidateQueries({ queryKey: ['properties'] });
@@ -150,6 +151,9 @@ export default function PropertyEdit() {
           </FormField>
           <FormField label="ID Correspondent Paperless">
             <input type="number" min="1" step="1" value={form.paperlessCorrespondentId ?? ''} onChange={f('paperlessCorrespondentId')} placeholder="ID numérico del correspondent en Paperless-ngx" className={inputCls} />
+          </FormField>
+          <FormField label="Referencia catastral">
+            <input value={form.cadastralRef || ''} onChange={f('cadastralRef')} placeholder="Ej: 1234567AB1234A0001AB" className={inputCls} />
           </FormField>
         </div>
       </div>
