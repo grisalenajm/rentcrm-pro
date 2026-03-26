@@ -30,6 +30,7 @@ export default function Layout() {
     { to: '/contracts',           icon: '📄', label: t('nav.contracts')  },
     { to: '/calendar',            icon: '🗓️', label: t('nav.calendar')  },
     { to: '/transmision-datos',   icon: '📡', label: t('nav.transmision') },
+    { to: '/logs',                icon: '🖥️', label: t('nav.logs')       },
     ...(user?.role === 'admin' ? [{ to: '/users', icon: '👤', label: t('nav.users') }] : []),
     { to: '/settings',            icon: '⚙️', label: t('nav.settings')  },
   ];

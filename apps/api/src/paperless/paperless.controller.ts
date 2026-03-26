@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma.service';
 import { PaperlessService } from './paperless.service';
 import { RedisService } from './redis.service';
+import { LogsService } from '../logs/logs.service';
 import { Public } from '../auth/public.decorator';
 
 const INVOICE_TYPES = ['factura', 'invoice'];
@@ -17,6 +18,7 @@ export class PaperlessController {
     private readonly prisma: PrismaService,
     private readonly paperless: PaperlessService,
     private readonly redis: RedisService,
+    private readonly logsService: LogsService,
   ) {}
 
   @Public()
@@ -47,6 +49,7 @@ export class PaperlessController {
       const correspondentName: string | undefined = body.correspondent_name;
       if (!correspondentName) {
         this.logger.warn('Paperless webhook: no correspondent_name in payload');
+        await this.logsService.add('warn', 'Paperless', 'Webhook recibido sin correspondent_name', { body });
         return { ok: true };
       }
 
@@ -61,6 +64,7 @@ export class PaperlessController {
 
       if (!property) {
         this.logger.warn(`Paperless webhook: no property found for correspondent_name="${correspondentName}" (normalized: "${normalizedCorrespondent}")`);
+        await this.logsService.add('warn', 'Paperless', `Corresponsal "${correspondentName}" no coincide con ninguna propiedad`, { normalizedCorrespondent });
         return { ok: true };
       }
 
@@ -144,12 +148,12 @@ export class PaperlessController {
         },
       });
 
-      this.logger.log(
-        `Paperless webhook: created Expense for property ${property.id}, doc ${documentId}, amount ${amount}`,
-      );
+      this.logger.log(`Paperless webhook: created Expense for property ${property.id}, doc ${documentId}, amount ${amount}`);
+      await this.logsService.add('info', 'Paperless', `Gasto creado desde documento — ${property.name} — ${amount}€`, { propertyId: property.id, documentId, amount, type, fileName });
       return { ok: true };
     } catch (err: any) {
       this.logger.error('Webhook error', err.stack);
+      await this.logsService.add('error', 'Paperless', `Error inesperado en webhook: ${err.message}`, { error: err.message });
       return { ok: false, error: 'unexpected_error' };
     }
   }

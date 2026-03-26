@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { LogsService } from '../logs/logs.service';
 import * as zlib from 'zlib';
 import { promisify } from 'util';
 import axios from 'axios';
@@ -24,7 +25,7 @@ const ISO2_TO_3: Record<string, string> = {
 @Injectable()
 export class SesService {
   private readonly logger = new Logger(SesService.name);
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private logsService: LogsService) {}
 
   private escapeXml(s: string): string {
     return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
@@ -260,30 +261,16 @@ export class SesService {
       });
 
       const ok = codigo === '0';
-      this.logger.log(JSON.stringify({
-        event: 'ses_send',
-        bookingId,
-        organizationId,
-        status: ok ? 'success' : 'error',
-        lote,
-        timestamp: new Date().toISOString(),
-      }));
+      this.logger.log(JSON.stringify({ event: 'ses_send', bookingId, status: ok ? 'success' : 'error', lote, timestamp: new Date().toISOString() }));
+      await this.logsService.add(ok ? 'info' : 'error', 'SES', ok ? `Parte SES enviado correctamente (lote ${lote})` : `SES rechazó el parte (código ${codigo})`, { bookingId, lote, codigo });
       return { ok, lote, codigo };
     } catch (err: any) {
       await (this.prisma.booking as any).update({
         where: { id: bookingId },
         data: { sesStatus: 'error', sesSentAt: new Date() },
       });
-      this.logger.error(JSON.stringify({
-        event: 'ses_send',
-        errMsg: err.message,
-        errResponse: err.response?.data,
-        bookingId,
-        organizationId,
-        status: 'error',
-        lote: null,
-        timestamp: new Date().toISOString(),
-      }));
+      this.logger.error(JSON.stringify({ event: 'ses_send', errMsg: err.message, bookingId, status: 'error' }));
+      await this.logsService.add('error', 'SES', `Error al enviar parte SES: ${err.message}`, { bookingId, error: err.response?.data ?? err.message });
       throw new BadRequestException(`Error al enviar al SES: ${err.message}`);
     }
   }

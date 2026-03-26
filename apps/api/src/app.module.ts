@@ -23,6 +23,7 @@ import { PropertyRulesModule } from './property-rules/property-rules.module';
 import { RecurringExpensesModule } from './recurring-expenses/recurring-expenses.module';
 import { PaperlessModule } from './paperless/paperless.module';
 import { BookingPaymentsModule } from './booking-payments/booking-payments.module';
+import { LogsModule } from './logs/logs.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { BookingPaymentsModule } from './booking-payments/booking-payments.modul
     RecurringExpensesModule,
     PaperlessModule,
     BookingPaymentsModule,
+    LogsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

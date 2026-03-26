@@ -5,7 +5,7 @@ const es = {
   nav: {
     dashboard: "Dashboard", properties: "Propiedades", clients: "Clientes",
     bookings: "Reservas", financials: "Financiero", contracts: "Contratos",
-    templates: "Templates", calendar: "Calendario", police: "Partes SES", transmision: "Transmisión de datos", users: "Usuarios", settings: "Configuración"
+    templates: "Templates", calendar: "Calendario", police: "Partes SES", transmision: "Transmisión de datos", logs: "Logs", users: "Usuarios", settings: "Configuración"
   },
   common: {
     save: "Guardar cambios", saving: "Guardando...", saved: "✅ Guardado",
@@ -168,7 +168,7 @@ const en = {
   nav: {
     dashboard: "Dashboard", properties: "Properties", clients: "Clients",
     bookings: "Bookings", financials: "Financials", contracts: "Contracts",
-    templates: "Templates", calendar: "Calendar", police: "Guest Reports", transmision: "Data Transmission", users: "Users", settings: "Settings"
+    templates: "Templates", calendar: "Calendar", police: "Guest Reports", transmision: "Data Transmission", logs: "Logs", users: "Users", settings: "Settings"
   },
   common: {
     save: "Save changes", saving: "Saving...", saved: "✅ Saved",

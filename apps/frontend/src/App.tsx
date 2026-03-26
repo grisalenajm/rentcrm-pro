@@ -24,6 +24,7 @@ import Settings from './pages/Settings';
 import UserManagement from './pages/UserManagement';
 import PropertyFinancialDetail from './pages/PropertyFinancialDetail';
 import Profile from './pages/Profile';
+import Logs from './pages/Logs';
 import { UserPreferencesProvider } from './context/UserPreferencesContext';
 
 const qc = new QueryClient();
@@ -59,6 +60,7 @@ export default function App() {
               <Route path="police"              element={<Police />} />
               <Route path="transmision-datos"  element={<TransmisionDatos />} />
               <Route path="calendar"           element={<OccupancyCalendar />} />
+              <Route path="logs"               element={<Logs />} />
               <Route path="users"               element={<UserManagement />} />
               <Route path="settings"             element={<Settings />} />
               <Route path="profile"              element={<Profile />} />

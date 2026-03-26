@@ -4,6 +4,7 @@ import { lookup } from 'dns/promises';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
 import { getPublicBaseUrl } from '../common/public-url.helper';
+import { LogsService } from '../logs/logs.service';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ICAL = require('ical.js');
@@ -12,7 +13,7 @@ const ICAL = require('ical.js');
 export class ICalService {
   private readonly logger = new Logger(ICalService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private logsService: LogsService) {}
 
   private async validateExternalUrl(url: string): Promise<void> {
     const parsed = new URL(url);
@@ -96,6 +97,7 @@ export class ICalService {
         where: { id },
         data: { lastSyncStatus: 'error', lastSyncError: e.message },
       });
+      await this.logsService.add('error', 'iCal', `Error al descargar feed ${feed.platform} (${feed.property?.name})`, { feedId: id, error: e.message });
       throw e;
     }
 
@@ -176,6 +178,9 @@ export class ICalService {
             },
           });
           this.logger.log(`iCal auto-booking created: uid=${uid} source=${bookingSource}`);
+          await this.logsService.add('info', 'iCal', `Reserva importada desde ${bookingSource} — ${feed.property?.name}`, {
+            uid, source: bookingSource, checkIn: dtstart, checkOut: dtend, summary,
+          });
         }
       }
 
@@ -185,6 +190,11 @@ export class ICalService {
     await this.prisma.availabilitySync.update({
       where: { id },
       data: { lastSyncAt: new Date(), lastSyncStatus: 'success', lastSyncError: null },
+    });
+
+    const level = imported > 0 ? 'info' : 'info';
+    await this.logsService.add(level, 'iCal', `Sync ${feed.platform} — ${feed.property?.name}: ${imported} importadas, ${skipped} omitidas`, {
+      feedId: id, platform: feed.platform, property: feed.property?.name, imported, skipped, total: vevents.length,
     });
 
     return { imported, skipped, total: vevents.length };
