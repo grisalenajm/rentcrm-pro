@@ -68,6 +68,13 @@ export class BookingsController {
     return this.bookingsService.update(id, dto, req.user.organizationId);
   }
 
+  @Patch(':id')
+  @SkipThrottle()
+  @Roles('admin', 'gestor')
+  partialUpdate(@Param('id') id: string, @Body() dto: UpdateBookingDto, @Request() req) {
+    return this.bookingsService.update(id, dto, req.user.organizationId);
+  }
+
   @Delete(':id')
   @Roles('admin', 'gestor')
   cancel(@Param('id') id: string, @Request() req) {
