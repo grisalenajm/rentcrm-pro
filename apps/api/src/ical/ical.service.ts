@@ -148,7 +148,10 @@ export class ICalService {
         platform === 'airbnb' ? 'airbnb' :
         platform === 'booking' ? 'booking' : null;
 
-      const bookingSource = isBlock(summary) ? 'manual_block' : platformSource;
+      // If platform is known (airbnb/booking), always use it — their iCal events
+      // use "Not available" / "CLOSED" summaries even for real reservations.
+      // Only fall back to manual_block for unknown/generic feeds.
+      const bookingSource = platformSource ?? (isBlock(summary) ? 'manual_block' : null);
 
       if (bookingSource) {
         const existingBooking = await this.prisma.booking.findFirst({
