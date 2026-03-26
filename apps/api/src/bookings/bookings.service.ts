@@ -26,6 +26,7 @@ export class BookingsService {
     return this.prisma.booking.findMany({
       where: {
         organizationId,
+        source: { not: 'manual_block' },
         ...(propertyId ? { propertyId } : {}),
         ...(clientId ? { clientId } : {}),
       },
