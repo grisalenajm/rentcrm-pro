@@ -4,6 +4,9 @@
 ## En progreso
 (ninguna)
 
+### Sesión 27/03/2026
+- [x] Idle timeout reducido de 30 a 15 minutos (AuthContext.tsx `IDLE_TIMEOUT_MS`) (27/03/2026)
+
 ### Sesión 25-26/03/2026
 - [x] Pagos de reserva: modelo BookingPayment, endpoints CRUD, sección en BookingDetail (25/03/2026)
 - [x] iCal: detectar bloques de calendario y excluir de dashboards y financials (25/03/2026)

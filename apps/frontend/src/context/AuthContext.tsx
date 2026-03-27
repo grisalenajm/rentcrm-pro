@@ -5,7 +5,7 @@ import { api, setAuthToken } from '../lib/api';
 
 // ─── Idle session configuration ───────────────────────────────────────────────
 // Adjust these constants to change the inactivity thresholds.
-const IDLE_TIMEOUT_MS       = 30 * 60 * 1000; // 30 min without interaction → show warning
+const IDLE_TIMEOUT_MS       = 15 * 60 * 1000; // 15 min without interaction → show warning
 const IDLE_WARNING_DURATION = 2  * 60;         // seconds to respond before auto-logout
 
 // DOM events that count as user activity

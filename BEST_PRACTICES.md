@@ -1,5 +1,5 @@
 # RentalSuite — Best Practices
-> Actualizado 23/03/2026
+> Actualizado 27/03/2026
 
 ## Deploy (CRÍTICO)
 - API: `npm run build --workspace=apps/api && docker compose build api && docker compose up -d api`
@@ -40,6 +40,7 @@ DATABASE_URL='postgresql://rentcrm:<pwd>@127.0.0.1:5432/rentcrm' npx prisma gene
 - Clipboard API solo funciona en HTTPS
 - Arrays async (DOC_TYPES, etc.) → `useMemo` dentro del componente
 - React Query: `staleTime` + `keepPreviousData` en listados
+- Idle timeout: constante `IDLE_TIMEOUT_MS` en `src/context/AuthContext.tsx` (actualmente 15 min)
 
 ## Backend NestJS
 - Rutas fijas SIEMPRE antes de `:id` en el controlador
