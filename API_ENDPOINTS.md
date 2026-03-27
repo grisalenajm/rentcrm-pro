@@ -79,6 +79,7 @@ Roles: `admin` > `gestor` > `owner` (viewer = solo lectura)
 | POST | `/bookings` | admin, gestor | Crear reserva |
 | PUT | `/bookings/:id` | admin, gestor | Actualizar reserva |
 | DELETE | `/bookings/:id` | admin, gestor | Cancelar reserva |
+| PATCH | `/bookings/:id` | admin, gestor | Actualización parcial (source, notes, etc.) |
 | PATCH | `/bookings/:id/status` | admin, gestor | Cambiar estado (valida transiciones) |
 | GET | `/bookings/checkin/:token` | 🔓 | Obtener datos checkin por token (con traducciones) |
 | POST | `/bookings/checkin/:token` | 🔓 | Completar checkin online |
@@ -97,6 +98,22 @@ Roles: `admin` > `gestor` > `owner` (viewer = solo lectura)
 `docType` (dni|passport|nie|other), `docNumber`, `docCountry`, `firstName`, `lastName`, `birthDate?`, `phone?`
 
 ⚠️ **IMPORTANTE**: Rutas con path fijo (`checkin/:token`) deben ir ANTES de `/:id` en el controlador.
+
+---
+
+## Booking Payments
+| Método | Ruta | Roles | Descripción |
+|--------|------|-------|-------------|
+| GET | `/bookings/:bookingId/payments` | any | Listar pagos de una reserva |
+| POST | `/bookings/:bookingId/payments` | admin, gestor | Registrar pago |
+| DELETE | `/bookings/:bookingId/payments/:id` | admin, gestor | Eliminar pago |
+
+**CreateBookingPaymentDto** (requeridos: concept, amount, date):
+`concept` (fianza|pago_reserva|pago_final|devolucion_fianza), `amount` (negativo para devoluciones), `date` (ISO), `notes?`
+
+Notas:
+- `devolucion_fianza` se auto-rellena con el importe negativo de la fianza existente
+- La sección "Pagos" en BookingDetail muestra total pagado vs totalAmount de la reserva
 
 ---
 
@@ -240,6 +257,20 @@ Campo `deductible` (boolean, default false): si true, el gasto es deducible fisc
 - `Expense.paperlessDocumentId` (Int?) — ID del documento en Paperless
 - `Expense.paperlessAmount` (Float?) — importe extraído del documento
 - `Organization.paperlessSecret` (String?) — secreto para validar el webhook
+
+---
+
+## Logs del sistema
+| Método | Ruta | Roles | Descripción |
+|--------|------|-------|-------------|
+| GET | `/logs` | any | Listar logs (`?limit=200&level=info|warn|error&context=ical|ses|paperless`) |
+| DELETE | `/logs` | admin | Limpiar todos los logs |
+
+Detalles:
+- Almacenados en Redis (`app:logs`), máximo 500 entradas (LIFO)
+- Contextos registrados: `ical` (sync eventos), `ses` (envíos al Ministerio), `paperless` (webhooks)
+- Cada entrada: `{ id, level, context, message, details?, createdAt }`
+- Sin rate limiting (`@SkipThrottle`)
 
 ---
 

@@ -1,16 +1,19 @@
 # RentalSuite — Tareas pendientes
-> Actualizado 22/03/2026
+> Actualizado 27/03/2026
 
 ## En progreso
 (ninguna)
 
-### Sesión 26/03/2026
+### Sesión 25-26/03/2026
+- [x] Pagos de reserva: modelo BookingPayment, endpoints CRUD, sección en BookingDetail (25/03/2026)
+- [x] iCal: detectar bloques de calendario y excluir de dashboards y financials (25/03/2026)
+- [x] Campos bancarios en Organization (bankSwift, bankIban, bankBeneficiary) (25/03/2026)
+- [x] Referencia catastral en Property (cadastralRef) para contratos (25/03/2026)
 - [x] Logs del sistema: iCal sync, SES y Paperless trackeados en Redis (26/03/2026)
 - [x] Fix PATCH /bookings/:id para actualizaciones parciales (26/03/2026)
 - [x] Fix source iCal: Airbnb/Booking.com siempre usan source de plataforma (26/03/2026)
 - [x] Fix: manual_block excluido del listado de reservas (26/03/2026)
-- [x] Fix: reservas canceladas excluidas de dashboards y heatmap (26/03/2026)
-- [x] Campos bancarios en Organization y referencia catastral en Property (26/03/2026)
+- [x] Fix: reservas canceladas excluidas de dashboards, financials y heatmap (26/03/2026)
 
 ## Pendiente (priorizado)
 
