@@ -79,3 +79,12 @@
 ## Gastos recurrentes: campo deductible vs deducible
 - ❌ `deducible` en el modelo (sin t)
 - ✅ `deductible` (con t) — nombre en inglés consistente con el resto del schema
+
+## Parser de importe Paperless: formato europeo
+- ❌ `.replace(/[^0-9.,]/g, '').replace(',', '.')` → `EUR1.476,20` produce `1.476` (incorrecto)
+- ✅ Si el string contiene coma: quitar todos los puntos primero (miles), luego coma→punto
+  ```ts
+  const raw = String(val).replace(/[^0-9.,]/g, '');
+  const cleaned = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw;
+  ```
+- `EUR1.476,20` → `1476.20` ✓  |  `EUR1234.00` → `1234.00` ✓

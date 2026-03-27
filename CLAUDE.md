@@ -1,5 +1,5 @@
 # RentalSuite — Guía para Claude Code
-> Actualizado 23/03/2026
+> Actualizado 27/03/2026
 
 ## Identidad del proyecto
 - **Nombre**: RentalSuite (rebranding pendiente de integrar SVG logo en la app)
@@ -96,6 +96,15 @@ model Property {
   // sesCodigoEstablecimiento NO va en Organization
 }
 
+model BookingPayment {
+  id        String   @id @default(uuid())
+  bookingId String
+  concept   String   // fianza|pago_reserva|pago_final|devolucion_fianza
+  amount    Float    // negativo para devoluciones
+  date      DateTime
+  notes     String?
+}
+
 model Expense {
   paperlessDocumentId  Int?    // ID documento Paperless (si creado por webhook)
   paperlessAmount      Float?  // Importe extraído de Paperless
@@ -103,11 +112,16 @@ model Expense {
 }
 
 model Organization {
-  paperlessUrl     String?
-  paperlessToken   String?
-  paperlessSecret  String?  // Header X-Paperless-Secret para validar webhook
+  paperlessUrl      String?
+  paperlessToken    String?
+  paperlessSecret   String?  // Header X-Paperless-Secret para validar webhook
+  bankSwift         String?  // Para plantillas de contrato
+  bankIban          String?
+  bankBeneficiary   String?
   // sesCodigoEstablecimiento NO va aquí → va en Property
 }
+
+// Property también tiene: cadastralRef String? (referencia catastral para contratos)
 ```
 
 ## Patrones importantes
@@ -143,7 +157,7 @@ Variables disponibles: correspondent, document_type, original_filename,
 doc_url, created, title, added (NO {{ document.pk }})
 - Busca Property por nombre normalizado (reemplaza _ por espacio, case-insensitive)
 - Extrae document_id de doc_url con regex: `/\/documents\/(\d+)\//`
-- Importe en custom_field con valor "EUR1234.00" → limpiar con `/[^0-9.,]/g`
+- Importe en custom_field: formato europeo "EUR1.476,20" → strip no-numérico → quitar puntos de miles → coma a punto → parseFloat = 1476.20
 - Proxy PDF: `GET /api/paperless/document/:id?access_token=TOKEN`
   Token temporal (5 min) en Redis: `paperless:doctoken:{uuid}`
 
@@ -163,6 +177,20 @@ original_file_name → {{ original_filename }}
 doc_url            → {{ doc_url }}
 created            → {{ created }}
 Acción adicional: añadir tag "synced-to-rentalsuite"
+
+### Logs del sistema
+Servicio Redis-based para tracking de eventos internos:
+- Redis key: `app:logs` (lista LIFO, máx 500 entradas)
+- `LogsService.add(level, context, message, details?)` para registrar desde cualquier servicio
+- Contextos usados: `ical` | `ses` | `paperless`
+- API: `GET /api/logs?limit=&level=&context=` / `DELETE /api/logs` (admin)
+- Página `/logs` en el frontend con filtros y botón limpiar
+
+### Pagos de reserva (BookingPayment)
+- Conceptos: `fianza` | `pago_reserva` | `pago_final` | `devolucion_fianza`
+- `devolucion_fianza`: importe negativo, se auto-rellena con el negativo de la fianza existente
+- Sección "Pagos" en BookingDetail: formulario inline + lista + totales (pagado vs totalAmount)
+- API: `GET/POST/DELETE /api/bookings/:bookingId/payments`
 
 ### HTTPS local con mkcert
 ```bash
