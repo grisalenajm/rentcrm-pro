@@ -116,12 +116,17 @@ export class PaperlessController {
       }
 
       // Parse amount from custom_fields
-      // Field arrives as { value: "EUR1234.00", field: 8 } — no name, only numeric ID
+      // Field arrives as { value: "EUR1.476,20", field: 8 } — no name, only numeric ID
+      // European format: dot = thousands separator, comma = decimal  → EUR1.476,20 → 1476.20
+      // ISO/simple format: dot = decimal, no comma                   → EUR1234.00  → 1234.00
       let amount = 0;
       if (doc?.custom_fields) {
         for (const cf of doc.custom_fields) {
           if (cf.value) {
-            const cleaned = String(cf.value).replace(/[^0-9.,]/g, '').replace(',', '.');
+            const raw = String(cf.value).replace(/[^0-9.,]/g, '');
+            const cleaned = raw.includes(',')
+              ? raw.replace(/\./g, '').replace(',', '.')
+              : raw;
             const parsed = parseFloat(cleaned);
             if (!isNaN(parsed) && parsed > 0) { amount = parsed; break; }
           }
