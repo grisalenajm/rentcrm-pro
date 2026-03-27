@@ -28,8 +28,6 @@ export class PaperlessController {
     try {
       const body = req.body;
       const secret = req.headers['x-paperless-secret'] as string;
-      this.logger.log('RAW BODY: ' + JSON.stringify(body));
-      this.logger.log('CONTENT-TYPE: ' + req.headers['content-type']);
 
       const org = await this.prisma.organization.findFirst();
       if (!org) return { ok: false };
@@ -119,14 +117,21 @@ export class PaperlessController {
       // Field arrives as { value: "EUR1.476,20", field: 8 } — no name, only numeric ID
       // European format: dot = thousands separator, comma = decimal  → EUR1.476,20 → 1476.20
       // ISO/simple format: dot = decimal, no comma                   → EUR1234.00  → 1234.00
+      // Only accept values that start with a currency symbol (EUR/USD/GBP/€/$)
+      // or whose stripped form contains a decimal separator (comma or dot),
+      // to avoid false positives like "53xqAwLrrfhKgHcH" → "53".
       let amount = 0;
       if (doc?.custom_fields) {
         for (const cf of doc.custom_fields) {
           if (cf.value) {
-            const raw = String(cf.value).replace(/[^0-9.,]/g, '');
-            const cleaned = raw.includes(',')
-              ? raw.replace(/\./g, '').replace(',', '.')
-              : raw;
+            const rawStr = String(cf.value).trim();
+            const isCurrencyPrefixed = /^(EUR|USD|GBP|[€$])/.test(rawStr);
+            const stripped = rawStr.replace(/[^0-9.,]/g, '');
+            const hasDecimalSeparator = stripped.includes(',') || stripped.includes('.');
+            if (!isCurrencyPrefixed && !hasDecimalSeparator) continue;
+            const cleaned = stripped.includes(',')
+              ? stripped.replace(/\./g, '').replace(',', '.')
+              : stripped;
             const parsed = parseFloat(cleaned);
             if (!isNaN(parsed) && parsed > 0) { amount = parsed; break; }
           }
@@ -140,21 +145,33 @@ export class PaperlessController {
 
       const fileName: string = body.original_file_name ?? doc?.original_file_name ?? '';
 
-      await this.prisma.expense.create({
-        data: {
-          propertyId: property.id,
-          date: expenseDate,
-          amount,
-          type,
-          deductible: false,
-          paperlessDocumentId: documentId,
-          paperlessAmount: amount,
-          notes: fileName || null,
-        },
-      });
+      const existingExpense = documentId
+        ? await this.prisma.expense.findFirst({ where: { paperlessDocumentId: documentId } })
+        : null;
 
-      this.logger.log(`Paperless webhook: created Expense for property ${property.id}, doc ${documentId}, amount ${amount}`);
-      await this.logsService.add('info', 'Paperless', `Gasto creado desde documento — ${property.name} — ${amount}€`, { propertyId: property.id, documentId, amount, type, fileName });
+      if (existingExpense) {
+        await this.prisma.expense.update({
+          where: { id: existingExpense.id },
+          data: { amount, paperlessAmount: amount, notes: fileName || existingExpense.notes },
+        });
+        this.logger.log(`Paperless webhook: updated Expense ${existingExpense.id} for doc ${documentId}, amount ${amount}`);
+        await this.logsService.add('info', 'Paperless', `Gasto actualizado desde documento — ${property.name} — ${amount}€`, { propertyId: property.id, documentId, amount, type, fileName });
+      } else {
+        await this.prisma.expense.create({
+          data: {
+            propertyId: property.id,
+            date: expenseDate,
+            amount,
+            type,
+            deductible: false,
+            paperlessDocumentId: documentId,
+            paperlessAmount: amount,
+            notes: fileName || null,
+          },
+        });
+        this.logger.log(`Paperless webhook: created Expense for property ${property.id}, doc ${documentId}, amount ${amount}`);
+        await this.logsService.add('info', 'Paperless', `Gasto creado desde documento — ${property.name} — ${amount}€`, { propertyId: property.id, documentId, amount, type, fileName });
+      }
       return { ok: true };
     } catch (err: any) {
       this.logger.error('Webhook error', err.stack);
