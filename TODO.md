@@ -4,6 +4,14 @@
 ## En progreso
 (ninguna)
 
+### Sesión 26/03/2026
+- [x] Logs del sistema: iCal sync, SES y Paperless trackeados en Redis (26/03/2026)
+- [x] Fix PATCH /bookings/:id para actualizaciones parciales (26/03/2026)
+- [x] Fix source iCal: Airbnb/Booking.com siempre usan source de plataforma (26/03/2026)
+- [x] Fix: manual_block excluido del listado de reservas (26/03/2026)
+- [x] Fix: reservas canceladas excluidas de dashboards y heatmap (26/03/2026)
+- [x] Campos bancarios en Organization y referencia catastral en Property (26/03/2026)
+
 ## Pendiente (priorizado)
 
 ### SES Hospedajes — Frontend
@@ -16,15 +24,13 @@
 - [x] Settings: añadir campo Document Type ID de Paperless (23/03/2026)
 
 ### Pagos de reserva
-- [ ] Sección "Pagos" en BookingDetail con botón "+" para añadir conceptos
-- [ ] Conceptos predefinidos: Fianza, Pago reserva, Pago final, Devolución fianza
-- [ ] Cada pago: concepto, importe, fecha (presente o futura)
-- [ ] Devolución fianza: importe negativo automático
-- [ ] Total pagado vs total reserva visible en la sección
-- [ ] Nuevo modelo BookingPayment en schema.prisma:
-      bookingId, concept (fianza|pago_reserva|pago_final|devolucion_fianza),
-      amount (Float, negativo si devolución), date (DateTime), notes?
-- [ ] CRUD: GET/POST/DELETE /api/bookings/:id/payments
+- [x] Sección "Pagos" en BookingDetail con botón "+" para añadir conceptos (25/03/2026)
+- [x] Conceptos predefinidos: Fianza, Pago reserva, Pago final, Devolución fianza (25/03/2026)
+- [x] Cada pago: concepto, importe, fecha (presente o futura) (25/03/2026)
+- [x] Devolución fianza: importe negativo automático (25/03/2026)
+- [x] Total pagado vs total reserva visible en la sección (25/03/2026)
+- [x] Nuevo modelo BookingPayment en schema.prisma (25/03/2026)
+- [x] CRUD: GET/POST/DELETE /api/bookings/:bookingId/payments (25/03/2026)
 
 ### Edición masiva
 - [ ] Mass update precios de reservas desde Excel (por ID reserva o por propiedad + fecha entrada)
