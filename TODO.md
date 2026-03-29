@@ -48,11 +48,16 @@
 - [ ] Integrar SVG logo de RentalSuite en la app (pendiente exportar los SVGs)
 
 ### Deploy producción
-- [ ] `docker-compose.prod.yml` limpio
-- [ ] `.env.example` con todas las variables documentadas
-- [ ] `README.md` bilingüe (EN/ES) profesional para GitHub
-- [ ] `setup.sh` script de automatización de instalación
-- [ ] `CONTRIBUTING.md`
+- [x] `docker-compose.prod.yml` limpio (17/03/2026)
+- [x] `.env.example` con todas las variables documentadas (17/03/2026)
+- [x] `README.md` bilingüe (EN/ES) profesional para GitHub (17/03/2026)
+- [x] `setup.sh` script de instalación desde cero con Node 20, frontend .env, prisma db push/seed (29/03/2026)
+- [x] `update.sh` script de actualización en producción (29/03/2026)
+- [x] `CONTRIBUTING.md` (17/03/2026)
+- [x] DATABASE_URL y REDIS_URL construidos internamente en docker-compose — no duplicar en .env (29/03/2026)
+- [x] apps/frontend/.env.example documentado en README y copiado automáticamente por setup.sh (29/03/2026)
+- [x] prisma db push antes de migrate deploy en instalación nueva (29/03/2026)
+- [x] Node 20 via nodesource documentado en README y setup.sh (29/03/2026)
 
 ## Completado
 

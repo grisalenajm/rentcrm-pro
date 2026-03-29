@@ -229,6 +229,48 @@ SSL: rejectUnauthorized: false
 sesCodigoEstablecimiento: en Property, NO en Organization
 Pendiente: alta en hospedajes.ses.mir.es
 
+## Deploy desde cero (CRÍTICO)
+
+### Variables de conexión — NO duplicar en .env
+DATABASE_URL y REDIS_URL se construyen en docker-compose.yml a partir de las variables
+individuales. El .env solo necesita POSTGRES_PASSWORD y REDIS_PASSWORD:
+```yaml
+# docker-compose.yml / docker-compose.prod.yml — api service
+environment:
+  DATABASE_URL: "postgresql://rentcrm:${POSTGRES_PASSWORD}@postgres:5432/rentcrm"
+  REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
+```
+Si alguien añade DATABASE_URL o REDIS_URL al .env, la variable de `environment:` tiene
+prioridad — no hay conflicto, pero es redundante y fuente de errores.
+
+### Frontend .env
+- `apps/frontend/.env.example` existe en el repo con `VITE_API_URL=https://YOUR_DOMAIN`
+- El Dockerfile hace `COPY apps/frontend/.env ./.env` — el fichero debe existir antes del build
+- `setup.sh` lo copia automáticamente si no existe
+- Para build manual: `cp apps/frontend/.env.example apps/frontend/.env`
+
+### Orden correcto de Prisma en instalación nueva
+```bash
+# 1. Sincronizar schema (evita desincronización migration/schema)
+DATABASE_URL='...' npx prisma db push --schema=apps/api/prisma/schema.prisma
+# 2. Aplicar migraciones
+DATABASE_URL='...' npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
+# 3. Seed inicial (solo primera vez)
+DATABASE_URL='...' npx prisma db seed --schema=apps/api/prisma/schema.prisma
+```
+
+### Node.js 20 en Ubuntu 24.04
+Ubuntu 24.04 instala Node 18 por defecto. Usar nodesource:
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+`setup.sh` lo detecta e instala automáticamente.
+
+### Scripts de operación
+- `setup.sh` — instalación desde cero (requiere .env ya rellenado)
+- `update.sh` — actualización en producción (git pull + build + migrate + restart)
+
 ## Problemas conocidos
 | Problema | Solución |
 |----------|----------|

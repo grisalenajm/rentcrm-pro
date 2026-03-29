@@ -58,6 +58,14 @@ Spain's Ministry of Interior traveller registration system).
 - A Linux server with ports 80/443 open (for Nginx + Let's Encrypt)
 - An **SMTP account** (optional, needed for email features)
 
+> **Node.js 20 on Ubuntu 24.04** — Ubuntu 24.04 ships Node 18 by default.
+> Install Node 20 via NodeSource before running any `npm` commands:
+> ```bash
+> curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+> sudo apt-get install -y nodejs
+> node --version   # should print v20.x.x
+> ```
+
 ### Quick Start (local development, 5 min)
 
 ```bash
@@ -116,16 +124,23 @@ cp .env.example .env
 Edit `.env` and replace every `CHANGE_ME` / `YOUR_DOMAIN` placeholder:
 
 ```bash
-# Minimum required:
-DATABASE_URL=postgresql://rentcrm:strong-password@postgres:5432/rentcrm
-POSTGRES_PASSWORD=strong-password
-REDIS_PASSWORD=another-strong-password
-REDIS_URL=redis://:another-strong-password@redis:6379
+# Minimum required (DATABASE_URL and REDIS_URL are auto-built by docker-compose):
+POSTGRES_PASSWORD=strong-password       # openssl rand -hex 32
+REDIS_PASSWORD=another-strong-password  # openssl rand -hex 32
 JWT_SECRET=$(openssl rand -hex 64)
 JWT_REFRESH_SECRET=$(openssl rand -hex 64)
 FRONTEND_URL=https://your-domain.com
 VITE_API_URL=https://your-domain.com
 ```
+
+**2b. Create the frontend environment file**
+
+```bash
+cp apps/frontend/.env.example apps/frontend/.env
+# Edit apps/frontend/.env and set VITE_API_URL=https://your-domain.com
+```
+
+This file is required by the frontend Docker build (`COPY apps/frontend/.env ./.env`).
 
 **3. Install Node dependencies**
 
@@ -149,8 +164,19 @@ docker compose -f docker-compose.prod.yml up -d
 
 ```bash
 cd apps/api
+
+# On a fresh install, sync the schema first (handles any migration/schema drift):
+DATABASE_URL="postgresql://rentcrm:strong-password@localhost:5432/rentcrm" \
+  npx prisma db push
+
+# Then apply pending migrations:
 DATABASE_URL="postgresql://rentcrm:strong-password@localhost:5432/rentcrm" \
   npx prisma migrate deploy
+
+# Seed initial data (first install only):
+DATABASE_URL="postgresql://rentcrm:strong-password@localhost:5432/rentcrm" \
+  npx prisma db seed
+
 cd ../..
 ```
 
@@ -278,6 +304,14 @@ RentalSuite is released under the [GNU General Public License v3.0](LICENSE).
 - Un servidor Linux con los puertos 80/443 abiertos (para Nginx + Let's Encrypt)
 - Una **cuenta SMTP** (opcional, necesaria para funciones de email)
 
+> **Node.js 20 en Ubuntu 24.04** — Ubuntu 24.04 instala Node 18 por defecto.
+> Instala Node 20 via NodeSource antes de ejecutar comandos `npm`:
+> ```bash
+> curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+> sudo apt-get install -y nodejs
+> node --version   # debe mostrar v20.x.x
+> ```
+
 ### Inicio rápido (desarrollo local, 5 min)
 
 ```bash
@@ -337,15 +371,23 @@ cp .env.example .env
 Edita `.env` y sustituye todos los valores `CHANGE_ME` / `YOUR_DOMAIN`:
 
 ```bash
-DATABASE_URL=postgresql://rentcrm:contraseña-fuerte@postgres:5432/rentcrm
-POSTGRES_PASSWORD=contraseña-fuerte
-REDIS_PASSWORD=otra-contraseña-fuerte
-REDIS_URL=redis://:otra-contraseña-fuerte@redis:6379
+# Mínimo necesario (DATABASE_URL y REDIS_URL se construyen automáticamente):
+POSTGRES_PASSWORD=contraseña-fuerte       # openssl rand -hex 32
+REDIS_PASSWORD=otra-contraseña-fuerte     # openssl rand -hex 32
 JWT_SECRET=$(openssl rand -hex 64)
 JWT_REFRESH_SECRET=$(openssl rand -hex 64)
 FRONTEND_URL=https://tu-dominio.com
 VITE_API_URL=https://tu-dominio.com
 ```
+
+**2b. Crear el fichero de entorno del frontend**
+
+```bash
+cp apps/frontend/.env.example apps/frontend/.env
+# Edita apps/frontend/.env y ajusta VITE_API_URL=https://tu-dominio.com
+```
+
+Este fichero es requerido por el build Docker del frontend (`COPY apps/frontend/.env ./.env`).
 
 **3. Instalar dependencias Node**
 
@@ -369,8 +411,19 @@ docker compose -f docker-compose.prod.yml up -d
 
 ```bash
 cd apps/api
+
+# En instalación nueva, sincronizar el schema primero:
+DATABASE_URL="postgresql://rentcrm:contraseña-fuerte@localhost:5432/rentcrm" \
+  npx prisma db push
+
+# Luego aplicar las migraciones pendientes:
 DATABASE_URL="postgresql://rentcrm:contraseña-fuerte@localhost:5432/rentcrm" \
   npx prisma migrate deploy
+
+# Seed de datos iniciales (solo primera instalación):
+DATABASE_URL="postgresql://rentcrm:contraseña-fuerte@localhost:5432/rentcrm" \
+  npx prisma db seed
+
 cd ../..
 ```
 
