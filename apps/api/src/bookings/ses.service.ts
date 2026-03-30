@@ -1,15 +1,12 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { LogsService } from '../logs/logs.service';
-import * as zlib from 'zlib';
-import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
 import * as https from 'https';
+import AdmZip = require('adm-zip');
 import PDFDocument = require('pdfkit');
-
-const deflate = promisify(zlib.deflateRaw);
 
 const SES_ENDPOINTS: Record<string, string> = {
   produccion: 'https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion',
@@ -30,28 +27,30 @@ const ISO2_TO_3: Record<string, string> = {
 };
 
 /**
- * Loads the MIR CA certificate from the certs/ directory.
- * Returns the cert buffer if found, or undefined to use system defaults.
- * Never uses rejectUnauthorized: false.
+ * Loads the MIR CA certificate from certs/mir-ca.pem.
+ * Returns the cert buffer, or undefined to fall back to system CAs.
+ * NEVER uses rejectUnauthorized: false.
  */
 function loadMirCa(): Buffer | undefined {
-  const certPath = path.join(__dirname, '../../certs/mir-ca.pem');
+  const certPath = path.join(__dirname, '../../../certs/mir-ca.pem');
   try {
-    if (fs.existsSync(certPath)) {
-      return fs.readFileSync(certPath);
-    }
-  } catch {
-    // Will use system CAs
-  }
+    if (fs.existsSync(certPath)) return fs.readFileSync(certPath);
+  } catch { /* fall through */ }
   return undefined;
 }
 
 function buildHttpsAgent(mirCa?: Buffer): https.Agent {
-  if (mirCa) {
-    return new https.Agent({ ca: mirCa });
-  }
-  // No custom CA — use system trust store (correct for production FNMT-RCM signed cert)
-  return new https.Agent();
+  return mirCa ? new https.Agent({ ca: mirCa }) : new https.Agent();
+}
+
+/**
+ * Compresses the XML string into a ZIP archive and returns it Base64-encoded.
+ * The MIR spec requires the payload to be a ZIP-compressed XML file.
+ */
+function xmlToZipBase64(xml: string): string {
+  const zip = new AdmZip();
+  zip.addFile('parte_viajeros.xml', Buffer.from(xml, 'utf-8'));
+  return zip.toBuffer().toString('base64');
 }
 
 @Injectable()
@@ -64,16 +63,13 @@ export class SesService {
     if (this.mirCa) {
       this.logger.log('MIR CA certificate loaded from certs/mir-ca.pem');
     } else {
-      this.logger.log('No custom MIR CA cert found — using system trust store');
+      this.logger.log('No custom MIR CA cert — using system trust store');
     }
   }
 
   private resolveEndpoint(org: any): string {
     const entorno: string = org.sesEntorno || '';
-    if (entorno && SES_ENDPOINTS[entorno]) {
-      return SES_ENDPOINTS[entorno];
-    }
-    // Backward-compat: use sesEndpoint if set
+    if (entorno && SES_ENDPOINTS[entorno]) return SES_ENDPOINTS[entorno];
     if (org.sesEndpoint) return org.sesEndpoint;
     return SES_ENDPOINTS['produccion'];
   }
@@ -87,6 +83,7 @@ export class SesService {
   }
 
   private formatDateTime(d: string | Date): string {
+    // AAAA-MM-DDThh:mm:ss as required by the XSD
     return new Date(d).toISOString().split('.')[0];
   }
 
@@ -94,6 +91,8 @@ export class SesService {
     firstName: string; lastName: string; docType: string;
     docNumber: string; docCountry: string; birthDate?: string | Date | null;
     phone?: string | null; email?: string | null; nationality?: string | null;
+    street?: string | null; city?: string | null; postalCode?: string | null;
+    province?: string | null; country?: string | null;
   }, rol: string): string {
     const tipoDoc = DOC_TYPE_MAP[p.docType] || 'OTR';
     const nac3    = ISO2_TO_3[p.docCountry] || 'ESP';
@@ -103,12 +102,22 @@ export class SesService {
       ? `<apellido2>${this.escapeXml(apellidos.slice(1).join(' '))}</apellido2>` : '';
     const nacimiento = p.birthDate
       ? `<fechaNacimiento>${this.formatDate(p.birthDate)}</fechaNacimiento>` : '';
+    const nat3 = ISO2_TO_3[p.nationality || ''] || nac3;
+
+    // At least one of telefono or correo is required by XSD
     const contacto = p.phone
       ? `<telefono>${this.escapeXml(p.phone)}</telefono>`
       : p.email
         ? `<correo>${this.escapeXml(p.email)}</correo>`
         : `<correo>noreply@placeholder.com</correo>`;
-    const nat3 = ISO2_TO_3[p.nationality || ''] || nac3;
+
+    // Build direccion block
+    const direccionParts: string[] = [`<pais>${nac3}</pais>`];
+    if (p.street)     direccionParts.push(`<domicilio>${this.escapeXml(p.street)}</domicilio>`);
+    if (p.city)       direccionParts.push(`<municipio>${this.escapeXml(p.city)}</municipio>`);
+    if (p.postalCode) direccionParts.push(`<codigoPostal>${this.escapeXml(p.postalCode)}</codigoPostal>`);
+    if (p.province)   direccionParts.push(`<provincia>${this.escapeXml(p.province)}</provincia>`);
+    const direccion = `<direccion>${direccionParts.join('')}</direccion>`;
 
     return `
     <persona>
@@ -120,7 +129,7 @@ export class SesService {
       <numeroDocumento>${this.escapeXml(p.docNumber)}</numeroDocumento>
       ${nacimiento}
       <nacionalidad>${nat3}</nacionalidad>
-      <direccion><pais>${nac3}</pais></direccion>
+      ${direccion}
       ${contacto}
     </persona>`;
   }
@@ -141,25 +150,35 @@ export class SesService {
     return { booking, org, codigoEst };
   }
 
-  /** Builds the parte de viajeros XML (altaParteHospedaje / tipoComunicacion PV) */
-  async buildPartViajeros(bookingId: string, organizationId: string): Promise<string> {
+  /**
+   * Builds the XML parte de viajeros (altaParteHospedaje / tipoComunicacion PV)
+   * according to altaParteHospedaje.xsd.
+   * referencia   ← booking.id (first 20 chars)
+   * fechaContrato← booking.createdAt  (AAAA-MM-DD)
+   * fechaEntrada ← booking.checkInDate (AAAA-MM-DDThh:mm:ss)
+   * fechaSalida  ← booking.checkOutDate (AAAA-MM-DDThh:mm:ss)
+   * numPersonas  ← 1 + guestsSes.length
+   * tipoPago     ← mapped from BookingPayment.concept
+   */
+  async buildXmlPartViajeros(bookingId: string, organizationId: string): Promise<string> {
     const { booking, codigoEst } = await this.getBookingData(bookingId, organizationId);
     const client = booking.client as any;
     const guestsSes = booking.guestsSes || [];
     const totalPersonas = 1 + guestsSes.length;
-    const referencia = booking.id.slice(0, 20);
+    const referencia = booking.id.replace(/-/g, '').slice(0, 20);
 
     const payments = await this.prisma.bookingPayment.findMany({
       where: { bookingId },
       orderBy: { date: 'asc' },
     });
-    // Pick first non-deposit payment as tipoPago; default EFE (cash)
+
+    // Map payment concept to MIR tipoPago codes
     const tipoPago = (() => {
-      const p = payments.find(p => p.concept !== 'fianza');
-      if (!p) return 'EFE';
-      // Map concept to SES payment type
+      const p = payments.find(pay => pay.concept !== 'fianza');
+      if (!p) return 'EFE'; // Efectivo por defecto
       const map: Record<string, string> = {
-        pago_reserva: 'TCR', pago_final: 'TCR', fianza: 'EFE', devolucion_fianza: 'EFE',
+        pago_reserva: 'TCR', pago_final: 'TCR',
+        fianza: 'EFE', devolucion_fianza: 'EFE',
       };
       return map[p.concept] || 'EFE';
     })();
@@ -167,8 +186,12 @@ export class SesService {
     const titularXml = this.buildPersonaXml({
       firstName: client.firstName, lastName: client.lastName,
       docType: 'dni', docNumber: client.dniPassport || 'NODOC',
-      docCountry: 'ES', birthDate: client.birthDate,
-      phone: client.phone, email: client.email, nationality: client.nationality,
+      docCountry: client.country || 'ES',
+      birthDate: client.birthDate,
+      phone: client.phone, email: client.email,
+      nationality: client.nationality,
+      street: client.street, city: client.city,
+      postalCode: client.postalCode, province: client.province,
     }, 'VI');
 
     const guestesXml = guestsSes.map((g: any) =>
@@ -177,6 +200,9 @@ export class SesService {
         docType: g.docType, docNumber: g.docNumber,
         docCountry: g.docCountry, birthDate: g.birthDate,
         phone: g.phone, nationality: g.docCountry,
+        street: g.street, city: g.city,
+        postalCode: g.postalCode, province: g.province,
+        country: g.country,
       }, 'VI')
     ).join('\n');
 
@@ -193,7 +219,7 @@ export class SesService {
       <internet>true</internet>
       <pago>
         <tipoPago>${tipoPago}</tipoPago>
-        <importe>${Number(booking.totalAmount).toFixed(2)}</importe>
+        <importe>${Number(booking.totalAmount || 0).toFixed(2)}</importe>
       </pago>
     </contrato>
     ${titularXml}
@@ -202,9 +228,14 @@ export class SesService {
 </solicitud>`;
   }
 
-  /** Alias kept for backward-compat with controller */
+  /** Alias for controller backward-compat */
   async buildXml(bookingId: string, organizationId: string): Promise<string> {
-    return this.buildPartViajeros(bookingId, organizationId);
+    return this.buildXmlPartViajeros(bookingId, organizationId);
+  }
+
+  /** Alias kept for BookingsService auto-send */
+  async buildPartViajeros(bookingId: string, organizationId: string): Promise<string> {
+    return this.buildXmlPartViajeros(bookingId, organizationId);
   }
 
   async buildPdf(bookingId: string, organizationId: string): Promise<Buffer> {
@@ -237,12 +268,12 @@ export class SesService {
       doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
       doc.moveDown(0.3);
       doc.fontSize(10).font('Helvetica');
-      doc.text(`Referencia: ${booking.id.slice(0, 20)}`);
+      doc.text(`Referencia: ${booking.id.replace(/-/g, '').slice(0, 20)}`);
       doc.text(`Fecha contrato: ${this.formatDate(booking.createdAt)}`);
       doc.text(`Entrada: ${this.formatDate(booking.checkInDate)}`);
       doc.text(`Salida: ${this.formatDate(booking.checkOutDate)}`);
       doc.text(`Nº personas: ${1 + guests.length}`);
-      doc.text(`Importe: €${Number(booking.totalAmount).toFixed(2)}`);
+      doc.text(`Importe: €${Number(booking.totalAmount || 0).toFixed(2)}`);
       doc.moveDown();
 
       const allPersons = [
@@ -268,7 +299,6 @@ export class SesService {
       doc.moveDown();
       doc.fontSize(8).fillColor('#999')
         .text(`Generado por RentalSuite · ${new Date().toLocaleString('es-ES')}`, { align: 'center' });
-
       doc.end();
     });
   }
@@ -285,10 +315,10 @@ export class SesService {
     if (!sesUser || !sesPass || !sesArrendador || !sesEndpoint)
       throw new BadRequestException('Credenciales SES incompletas. Ve a Configuración → SES Hospedajes.');
 
-    const xml = await this.buildPartViajeros(bookingId, organizationId);
-    const compressed = await deflate(Buffer.from(xml, 'utf-8'));
-    const base64 = compressed.toString('base64');
-    const token = Buffer.from(`${sesUser}:${sesPass}`).toString('base64');
+    const xml     = await this.buildXmlPartViajeros(bookingId, organizationId);
+    const base64  = xmlToZipBase64(xml);
+    // Use escapeXml to safely include special chars in XML attributes/elements
+    const token   = Buffer.from(`${sesUser}:${sesPass}`).toString('base64');
 
     const soapBody = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:com="http://hospedajes.ses.mir.es/">
@@ -297,7 +327,7 @@ export class SesService {
     <com:comunicacion>
       <peticion>
         <cabecera>
-          <arrendador>${sesArrendador}</arrendador>
+          <arrendador>${this.escapeXml(sesArrendador)}</arrendador>
           <aplicacion>RentalSuite</aplicacion>
           <tipoOperacion>A</tipoOperacion>
           <tipoComunicacion>PV</tipoComunicacion>
@@ -335,8 +365,10 @@ export class SesService {
         },
       });
 
-      this.logger.log(JSON.stringify({ event: 'ses_send', bookingId, status: ok ? 'success' : 'error', lote, timestamp: new Date().toISOString() }));
-      await this.logsService.add(ok ? 'info' : 'error', 'ses', ok ? `Parte SES enviado correctamente (lote ${lote})` : `SES rechazó el parte (código ${codigo})`, { bookingId, lote, codigo });
+      this.logger.log(JSON.stringify({ event: 'ses_send', bookingId, status: ok ? 'success' : 'error', lote }));
+      await this.logsService.add(ok ? 'info' : 'error', 'ses',
+        ok ? `Parte SES enviado correctamente (lote ${lote})` : `SES rechazó el parte (código ${codigo})`,
+        { bookingId, lote, codigo });
       return { ok, lote, codigo };
     } catch (err: any) {
       const errorMsg = err.response?.data ? String(err.response.data).slice(0, 500) : err.message;
@@ -410,15 +442,22 @@ export class SesService {
         estado:  estadoMatch  ? estadoMatch[1]  : null,
         codigo:  codigoMatch  ? codigoMatch[1]  : null,
         mensaje: mensajeMatch ? mensajeMatch[1] : null,
-        raw: String(response.data).slice(0, 1000),
       };
     } catch (err: any) {
       throw new BadRequestException(`Error al consultar lote SES: ${err.message}`);
     }
   }
 
+  /**
+   * Tests the SES connection using the catalogo operation (no parameters).
+   * A codigo=0 response means valid credentials.
+   */
   async testConnection(sesEndpoint: string, sesUsuarioWs: string, sesPasswordWs: string, sesCodigoArrendador: string): Promise<{ ok: boolean; message: string }> {
+    if (!sesEndpoint) return { ok: false, message: 'Endpoint no configurado — selecciona un entorno en Ajustes → SES Hospedajes' };
+
     const token = Buffer.from(`${sesUsuarioWs}:${sesPasswordWs}`).toString('base64');
+
+    // Use operación catalogo (tipoOperacion C, empty solicitud) as connection test
     const soapBody = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:com="http://hospedajes.ses.mir.es/">
   <soapenv:Header/>
@@ -428,7 +467,7 @@ export class SesService {
         <cabecera>
           <arrendador>${this.escapeXml(sesCodigoArrendador)}</arrendador>
           <aplicacion>RentalSuite</aplicacion>
-          <tipoOperacion>A</tipoOperacion>
+          <tipoOperacion>C</tipoOperacion>
           <tipoComunicacion>PV</tipoComunicacion>
         </cabecera>
         <solicitud></solicitud>
@@ -448,14 +487,19 @@ export class SesService {
         httpsAgent: buildHttpsAgent(this.mirCa),
         validateStatus: () => true,
       });
-      if (response.status === 200 || response.status === 400 || response.status === 500) {
-        return { ok: true, message: 'Conexión establecida con el Ministerio' };
-      }
+
       if (response.status === 401 || response.status === 403) {
         return { ok: false, message: `Credenciales rechazadas (HTTP ${response.status}) — verifica usuario y contraseña` };
       }
       if (response.status === 404) {
         return { ok: false, message: 'Endpoint no encontrado (HTTP 404) — verifica que has seleccionado el entorno correcto' };
+      }
+      // Any SOAP response (200/400/500) means the server is reachable and credentials may be valid
+      const codigoMatch = response.data ? String(response.data).match(/<codigo>([^<]+)<\/codigo>/) : null;
+      const codigo = codigoMatch ? codigoMatch[1] : null;
+      if (codigo === '0' || response.status === 200 || response.status === 400 || response.status === 500) {
+        const detail = codigo ? ` (código ${codigo})` : '';
+        return { ok: true, message: `Conexión establecida con el Ministerio${detail}` };
       }
       return { ok: false, message: `Respuesta inesperada: HTTP ${response.status}` };
     } catch (err: any) {
@@ -463,7 +507,7 @@ export class SesService {
       if (err.code === 'ETIMEDOUT' || err.code === 'ECONNABORTED') return { ok: false, message: 'Timeout — el servidor no responde' };
       if (err.code === 'ENOTFOUND') return { ok: false, message: 'No se puede resolver el host — verifica el endpoint' };
       if (err.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' || err.code === 'CERT_HAS_EXPIRED') {
-        return { ok: false, message: `Error SSL: ${err.code} — consulta docs/SES_INTEGRACION.md para importar el certificado CA del Ministerio` };
+        return { ok: false, message: `Error SSL: ${err.code} — revisa docs/SES_INTEGRACION.md para importar el certificado CA del Ministerio` };
       }
       return { ok: false, message: `Error de conexión: ${err.message}` };
     }

@@ -5,6 +5,7 @@ WORKDIR /app
 COPY node_modules ./node_modules/
 COPY apps/api/node_modules ./node_modules/
 COPY apps/api/dist ./dist/
+COPY apps/api/certs ./certs/
 COPY apps/api/package.json ./
 
 EXPOSE 3001
