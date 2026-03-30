@@ -24,6 +24,7 @@ import { RecurringExpensesModule } from './recurring-expenses/recurring-expenses
 import { PaperlessModule } from './paperless/paperless.module';
 import { BookingPaymentsModule } from './booking-payments/booking-payments.module';
 import { LogsModule } from './logs/logs.module';
+import { SesModule } from './ses/ses.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { LogsModule } from './logs/logs.module';
     PaperlessModule,
     BookingPaymentsModule,
     LogsModule,
+    SesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

@@ -1,5 +1,5 @@
 # RentalSuite — Tareas pendientes
-> Actualizado 30/03/2026
+> Actualizado 30/03/2026 (sesión tarde)
 
 ## En progreso
 (ninguna)
@@ -41,9 +41,20 @@
 
 ## Pendiente (priorizado)
 
-### SES Hospedajes — Frontend
-- [ ] `Police.tsx`: historial de envíos SES con filtros y opción de reenvío (actualmente es placeholder ComingSoon)
-- [ ] Email de notificación cuando SES devuelve error
+### SES Hospedajes — Integración completa (30/03/2026)
+- [x] sesEntorno ('pruebas'/'produccion') en Organization — reemplaza sesEndpoint manual
+- [x] sesError en Booking — guarda el mensaje de error del Ministerio
+- [x] ses.service.ts: eliminado rejectUnauthorized:false, importación correcta del CA cert (apps/api/certs/mir-ca.pem)
+- [x] buildPartViajeros: XML con pago mapeado desde BookingPayment.concept
+- [x] consultarLote: GET /api/bookings/:id/ses/lote — consulta estado del lote al Ministerio
+- [x] Auto-envío SES al completar checkin online (si credenciales configuradas)
+- [x] POST /api/ses/test — endpoint dedicado de test de conexión
+- [x] BookingDetail: muestra sesError, botón Reenviar en error, botón Consultar lote
+- [x] Bookings: icono 🚔/⚠️ de estado SES en listado
+- [x] Settings: entorno como select (pruebas/produccion) en lugar de URL manual
+- [x] docs/SES_INTEGRACION.md — guía de registro, credenciales, CA cert y uso
+- [ ] `Police.tsx`: historial de envíos SES con filtros y opción de reenvío
+- [ ] Email automático al admin cuando SES devuelve error en envío automático
 
 
 ### Gestión documental — Integración Paperless-ngx

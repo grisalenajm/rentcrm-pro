@@ -486,9 +486,20 @@ export default function Bookings() {
       header: t('common.status'), sortKey: 'status',
       tdClassName: 'px-4 py-3',
       render: (b) => (
-        <span className={`${badgeCls} ${bookingStatusColor[b.status] ?? 'bg-slate-500/10 text-slate-400'}`}>
-          {t(`bookings.statuses.${b.status}`) || b.status}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`${badgeCls} ${bookingStatusColor[b.status] ?? 'bg-slate-500/10 text-slate-400'}`}>
+            {t(`bookings.statuses.${b.status}`) || b.status}
+          </span>
+          {b.sesStatus === 'enviado' && (
+            <span title="SES enviado" className="text-emerald-400 text-xs">🚔</span>
+          )}
+          {b.sesStatus === 'error' && (
+            <span title="Error SES" className="text-red-400 text-xs">⚠️</span>
+          )}
+          {b.sesStatus === 'pendiente' && (
+            <span title="SES pendiente" className="text-amber-400 text-xs">⏳</span>
+          )}
+        </div>
       ),
     },
   ];
@@ -579,9 +590,13 @@ export default function Bookings() {
                     className="w-4 h-4 accent-emerald-500 rounded cursor-pointer shrink-0" />
                   <span className="font-medium text-white truncate">{b.client?.firstName} {b.client?.lastName}</span>
                 </div>
-                <span className={`${badgeCls} ${bookingStatusColor[b.status] ?? 'bg-slate-500/10 text-slate-400'}`}>
-                  {t(`bookings.statuses.${b.status}`) || b.status}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {b.sesStatus === 'enviado' && <span title="SES enviado" className="text-emerald-400 text-xs">🚔</span>}
+                  {b.sesStatus === 'error'   && <span title="Error SES"   className="text-red-400 text-xs">⚠️</span>}
+                  <span className={`${badgeCls} ${bookingStatusColor[b.status] ?? 'bg-slate-500/10 text-slate-400'}`}>
+                    {t(`bookings.statuses.${b.status}`) || b.status}
+                  </span>
+                </div>
               </div>
               <p className="text-slate-400 text-sm mb-2">{b.property?.name}</p>
               <div className="flex justify-between items-center text-xs text-slate-500">

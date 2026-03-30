@@ -7,6 +7,7 @@ import { CreateBookingGuestSesDto } from './dto/booking-guest-ses.dto';
 import { TranslationService } from '../translation/translation.service';
 import { PropertyContentService } from '../property-content/property-content.service';
 import { PropertyRulesService } from '../property-rules/property-rules.service';
+import { SesService } from './ses.service';
 import { renderEmailTemplate } from '../translation/ui-translations';
 import { randomUUID } from 'crypto';
 import * as nodemailer from 'nodemailer';
@@ -20,6 +21,7 @@ export class BookingsService {
     private translationService: TranslationService,
     private propertyContentService: PropertyContentService,
     private propertyRulesService: PropertyRulesService,
+    private sesService: SesService,
   ) {}
 
   async findAll(organizationId: string, propertyId?: string, clientId?: string) {
@@ -679,6 +681,20 @@ export class BookingsService {
           province:   g.province   || null,
           country:    g.country    || null,
         }))
+      });
+    }
+
+    // Auto-send SES if organization has credentials configured
+    const org = await this.prisma.organization.findUnique({ where: { id: booking.organizationId } });
+    if (org && (org as any).sesCodigoArrendador && (org as any).sesUsuarioWs) {
+      this.sesService.sendToSes(booking.id, booking.organizationId).then(result => {
+        if (result.ok) {
+          this.updateStatusOnSesSent(booking.id, booking.organizationId, true).catch(() => {});
+        } else {
+          this.updateStatusOnSesSent(booking.id, booking.organizationId, false).catch(() => {});
+        }
+      }).catch(err => {
+        this.logger.error(JSON.stringify({ event: 'auto_ses_error', bookingId: booking.id, error: err.message }));
       });
     }
 

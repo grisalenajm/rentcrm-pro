@@ -15,7 +15,7 @@ export class OrganizationService {
 
   async update(id: string, dto: any) {
     const data: any = {};
-    const stringFields = ['name','nif','address','phone','email','logo','publicUrl','publicBaseUrl','smtpHost','smtpUser','smtpFrom','currency','dateFormat','sesUsuarioWs','sesPasswordWs','sesCodigoArrendador','sesEndpoint','paperlessUrl','paperlessToken','paperlessSecret','bankSwift','bankIban','bankBeneficiary'];
+    const stringFields = ['name','nif','address','phone','email','logo','publicUrl','publicBaseUrl','smtpHost','smtpUser','smtpFrom','currency','dateFormat','sesUsuarioWs','sesPasswordWs','sesCodigoArrendador','sesEndpoint','sesEntorno','paperlessUrl','paperlessToken','paperlessSecret','bankSwift','bankIban','bankBeneficiary'];
     stringFields.forEach(f => { if (dto[f] !== undefined) data[f] = dto[f]; });
     if (dto.smtpPass) data.smtpPass = dto.smtpPass;
 

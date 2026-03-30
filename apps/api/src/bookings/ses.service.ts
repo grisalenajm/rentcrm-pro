@@ -3,11 +3,18 @@ import { PrismaService } from '../prisma.service';
 import { LogsService } from '../logs/logs.service';
 import * as zlib from 'zlib';
 import { promisify } from 'util';
+import * as fs from 'fs';
+import * as path from 'path';
 import axios from 'axios';
 import * as https from 'https';
 import PDFDocument = require('pdfkit');
 
 const deflate = promisify(zlib.deflateRaw);
+
+const SES_ENDPOINTS: Record<string, string> = {
+  produccion: 'https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion',
+  pruebas:    'https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/v1/comunicacion',
+};
 
 const DOC_TYPE_MAP: Record<string, string> = {
   dni: 'NIF', nie: 'NIE', passport: 'PAS', other: 'OTR',
@@ -22,10 +29,54 @@ const ISO2_TO_3: Record<string, string> = {
   RU:'RUS', UA:'UKR', TR:'TUR', IN:'IND',
 };
 
+/**
+ * Loads the MIR CA certificate from the certs/ directory.
+ * Returns the cert buffer if found, or undefined to use system defaults.
+ * Never uses rejectUnauthorized: false.
+ */
+function loadMirCa(): Buffer | undefined {
+  const certPath = path.join(__dirname, '../../certs/mir-ca.pem');
+  try {
+    if (fs.existsSync(certPath)) {
+      return fs.readFileSync(certPath);
+    }
+  } catch {
+    // Will use system CAs
+  }
+  return undefined;
+}
+
+function buildHttpsAgent(mirCa?: Buffer): https.Agent {
+  if (mirCa) {
+    return new https.Agent({ ca: mirCa });
+  }
+  // No custom CA — use system trust store (correct for production FNMT-RCM signed cert)
+  return new https.Agent();
+}
+
 @Injectable()
 export class SesService {
   private readonly logger = new Logger(SesService.name);
-  constructor(private prisma: PrismaService, private logsService: LogsService) {}
+  private readonly mirCa: Buffer | undefined;
+
+  constructor(private prisma: PrismaService, private logsService: LogsService) {
+    this.mirCa = loadMirCa();
+    if (this.mirCa) {
+      this.logger.log('MIR CA certificate loaded from certs/mir-ca.pem');
+    } else {
+      this.logger.log('No custom MIR CA cert found — using system trust store');
+    }
+  }
+
+  private resolveEndpoint(org: any): string {
+    const entorno: string = org.sesEntorno || '';
+    if (entorno && SES_ENDPOINTS[entorno]) {
+      return SES_ENDPOINTS[entorno];
+    }
+    // Backward-compat: use sesEndpoint if set
+    if (org.sesEndpoint) return org.sesEndpoint;
+    return SES_ENDPOINTS['produccion'];
+  }
 
   private escapeXml(s: string): string {
     return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
@@ -90,11 +141,28 @@ export class SesService {
     return { booking, org, codigoEst };
   }
 
-  async buildXml(bookingId: string, organizationId: string): Promise<string> {
+  /** Builds the parte de viajeros XML (altaParteHospedaje / tipoComunicacion PV) */
+  async buildPartViajeros(bookingId: string, organizationId: string): Promise<string> {
     const { booking, codigoEst } = await this.getBookingData(bookingId, organizationId);
     const client = booking.client as any;
-    const totalPersonas = 1 + (booking.guestsSes?.length || 0);
+    const guestsSes = booking.guestsSes || [];
+    const totalPersonas = 1 + guestsSes.length;
     const referencia = booking.id.slice(0, 20);
+
+    const payments = await this.prisma.bookingPayment.findMany({
+      where: { bookingId },
+      orderBy: { date: 'asc' },
+    });
+    // Pick first non-deposit payment as tipoPago; default EFE (cash)
+    const tipoPago = (() => {
+      const p = payments.find(p => p.concept !== 'fianza');
+      if (!p) return 'EFE';
+      // Map concept to SES payment type
+      const map: Record<string, string> = {
+        pago_reserva: 'TCR', pago_final: 'TCR', fianza: 'EFE', devolucion_fianza: 'EFE',
+      };
+      return map[p.concept] || 'EFE';
+    })();
 
     const titularXml = this.buildPersonaXml({
       firstName: client.firstName, lastName: client.lastName,
@@ -103,7 +171,7 @@ export class SesService {
       phone: client.phone, email: client.email, nationality: client.nationality,
     }, 'VI');
 
-    const guestesXml = (booking.guestsSes || []).map((g: any) =>
+    const guestesXml = guestsSes.map((g: any) =>
       this.buildPersonaXml({
         firstName: g.firstName, lastName: g.lastName,
         docType: g.docType, docNumber: g.docNumber,
@@ -124,7 +192,7 @@ export class SesService {
       <numPersonas>${totalPersonas}</numPersonas>
       <internet>true</internet>
       <pago>
-        <tipoPago>EFE</tipoPago>
+        <tipoPago>${tipoPago}</tipoPago>
         <importe>${Number(booking.totalAmount).toFixed(2)}</importe>
       </pago>
     </contrato>
@@ -132,6 +200,11 @@ export class SesService {
     ${guestesXml}
   </comunicacion>
 </solicitud>`;
+  }
+
+  /** Alias kept for backward-compat with controller */
+  async buildXml(bookingId: string, organizationId: string): Promise<string> {
+    return this.buildPartViajeros(bookingId, organizationId);
   }
 
   async buildPdf(bookingId: string, organizationId: string): Promise<Buffer> {
@@ -147,12 +220,10 @@ export class SesService {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      // Cabecera
       doc.fontSize(18).font('Helvetica-Bold').text('PARTE DE VIAJEROS — SES HOSPEDAJES', { align: 'center' });
       doc.fontSize(10).font('Helvetica').fillColor('#666').text('Real Decreto 933/2021', { align: 'center' });
       doc.moveDown();
 
-      // Datos del establecimiento
       doc.fillColor('#000').fontSize(12).font('Helvetica-Bold').text('ESTABLECIMIENTO');
       doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
       doc.moveDown(0.3);
@@ -162,7 +233,6 @@ export class SesService {
       doc.text(`Código SES: ${codigoEst}`);
       doc.moveDown();
 
-      // Datos de la reserva
       doc.fontSize(12).font('Helvetica-Bold').text('DATOS DE LA RESERVA');
       doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
       doc.moveDown(0.3);
@@ -175,7 +245,6 @@ export class SesService {
       doc.text(`Importe: €${Number(booking.totalAmount).toFixed(2)}`);
       doc.moveDown();
 
-      // Titular
       const allPersons = [
         { ...client, docType: 'DNI/NIE', docNumber: client.dniPassport, rol: 'Titular' },
         ...guests.map((g: any) => ({ ...g, rol: 'Viajero', docType: g.docType?.toUpperCase() })),
@@ -196,10 +265,9 @@ export class SesService {
         doc.moveDown(0.5);
       });
 
-      // Pie
       doc.moveDown();
       doc.fontSize(8).fillColor('#999')
-        .text(`Generado por RentCRM Pro · ${new Date().toLocaleString('es-ES')}`, { align: 'center' });
+        .text(`Generado por RentalSuite · ${new Date().toLocaleString('es-ES')}`, { align: 'center' });
 
       doc.end();
     });
@@ -212,11 +280,12 @@ export class SesService {
     const sesUser       = (org as any).sesUsuarioWs;
     const sesPass       = (org as any).sesPasswordWs;
     const sesArrendador = (org as any).sesCodigoArrendador;
-    const sesEndpoint   = (org as any).sesEndpoint;
+    const sesEndpoint   = this.resolveEndpoint(org);
+
     if (!sesUser || !sesPass || !sesArrendador || !sesEndpoint)
       throw new BadRequestException('Credenciales SES incompletas. Ve a Configuración → SES Hospedajes.');
 
-    const xml = await this.buildXml(bookingId, organizationId);
+    const xml = await this.buildPartViajeros(bookingId, organizationId);
     const compressed = await deflate(Buffer.from(xml, 'utf-8'));
     const base64 = compressed.toString('base64');
     const token = Buffer.from(`${sesUser}:${sesPass}`).toString('base64');
@@ -229,7 +298,7 @@ export class SesService {
       <peticion>
         <cabecera>
           <arrendador>${sesArrendador}</arrendador>
-          <aplicacion>RentCRM Pro</aplicacion>
+          <aplicacion>RentalSuite</aplicacion>
           <tipoOperacion>A</tipoOperacion>
           <tipoComunicacion>PV</tipoComunicacion>
         </cabecera>
@@ -247,7 +316,7 @@ export class SesService {
           'SOAPAction': 'comunicacion',
         },
         timeout: 30000,
-        httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+        httpsAgent: buildHttpsAgent(this.mirCa),
       });
 
       const loteMatch   = response.data.match(/<lote>([^<]+)<\/lote>/);
@@ -255,23 +324,96 @@ export class SesService {
       const lote   = loteMatch   ? loteMatch[1]   : null;
       const codigo = codigoMatch ? codigoMatch[1] : null;
 
-      await (this.prisma.booking as any).update({
+      const ok = codigo === '0';
+      await this.prisma.booking.update({
         where: { id: bookingId },
-        data: { sesLote: lote, sesStatus: codigo === '0' ? 'enviado' : 'error', sesSentAt: new Date() },
+        data: {
+          sesLote: lote,
+          sesStatus: ok ? 'enviado' : 'error',
+          sesError: ok ? null : `Ministerio rechazó el parte (código ${codigo})`,
+          sesSentAt: new Date(),
+        },
       });
 
-      const ok = codigo === '0';
       this.logger.log(JSON.stringify({ event: 'ses_send', bookingId, status: ok ? 'success' : 'error', lote, timestamp: new Date().toISOString() }));
-      await this.logsService.add(ok ? 'info' : 'error', 'SES', ok ? `Parte SES enviado correctamente (lote ${lote})` : `SES rechazó el parte (código ${codigo})`, { bookingId, lote, codigo });
+      await this.logsService.add(ok ? 'info' : 'error', 'ses', ok ? `Parte SES enviado correctamente (lote ${lote})` : `SES rechazó el parte (código ${codigo})`, { bookingId, lote, codigo });
       return { ok, lote, codigo };
     } catch (err: any) {
-      await (this.prisma.booking as any).update({
+      const errorMsg = err.response?.data ? String(err.response.data).slice(0, 500) : err.message;
+      await this.prisma.booking.update({
         where: { id: bookingId },
-        data: { sesStatus: 'error', sesSentAt: new Date() },
+        data: { sesStatus: 'error', sesError: errorMsg, sesSentAt: new Date() },
       });
       this.logger.error(JSON.stringify({ event: 'ses_send', errMsg: err.message, bookingId, status: 'error' }));
-      await this.logsService.add('error', 'SES', `Error al enviar parte SES: ${err.message}`, { bookingId, error: err.response?.data ?? err.message });
+      await this.logsService.add('error', 'ses', `Error al enviar parte SES: ${err.message}`, { bookingId, error: errorMsg });
       throw new BadRequestException(`Error al enviar al SES: ${err.message}`);
+    }
+  }
+
+  async consultarLote(bookingId: string, organizationId: string): Promise<any> {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
+    if (!org) throw new BadRequestException('Organización no encontrada');
+
+    const booking = await this.prisma.booking.findFirst({ where: { id: bookingId, organizationId } });
+    if (!booking) throw new BadRequestException('Reserva no encontrada');
+    if (!(booking as any).sesLote) throw new BadRequestException('Esta reserva no tiene número de lote SES');
+
+    const sesUser       = (org as any).sesUsuarioWs;
+    const sesPass       = (org as any).sesPasswordWs;
+    const sesArrendador = (org as any).sesCodigoArrendador;
+    const sesEndpoint   = this.resolveEndpoint(org);
+
+    if (!sesUser || !sesPass || !sesArrendador)
+      throw new BadRequestException('Credenciales SES incompletas.');
+
+    const token = Buffer.from(`${sesUser}:${sesPass}`).toString('base64');
+    const lote  = (booking as any).sesLote;
+
+    const soapBody = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:com="http://hospedajes.ses.mir.es/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <com:comunicacion>
+      <peticion>
+        <cabecera>
+          <arrendador>${this.escapeXml(sesArrendador)}</arrendador>
+          <aplicacion>RentalSuite</aplicacion>
+          <tipoOperacion>C</tipoOperacion>
+          <tipoComunicacion>PV</tipoComunicacion>
+          <lote>${this.escapeXml(lote)}</lote>
+        </cabecera>
+        <solicitud></solicitud>
+      </peticion>
+    </com:comunicacion>
+  </soapenv:Body>
+</soapenv:Envelope>`;
+
+    try {
+      const response = await axios.post(sesEndpoint, soapBody, {
+        headers: {
+          'Content-Type': 'text/xml; charset=UTF-8',
+          'Authorization': `Basic ${token}`,
+          'SOAPAction': 'comunicacion',
+        },
+        timeout: 15000,
+        httpsAgent: buildHttpsAgent(this.mirCa),
+        validateStatus: () => true,
+      });
+
+      const estadoMatch  = response.data.match(/<estado>([^<]+)<\/estado>/);
+      const codigoMatch  = response.data.match(/<codigo>([^<]+)<\/codigo>/);
+      const mensajeMatch = response.data.match(/<mensaje>([^<]+)<\/mensaje>/);
+
+      return {
+        ok: response.status < 400,
+        lote,
+        estado:  estadoMatch  ? estadoMatch[1]  : null,
+        codigo:  codigoMatch  ? codigoMatch[1]  : null,
+        mensaje: mensajeMatch ? mensajeMatch[1] : null,
+        raw: String(response.data).slice(0, 1000),
+      };
+    } catch (err: any) {
+      throw new BadRequestException(`Error al consultar lote SES: ${err.message}`);
     }
   }
 
@@ -285,7 +427,7 @@ export class SesService {
       <peticion>
         <cabecera>
           <arrendador>${this.escapeXml(sesCodigoArrendador)}</arrendador>
-          <aplicacion>RentCRM Pro</aplicacion>
+          <aplicacion>RentalSuite</aplicacion>
           <tipoOperacion>A</tipoOperacion>
           <tipoComunicacion>PV</tipoComunicacion>
         </cabecera>
@@ -303,23 +445,26 @@ export class SesService {
           'SOAPAction': 'comunicacion',
         },
         timeout: 15000,
-        httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+        httpsAgent: buildHttpsAgent(this.mirCa),
         validateStatus: () => true,
       });
       if (response.status === 200 || response.status === 400 || response.status === 500) {
         return { ok: true, message: 'Conexión establecida con el Ministerio' };
       }
       if (response.status === 401 || response.status === 403) {
-        return { ok: false, message: `Credenciales rechazadas por el Ministerio (HTTP ${response.status}) — verifica usuario y contraseña` };
+        return { ok: false, message: `Credenciales rechazadas (HTTP ${response.status}) — verifica usuario y contraseña` };
       }
       if (response.status === 404) {
-        return { ok: false, message: 'Endpoint no encontrado (HTTP 404) — verifica que has seleccionado el entorno correcto (producción o pruebas)' };
+        return { ok: false, message: 'Endpoint no encontrado (HTTP 404) — verifica que has seleccionado el entorno correcto' };
       }
-      return { ok: false, message: `Respuesta inesperada del servidor: HTTP ${response.status}` };
+      return { ok: false, message: `Respuesta inesperada: HTTP ${response.status}` };
     } catch (err: any) {
       if (err.code === 'ECONNREFUSED') return { ok: false, message: 'Conexión rechazada — endpoint no accesible' };
       if (err.code === 'ETIMEDOUT' || err.code === 'ECONNABORTED') return { ok: false, message: 'Timeout — el servidor no responde' };
       if (err.code === 'ENOTFOUND') return { ok: false, message: 'No se puede resolver el host — verifica el endpoint' };
+      if (err.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' || err.code === 'CERT_HAS_EXPIRED') {
+        return { ok: false, message: `Error SSL: ${err.code} — consulta docs/SES_INTEGRACION.md para importar el certificado CA del Ministerio` };
+      }
       return { ok: false, message: `Error de conexión: ${err.message}` };
     }
   }

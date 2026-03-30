@@ -40,11 +40,18 @@ export class OrganizationController {
   @Roles('admin')
   async testSes(@Request() req) {
     const org = await this.organizationService.findOne(req.user.organizationId);
+    const SES_ENDPOINTS: Record<string, string> = {
+      produccion: 'https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion',
+      pruebas:    'https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/v1/comunicacion',
+    };
+    const endpoint = (org as any).sesEntorno
+      ? SES_ENDPOINTS[(org as any).sesEntorno] || (org as any).sesEndpoint
+      : (org as any).sesEndpoint || SES_ENDPOINTS['produccion'];
     return this.sesService.testConnection(
-      org.sesEndpoint,
-      org.sesUsuarioWs,
-      org.sesPasswordWs,
-      org.sesCodigoArrendador,
+      endpoint,
+      (org as any).sesUsuarioWs,
+      (org as any).sesPasswordWs,
+      (org as any).sesCodigoArrendador,
     );
   }
 }
