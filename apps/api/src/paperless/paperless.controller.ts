@@ -54,7 +54,7 @@ export class PaperlessController {
       const correspondentName: string | undefined = body.correspondent_name;
       if (!correspondentName) {
         this.logger.warn('Paperless webhook: no correspondent_name in payload');
-        await this.logsService.add('warn', 'Paperless', 'Webhook recibido sin correspondent_name', { body });
+        await this.logsService.add('warn', 'Paperless', 'Webhook recibido sin correspondent_name', { document_type_name: body.document_type_name, doc_url: body.doc_url });
         return { ok: true };
       }
 

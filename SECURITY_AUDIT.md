@@ -31,11 +31,9 @@ Los ficheros `apps/api/.env` y `apps/frontend/.env` **existen en disco pero no e
 
 Cubre: `.env`, `.env.*` (excluyendo `.env.example`), `node_modules/`, `dist/`, `build/`, `*.db`, `*.log`. Sin hallazgos críticos.
 
-### ⚠️ apps/frontend — .gitignore parcial
+### ✅ apps/frontend — .gitignore parcial — RESUELTO 30/03/2026
 
-El `.gitignore` de `apps/frontend/` solo cubre `node_modules`, `dist`, `dist-ssr` y `*.local`. No cubre explícitamente `.env`. Está protegido por el `.gitignore` raíz, pero si alguien trabaja desde el subdirectorio sin el root `.gitignore` activo, podría committear `apps/frontend/.env`.
-
-**Solución:** Añadir `.env` y `.env.*` en `apps/frontend/.gitignore`.
+El `.gitignore` de `apps/frontend/` ahora cubre explícitamente `.env` y `.env.*`, además de `node_modules`, `dist`, `dist-ssr` y `*.local`. Incluye comentario explicando que también está cubierto por el `.gitignore` raíz.
 
 ### ⚠️ apps/api/.env — Prisma Accelerate URL con API key en disco
 
@@ -155,14 +153,12 @@ Todos los `.env.example` usan `CHANGE_ME` como placeholder. Correcto.
 
 ---
 
-### [MEDIA] Rol `owner` referenciado pero nunca asignable — bypass efectivo de permisos
+### ✅ [MEDIA] Rol `owner` referenciado pero nunca asignable — RESUELTO 30/03/2026
 
 - **Archivo**: `apps/api/src/expenses/expenses.controller.ts:49,57,66` y `apps/api/src/recurring-expenses/recurring-expenses.controller.ts:51,58,65`
 - **Problema**: Los endpoints de creación/edición/borrado de gastos usan `@Roles('admin', 'owner')`, pero el rol `owner` no existe en el sistema (CreateUserDto solo permite `admin|gestor|viewer`). El resultado es que `gestor` no puede gestionar gastos propios de la propiedad, solo `admin`.
 - **Impacto**: Lógica de control de acceso inconsistente. Los `gestores` están más restringidos de lo esperado (no pueden crear gastos). Si en el futuro se añade el rol `owner` a la BD directamente, tendría permisos no documentados.
-- **Solución**: Decidir la política correcta y hacerla consistente:
-  - Si `gestor` debe poder crear gastos: cambiar a `@Roles('admin', 'gestor')`
-  - Si el rol `owner` es intencional para el futuro: añadirlo a `CreateUserDto` y documentarlo
+- **Solución**: Cambiado `@Roles('admin', 'owner')` a `@Roles('admin', 'gestor')` en ambos controladores (3 endpoints cada uno).
 - **Referencia**: CWE-284 | OWASP: A01:2021 – Broken Access Control
 
 ---
@@ -209,42 +205,31 @@ Todos los `.env.example` usan `CHANGE_ME` como placeholder. Correcto.
 
 ---
 
-### [MEDIA] `signatureImage` sin validación de tamaño ni formato en firma de contratos
+### ✅ [MEDIA] `signatureImage` sin validación de tamaño ni formato en firma de contratos — RESUELTO 30/03/2026
 
 - **Archivo**: `apps/api/src/contracts/dto/sign-contract.dto.ts:5`
 - **Problema**: `signatureImage` solo tiene `@IsString()`, sin `@MaxLength()` ni validación del prefijo `data:image/`. Aunque el body está limitado a 2MB (main.ts), no hay validación de que sea una imagen base64 válida.
 - **Impacto**: Un cliente podría enviar contenido arbitrario que se almacena en la BD y luego se procesa por PDFKit, potencialmente causando errores inesperados o consumo excesivo de memoria.
-- **Solución**:
-  ```typescript
-  @IsString()
-  @MaxLength(500000) // ~375KB imagen PNG
-  @Matches(/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/]+=*$/)
-  signatureImage: string;
-
-  @IsString()
-  @MaxLength(200)
-  signerName: string;
-  ```
+- **Solución**: Añadidos `@MaxLength(500000)` y `@Matches(/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/]+=*$/)` a `signatureImage`, y `@MaxLength(200)` a `signerName`.
 - **Referencia**: CWE-20 | OWASP: A03:2021 – Injection
 
 ---
 
-### [MEDIA] Sin refresh token implementado — JWT con expiración corta sin renovación
+### ✅ [MEDIA] Sin refresh token implementado — JWT con expiración corta sin renovación — RESUELTO 30/03/2026
 
 - **Archivo**: `apps/frontend/src/lib/api.ts`, `apps/api/src/auth/auth.module.ts`
-- **Problema**: El `.env.example` documenta `JWT_REFRESH_SECRET` y `JWT_REFRESH_EXPIRES_IN=7d`, pero no existe ningún endpoint `POST /auth/refresh` ni lógica de refresh token en el código. El access token de 15 minutos expira y el usuario es expulsado.
-- **Impacto**: No hay riesgo de seguridad directo (es más conservador), pero la ausencia de refresh token significa que tokens revocados (por cambio de contraseña) no pueden ser renovados, y el usuario tiene UX degradada. Las variables documentadas en `.env.example` dan expectativa de una feature no implementada.
-- **Solución**: O implementar el endpoint `/auth/refresh` con JWT_REFRESH_SECRET, o eliminar `JWT_REFRESH_SECRET`/`JWT_REFRESH_EXPIRES_IN` del `.env.example` para no generar confusión.
+- **Problema**: El `.env.example` documentaba `JWT_REFRESH_SECRET` y `JWT_REFRESH_EXPIRES_IN=7d`, pero no existe ningún endpoint `POST /auth/refresh`. Las variables generaban expectativa de una feature no implementada.
+- **Solución**: Eliminadas `JWT_REFRESH_SECRET` y `JWT_REFRESH_EXPIRES_IN` del `.env.example`. Se añadió un comentario indicando que el refresh token está pendiente de implementar.
 - **Referencia**: CWE-613 | OWASP: A07:2021 – Identification and Authentication Failures
 
 ---
 
-### [BAJA] `GET /api/` expone endpoint raíz público con información del servidor
+### ✅ [BAJA] `GET /api/` expone endpoint raíz público con información del servidor — RESUELTO 30/03/2026
 
 - **Archivo**: `apps/api/src/app.controller.ts`
-- **Problema**: El endpoint raíz `GET /api/` es `@Public()` y devuelve `"Hello World!"`.
-- **Impacto**: Confirma a atacantes que el servidor está activo y es una aplicación NestJS estándar. Exposición mínima de información.
-- **Solución**: Eliminar el endpoint o devolver HTTP 404.
+- **Problema**: El endpoint raíz `GET /api/` era `@Public()` y devolvía `"Hello World!"`.
+- **Impacto**: Confirmaba a atacantes que el servidor está activo y es una aplicación NestJS estándar.
+- **Solución**: El endpoint ahora lanza `NotFoundException` (HTTP 404).
 
 ---
 
@@ -277,22 +262,11 @@ Todos los `.env.example` usan `CHANGE_ME` como placeholder. Correcto.
 
 ---
 
-### [BAJA] Body del webhook Paperless logueado en Redis cuando no hay correspondent
+### ✅ [BAJA] Body del webhook Paperless logueado en Redis cuando no hay correspondent — RESUELTO 30/03/2026
 
-- **Archivo**: `apps/api/src/paperless/paperless.controller.ts:50`
-- **Problema**:
-  ```typescript
-  await this.logsService.add('warn', 'Paperless', 'Webhook recibido sin correspondent_name', { body });
-  ```
-  El body completo del webhook se almacena en Redis. Si Paperless envía datos sensibles en el body, quedan almacenados en los logs.
-- **Impacto**: Datos del webhook (nombres de archivos, tipos de documentos, URLs) accesibles a cualquier usuario autenticado via `GET /api/logs`.
-- **Solución**: Loguear solo los campos necesarios:
-  ```typescript
-  await this.logsService.add('warn', 'Paperless', 'Webhook recibido sin correspondent_name', {
-    document_type_name: body.document_type_name,
-    doc_url: body.doc_url,
-  });
-  ```
+- **Archivo**: `apps/api/src/paperless/paperless.controller.ts:57`
+- **Problema**: El body completo del webhook se almacenaba en Redis logs.
+- **Solución**: El log ahora solo registra `{ document_type_name, doc_url }`, eliminando el resto del body.
 
 ---
 
@@ -331,7 +305,7 @@ Todos los `.env.example` usan `CHANGE_ME` como placeholder. Correcto.
 | .env files en git | ✅ No detectados |
 | Credenciales hardcodeadas en código | ✅ No detectadas |
 | .gitignore raíz | ✅ Correcto |
-| .gitignore apps/frontend | ⚠️ Parcial (no cubre .env explícitamente) |
+| .gitignore apps/frontend | ✅ Corregido (cubre .env y .env.* explícitamente) |
 | .env.example con valores reales | ✅ Solo CHANGE_ME |
 | API key en apps/api/.env (local, no en git) | ℹ️ Informativo |
 

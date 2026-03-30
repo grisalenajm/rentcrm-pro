@@ -1,5 +1,5 @@
 # RentalSuite — Tareas pendientes
-> Actualizado 27/03/2026
+> Actualizado 30/03/2026
 
 ## En progreso
 (ninguna)
@@ -16,14 +16,14 @@
 ### MEDIA
 - [x] **[SEC-05] BookingDetail.tsx: corregir `localStorage.getItem('token')` + URL hardcodeada puerto 3001** — `BookingDetail.tsx:289-290` (30/03/2026)
 - [x] **[SEC-06] Webhook Paperless: `crypto.timingSafeEqual()` para comparar secret** — timing attack. `paperless.controller.ts:35` (30/03/2026)
-- [ ] **[SEC-07] `signatureImage` en `SignContractDto`: añadir `@MaxLength` y validar formato base64** — `sign-contract.dto.ts`
-- [ ] **[SEC-08] Rol `owner` en expenses/recurring-expenses: nunca alcanzable** — `gestor` no puede gestionar gastos. Decidir política. `expenses.controller.ts:49`
+- [x] **[SEC-07] `signatureImage` en `SignContractDto`: añadir `@MaxLength` y validar formato base64** — `sign-contract.dto.ts` (30/03/2026)
+- [x] **[SEC-08] Rol `owner` en expenses/recurring-expenses: nunca alcanzable** — cambiado a `gestor`. `expenses.controller.ts`, `recurring-expenses.controller.ts` (30/03/2026)
 
 ### BAJA
 - [x] **[SEC-09] `npm audit fix`** — nodemailer, flatted y otros fixes sin breaking change aplicados. (30/03/2026)
-- [ ] **[SEC-10] Eliminar o devolver 404 en `GET /api/`** — endpoint público informativo innecesario.
-- [ ] **[SEC-11] Añadir `.env` a `apps/frontend/.gitignore`** — cobertura explícita del .env local.
-- [ ] **[SEC-12] Limpiar body completo del log en webhook Paperless** — no loguear `{ body }` completo. `paperless.controller.ts:50`
+- [x] **[SEC-10] Eliminar o devolver 404 en `GET /api/`** — endpoint lanza NotFoundException. (30/03/2026)
+- [x] **[SEC-11] Añadir `.env` a `apps/frontend/.gitignore`** — cobertura explícita del .env local. (30/03/2026)
+- [x] **[SEC-12] Limpiar body completo del log en webhook Paperless** — solo se loguea `{ document_type_name, doc_url }`. (30/03/2026)
 
 ### Sesión 27/03/2026
 - [x] Idle timeout reducido de 30 a 15 minutos (AuthContext.tsx `IDLE_TIMEOUT_MS`) (27/03/2026)

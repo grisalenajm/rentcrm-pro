@@ -48,21 +48,21 @@ export class RecurringExpensesController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('admin', 'owner')
+  @Roles('admin', 'gestor')
   create(@Request() req, @Body() body: CreateRecurringExpenseDto) {
     return this.service.create(body, req.user.organizationId);
   }
 
   @Put(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'owner')
+  @Roles('admin', 'gestor')
   update(@Request() req, @Param('id') id: string, @Body() body: UpdateRecurringExpenseDto) {
     return this.service.update(id, body, req.user.organizationId);
   }
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'owner')
+  @Roles('admin', 'gestor')
   remove(@Request() req, @Param('id') id: string) {
     return this.service.remove(id, req.user.organizationId);
   }
