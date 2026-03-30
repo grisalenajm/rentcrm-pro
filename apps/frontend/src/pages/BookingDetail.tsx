@@ -286,13 +286,9 @@ export default function BookingDetail() {
   };
 
   const viewContract = async (contractId: string) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`http://${window.location.hostname}:3001/api/contracts/view/${contractId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const html = await res.text();
-    const blob = new Blob([html], { type: 'text/html' });
-    window.open(URL.createObjectURL(blob), '_blank');
+    const { data } = await api.get(`/contracts/${contractId}`);
+    const apiUrl = import.meta.env.VITE_API_URL ?? '';
+    window.open(`${apiUrl}/api/contracts/view/${data.token}`, '_blank');
   };
 
   if (isLoading) return <div className="p-6 text-slate-400">{t('common.loading')}</div>;

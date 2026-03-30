@@ -1,6 +1,6 @@
 import { Controller, Post, Get, HttpCode, Logger, Req, Res, Param, Query, UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { randomUUID } from 'crypto';
+import { randomUUID, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../prisma.service';
 import { PaperlessService } from './paperless.service';
 import { RedisService } from './redis.service';
@@ -32,7 +32,14 @@ export class PaperlessController {
       const org = await this.prisma.organization.findFirst();
       if (!org) return { ok: false };
 
-      if (org.paperlessSecret && secret !== org.paperlessSecret) {
+      if (!org.paperlessSecret) {
+        return { ok: false, error: 'Webhook secret not configured' };
+      }
+      const secretValid = timingSafeEqual(
+        Buffer.from(secret || ''),
+        Buffer.from(org.paperlessSecret),
+      );
+      if (!secretValid) {
         return { ok: false, error: 'Unauthorized' };
       }
 

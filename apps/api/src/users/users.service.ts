@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { generateSecret, verifySync } from 'otplib';
 import { generate as generateUri } from '@otplib/uri';
 import * as QRCode from 'qrcode';
@@ -83,10 +84,8 @@ export class UsersService {
   async resetPassword(id: string, organizationId: string): Promise<{ tempPassword: string }> {
     await this.findOne(id, organizationId);
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
-    const tempPassword = Array.from(
-      { length: 12 },
-      () => chars[Math.floor(Math.random() * chars.length)],
-    ).join('');
+    const buf = randomBytes(12);
+    const tempPassword = Array.from(buf).map((b) => chars[b % chars.length]).join('');
     const passwordHash = await bcrypt.hash(tempPassword, 10);
     await this.prisma.user.update({ where: { id }, data: { passwordHash, passwordChangedAt: new Date() } });
     return { tempPassword };

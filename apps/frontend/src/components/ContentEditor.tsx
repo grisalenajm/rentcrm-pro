@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import DOMPurify from 'dompurify';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
@@ -126,7 +127,7 @@ export default function ContentEditor({ propertyId }: Props) {
           </div>
           <div
             className="px-4 py-3 text-sm text-slate-300 leading-relaxed max-h-48 overflow-y-auto bg-slate-800/30"
-            dangerouslySetInnerHTML={{ __html: globalContent.template }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(globalContent.template) }}
           />
         </div>
       )}

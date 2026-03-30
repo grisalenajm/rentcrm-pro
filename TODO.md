@@ -8,19 +8,19 @@
 > Ver informe completo en SECURITY_AUDIT.md
 
 ### ALTA
-- [ ] **[SEC-01] Webhook Paperless: hacer obligatorio `paperlessSecret`** — si no está configurado, cualquiera puede crear gastos falsos. `paperless.controller.ts:35`
-- [ ] **[SEC-02] `resetPassword`: reemplazar `Math.random()` por `crypto.randomBytes()`** — PRNG no criptográfico para contraseñas temporales. `users.service.ts:88`
-- [ ] **[SEC-03] `dangerouslySetInnerHTML` en ContentEditor: sanitizar con DOMPurify** — XSS almacenado desde contenido de plantilla. `ContentEditor.tsx:129`
-- [ ] **[SEC-04] `npm audit fix --force`** — path-to-regexp ReDoS en @nestjs/core explotable sin auth.
+- [x] **[SEC-01] Webhook Paperless: hacer obligatorio `paperlessSecret`** — si no está configurado, cualquiera puede crear gastos falsos. `paperless.controller.ts:35` (30/03/2026)
+- [x] **[SEC-02] `resetPassword`: reemplazar `Math.random()` por `crypto.randomBytes()`** — PRNG no criptográfico para contraseñas temporales. `users.service.ts:88` (30/03/2026)
+- [x] **[SEC-03] `dangerouslySetInnerHTML` en ContentEditor: sanitizar con DOMPurify** — XSS almacenado desde contenido de plantilla. `ContentEditor.tsx:129` (30/03/2026)
+- [ ] **[SEC-04] `npm audit fix --force`** — path-to-regexp ReDoS en @nestjs/core explotable sin auth. Requiere breaking change en @nestjs/schematics — evaluar upgrade NestJS.
 
 ### MEDIA
-- [ ] **[SEC-05] BookingDetail.tsx: corregir `localStorage.getItem('token')` + URL hardcodeada puerto 3001** — `BookingDetail.tsx:289-290`
-- [ ] **[SEC-06] Webhook Paperless: `crypto.timingSafeEqual()` para comparar secret** — timing attack. `paperless.controller.ts:35`
+- [x] **[SEC-05] BookingDetail.tsx: corregir `localStorage.getItem('token')` + URL hardcodeada puerto 3001** — `BookingDetail.tsx:289-290` (30/03/2026)
+- [x] **[SEC-06] Webhook Paperless: `crypto.timingSafeEqual()` para comparar secret** — timing attack. `paperless.controller.ts:35` (30/03/2026)
 - [ ] **[SEC-07] `signatureImage` en `SignContractDto`: añadir `@MaxLength` y validar formato base64** — `sign-contract.dto.ts`
 - [ ] **[SEC-08] Rol `owner` en expenses/recurring-expenses: nunca alcanzable** — `gestor` no puede gestionar gastos. Decidir política. `expenses.controller.ts:49`
 
 ### BAJA
-- [ ] **[SEC-09] `npm audit fix`** — nodemailer, flatted, picomatch (sin breaking change).
+- [x] **[SEC-09] `npm audit fix`** — nodemailer, flatted y otros fixes sin breaking change aplicados. (30/03/2026)
 - [ ] **[SEC-10] Eliminar o devolver 404 en `GET /api/`** — endpoint público informativo innecesario.
 - [ ] **[SEC-11] Añadir `.env` a `apps/frontend/.gitignore`** — cobertura explícita del .env local.
 - [ ] **[SEC-12] Limpiar body completo del log en webhook Paperless** — no loguear `{ body }` completo. `paperless.controller.ts:50`

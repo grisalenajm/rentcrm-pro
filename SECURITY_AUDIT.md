@@ -71,10 +71,10 @@ Todos los `.env.example` usan `CHANGE_ME` como placeholder. Correcto.
 
 ---
 
-### [ALTA] Webhook Paperless sin validación de secret obligatoria
+### ✅ [ALTA] Webhook Paperless sin validación de secret obligatoria — RESUELTO 30/03/2026
 
 - **Archivo**: `apps/api/src/paperless/paperless.controller.ts:35`
-- **Problema**: La validación del header `X-Paperless-Secret` es condicional: `if (org.paperlessSecret && secret !== org.paperlessSecret)`. Si `paperlessSecret` es `null` o cadena vacía en la BD, el webhook acepta cualquier petición sin autenticación.
+- **Problema**: La validación del header `X-Paperless-Secret` era condicional: si `paperlessSecret` era `null`, el webhook aceptaba cualquier petición. Además, la comparación era vulnerable a timing attacks.
 - **Impacto**: Cualquiera que conozca la URL del webhook puede enviar peticiones POST falsas que creen o actualicen gastos (`Expense`) en la BD, incluyendo asociación a propiedades reales con importes arbitrarios.
 - **Solución**: Hacer obligatorio el secret:
   ```typescript
@@ -90,7 +90,7 @@ Todos los `.env.example` usan `CHANGE_ME` como placeholder. Correcto.
 
 ---
 
-### [ALTA] `Math.random()` en generación de contraseñas temporales
+### ✅ [ALTA] `Math.random()` en generación de contraseñas temporales — RESUELTO 30/03/2026
 
 - **Archivo**: `apps/api/src/users/users.service.ts:88`
 - **Problema**: La función `resetPassword` usa `Math.random()` para generar contraseñas temporales. `Math.random()` es un PRNG no criptográfico; su salida puede ser predecible con suficiente contexto.
@@ -107,7 +107,7 @@ Todos los `.env.example` usan `CHANGE_ME` como placeholder. Correcto.
 
 ---
 
-### [ALTA] XSS almacenado via `dangerouslySetInnerHTML`
+### ✅ [ALTA] XSS almacenado via `dangerouslySetInnerHTML` — RESUELTO 30/03/2026
 
 - **Archivo**: `apps/frontend/src/components/ContentEditor.tsx:129`
 - **Problema**: El contenido `globalContent.template` se renderiza directamente como HTML sin sanitización:
@@ -167,7 +167,7 @@ Todos los `.env.example` usan `CHANGE_ME` como placeholder. Correcto.
 
 ---
 
-### [MEDIA] `BookingDetail.tsx` lee token desde `localStorage` (siempre null)
+### ✅ [MEDIA] `BookingDetail.tsx` lee token desde `localStorage` (siempre null) — RESUELTO 30/03/2026
 
 - **Archivo**: `apps/frontend/src/pages/BookingDetail.tsx:289-290`
 - **Problema**:
@@ -191,7 +191,7 @@ Todos los `.env.example` usan `CHANGE_ME` como placeholder. Correcto.
 
 ---
 
-### [MEDIA] Validación de webhook Paperless: comparación de secret vulnerable a timing attack
+### ✅ [MEDIA] Validación de webhook Paperless: comparación de secret vulnerable a timing attack — RESUELTO 30/03/2026 (incluido en SEC-01)
 
 - **Archivo**: `apps/api/src/paperless/paperless.controller.ts:35`
 - **Problema**: `secret !== org.paperlessSecret` usa comparación de strings estándar, que termina en el primer carácter diferente (timing leak).
@@ -296,11 +296,10 @@ Todos los `.env.example` usan `CHANGE_ME` como placeholder. Correcto.
 
 ---
 
-### [BAJA] nodemailer < 8.0.4 vulnerable (npm audit)
+### ✅ [BAJA] nodemailer < 8.0.4 vulnerable (npm audit) — RESUELTO 30/03/2026
 
 - **Paquete**: `nodemailer` (fix disponible via `npm audit fix`)
-- **Problema**: Versión vulnerable con fix disponible.
-- **Solución**: `npm audit fix` en el workspace de la API.
+- **Solución**: `npm audit fix` aplicado en la raíz del monorepo el 30/03/2026.
 
 ---
 
