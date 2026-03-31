@@ -31,6 +31,7 @@ COPY --from=builder /app/apps/api/dist ./dist/
 # Copy Prisma schema and migrations (needed by prisma migrate deploy at startup)
 COPY --from=builder /app/apps/api/prisma ./prisma/
 COPY --from=builder /app/apps/api/prisma.config.ts ./prisma.config.ts
+COPY --from=builder /app/apps/api/certs ./certs
 
 EXPOSE 3001
 
