@@ -5,6 +5,7 @@ WORKDIR /app
 # Copy workspace manifests first for better layer caching
 COPY package.json package-lock.json ./
 COPY apps/api/package.json ./apps/api/
+COPY apps/frontend/package.json ./apps/frontend/
 
 # Install all dependencies (devDeps required for nest build and prisma generate)
 RUN npm install --ignore-scripts=false --legacy-peer-deps
