@@ -1,17 +1,40 @@
-FROM node:20-alpine
-
+# ---- Stage 1: Builder ----
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-COPY node_modules ./node_modules/
-COPY apps/frontend/node_modules ./node_modules/
-COPY apps/frontend/src ./src/
-COPY apps/frontend/public ./public/
-COPY apps/frontend/index.html ./
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
+# Copy manifests
 COPY apps/frontend/package.json ./
-COPY apps/frontend/vite.config.ts ./
-COPY apps/frontend/tsconfig*.json ./
-COPY apps/frontend/.env ./.env
+COPY package-lock.json ./
 
-EXPOSE 3000
+# Install dependencies
+RUN npm install --legacy-peer-deps
 
-CMD ["node", "node_modules/.bin/vite", "--host", "0.0.0.0"]
+# Copy source
+COPY apps/frontend/ ./
+
+# Build static output
+RUN npm run build
+
+
+# ---- Stage 2: Runner ----
+FROM nginx:alpine AS runner
+
+# Copy built assets
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# SPA routing: fallback to index.html for all routes
+RUN printf 'server {\n\
+    listen 80;\n\
+    root /usr/share/nginx/html;\n\
+    index index.html;\n\
+    location / {\n\
+        try_files $uri $uri/ /index.html;\n\
+    }\n\
+}\n' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
