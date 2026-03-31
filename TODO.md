@@ -79,8 +79,12 @@
 ### Branding
 - [ ] Integrar SVG logo de RentalSuite en la app (pendiente exportar los SVGs)
 
+### Infraestructura / CI-CD
+- [ ] Migrar CI/CD a opción C (imágenes GHCR)
+- [ ] Limpiar README: separar dev vs prod, corregir URL repo
+
 ### Deploy producción
-- [x] `docker-compose.prod.yml` limpio (17/03/2026)
+- [x] `docker-compose.prod.yml` limpio (17/03/2026) ✓
 - [x] `.env.example` con todas las variables documentadas (17/03/2026)
 - [x] `README.md` bilingüe (EN/ES) profesional para GitHub (17/03/2026)
 - [x] `setup.sh` script de instalación desde cero con Node 20, frontend .env, prisma db push/seed (29/03/2026)

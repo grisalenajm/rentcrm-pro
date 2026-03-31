@@ -223,6 +223,15 @@ Colores: created=amber, registered=blue, processed=emerald, error=red, cancelled
 // Componentes: FormField.tsx, DataTable.tsx, KpiCard.tsx
 ```
 
+### Dockerfile API — lecciones aprendidas
+- **Node 22 en builder**: Prisma 7 requiere Node 22+; el stage builder usa `FROM node:22-alpine`
+- **`--legacy-peer-deps`**: `npm install` debe llevar este flag por conflicto de peer deps de `@nestjs/mapped-types`
+- **`axios` en package.json**: debe estar declarado explícitamente en `apps/api/package.json` (no se hereda del workspace raíz)
+- **`prisma.config.ts` al runner**: copiar con `COPY --from=builder /app/apps/api/prisma.config.ts ./prisma.config.ts`; sin él, `prisma migrate deploy` falla en runtime
+- **Entrypoint**: `exec node dist/src/main` (con `src/`), NO `dist/main`
+- **DATABASE_URL en build time**: `prisma generate` necesita una URL aunque sea dummy: `RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma`
+- **URL en Prisma 7**: va en `prisma.config.ts` (campo `datasource.url`), NO en `schema.prisma`
+
 ### SES Hospedajes
 Endpoint: https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion (SIN /v1/)
 SSL: rejectUnauthorized: false
