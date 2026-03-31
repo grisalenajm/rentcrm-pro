@@ -30,6 +30,11 @@ RUN printf 'server {\n\
     listen 80;\n\
     root /usr/share/nginx/html;\n\
     index index.html;\n\
+    location /api {\n\
+        proxy_pass http://api:3001;\n\
+        proxy_set_header Host $host;\n\
+        proxy_set_header X-Real-IP $remote_addr;\n\
+    }\n\
     location / {\n\
         try_files $uri $uri/ /index.html;\n\
     }\n\
