@@ -14,7 +14,7 @@ jobs:
           ssh-add ~/.ssh/id_ed25519_write
 
       - name: Pull latest code
-        run: git -C ~/rentcrm-pro pull origin main
+        run: git -C ~/rentcrm-pro fetch origin main && git -C ~/rentcrm-pro reset --hard origin/main
 
       - name: Build API
         run: |
