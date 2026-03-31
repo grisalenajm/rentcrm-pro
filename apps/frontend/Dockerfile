@@ -5,25 +5,26 @@ WORKDIR /app
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
-# Copy manifests
-COPY apps/frontend/package.json ./
-COPY package-lock.json ./
+# Copy monorepo manifests for hoisted dependencies
+COPY package.json package-lock.json ./
+COPY apps/frontend/package.json ./apps/frontend/
+COPY apps/api/package.json ./apps/api/
 
-# Install dependencies
+# Install all workspace dependencies (hoisted)
 RUN npm install --legacy-peer-deps
 
-# Copy source
-COPY apps/frontend/ ./
+# Copy frontend source
+COPY apps/frontend/ ./apps/frontend/
 
 # Build static output
-RUN npm run build
+RUN cd apps/frontend && npm run build
 
 
 # ---- Stage 2: Runner ----
 FROM nginx:alpine AS runner
 
 # Copy built assets
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/apps/frontend/dist /usr/share/nginx/html
 
 # SPA routing: fallback to index.html for all routes
 RUN printf 'server {\n\
