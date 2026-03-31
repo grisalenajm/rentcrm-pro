@@ -12,8 +12,8 @@ RUN npm ci
 # Copy API source
 COPY apps/api/ ./apps/api/
 
-# Generate Prisma client
-RUN cd apps/api && npx prisma generate
+# Generate Prisma client (use local binary to avoid npx network lookup)
+RUN node_modules/.bin/prisma generate --schema=apps/api/prisma/schema.prisma
 
 # Compile TypeScript via NestJS CLI
 RUN npm run build --workspace=apps/api
@@ -39,4 +39,4 @@ EXPOSE 3001
 
 # Run migrations before starting the server.
 # DATABASE_URL must be provided at runtime via docker-compose environment.
-CMD ["sh", "-c", "npx prisma migrate deploy && exec node dist/main"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && exec node dist/main"]
