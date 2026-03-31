@@ -84,8 +84,9 @@
 - [ ] Integrar SVG logo de RentalSuite en la app (pendiente exportar los SVGs)
 
 ### Infraestructura / CI-CD
-- [ ] Migrar CI/CD a opción C (imágenes GHCR)
-- [ ] Limpiar README: separar dev vs prod, corregir URL repo
+- [x] Migrar CI/CD a opción C (imágenes GHCR) (31/03/2026)
+- [x] Limpiar README: separar dev vs prod (31/03/2026)
+- [ ] Documentar instrucciones certificado CA FNMT en docs/SES_INTEGRACION.md
 
 ### Deploy producción
 - [x] `docker-compose.prod.yml` limpio (17/03/2026) ✓

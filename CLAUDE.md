@@ -232,6 +232,18 @@ Colores: created=amber, registered=blue, processed=emerald, error=red, cancelled
 - **DATABASE_URL en build time**: `prisma generate` necesita una URL aunque sea dummy: `RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma`
 - **URL en Prisma 7**: va en `prisma.config.ts` (campo `datasource.url`), NO en `schema.prisma`
 
+### Docker — Opción C (producción con GHCR)
+- **Node 22 en builder**: Prisma 7 requiere Node 22+; usar `FROM node:22-alpine` en el stage builder de la API
+- **`--legacy-peer-deps`**: necesario en `npm install` del Dockerfile API por conflicto de peer deps de `@nestjs/mapped-types`
+- **`axios` en `apps/api/package.json`**: declararlo explícitamente; no se hereda del workspace raíz dentro del contenedor
+- **`prisma.config.ts` al runner**: sin este fichero `prisma migrate deploy` falla en runtime — `COPY --from=builder /app/apps/api/prisma.config.ts ./prisma.config.ts`
+- **Entrypoint correcto**: `exec node dist/src/main`, NO `dist/main`
+- **DATABASE_URL dummy en build time**: `prisma generate` la necesita aunque sea ficticia; pasarla como variable inline en el `RUN`
+- **`certs/mir-ca.pem` como volumen, no en la imagen**: el certificado CA del Ministerio se monta en `docker-compose.prod.yml` con `volumes: - ./certs:/app/certs:ro`; no debe copiarse a la imagen (es un secreto de despliegue)
+- **Workflow CI/CD — dos jobs separados**:
+  - `build` → `runs-on: ubuntu-latest`: login GHCR, buildx, build+push imágenes API y frontend
+  - `deploy` → `runs-on: self-hosted`, `needs: [build]`: `docker compose -f docker-compose.prod.yml pull && up -d` directamente en el servidor; sin SSH externo
+
 ### SES Hospedajes
 Endpoint: https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion (SIN /v1/)
 SSL: rejectUnauthorized: false
