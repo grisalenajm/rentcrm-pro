@@ -7,7 +7,7 @@ COPY apps/api/package.json ./
 COPY package-lock.json ./
 
 # Install only API dependencies
-RUN npm install
+RUN npm install --legacy-peer-deps
 RUN ls node_modules/.bin/ | grep prisma || echo "prisma not found"
 
 # Copy API source
