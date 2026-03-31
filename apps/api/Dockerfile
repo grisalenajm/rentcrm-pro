@@ -7,13 +7,13 @@ COPY package.json package-lock.json ./
 COPY apps/api/package.json ./apps/api/
 
 # Install all dependencies (devDeps required for nest build and prisma generate)
-RUN npm ci
+RUN npm install --ignore-scripts=false
 
 # Copy API source
 COPY apps/api/ ./apps/api/
 
-# Generate Prisma client (use local binary to avoid npx network lookup)
-RUN node_modules/.bin/prisma generate --schema=apps/api/prisma/schema.prisma
+# Generate Prisma client
+RUN cd apps/api && npx prisma generate
 
 # Compile TypeScript via NestJS CLI
 RUN npm run build --workspace=apps/api
