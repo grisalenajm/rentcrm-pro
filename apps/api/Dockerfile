@@ -8,7 +8,7 @@ COPY apps/api/package.json ./apps/api/
 COPY apps/frontend/package.json ./apps/frontend/
 
 # Install all dependencies (devDeps required for nest build and prisma generate)
-RUN npm install --ignore-scripts=false --legacy-peer-deps
+RUN npm install --force
 RUN ls node_modules/.bin/ | grep prisma || echo "prisma not found"
 
 # Copy API source
