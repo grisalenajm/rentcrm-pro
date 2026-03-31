@@ -9,7 +9,7 @@ env:
   REPO: grisalenajm/rentcrm-pro
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,14 +51,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Deploy to LXC via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.LXC_HOST }}
-          username: ${{ secrets.LXC_USER }}
-          key: ${{ secrets.LXC_SSH_KEY }}
-          script: |
-            cd ~/rentcrm-pro
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
-            echo "Deploy completado: $(date)"
+  deploy:
+    runs-on: self-hosted
+    needs: [build]
+
+    steps:
+      - name: Pull and restart containers
+        run: |
+          cd ~/rentcrm-pro
+          docker compose -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.prod.yml up -d
+          echo "Deploy completado: $(date)"
