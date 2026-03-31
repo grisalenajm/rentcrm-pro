@@ -14,7 +14,7 @@ RUN ls node_modules/.bin/ | grep prisma || echo "prisma not found"
 COPY apps/api/ ./
 
 # Generate Prisma client
-RUN ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma
 
 # Compile TypeScript via NestJS CLI
 RUN npm run build
