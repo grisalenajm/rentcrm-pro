@@ -46,7 +46,7 @@ export class ExpensesController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('admin', 'owner')
+  @Roles('admin', 'gestor')
   create(@Request() req, @Body() body: CreateExpenseDto) {
     return this.expensesService.create(body, req.user.organizationId);
   }
@@ -54,7 +54,7 @@ export class ExpensesController {
   @Put(':id')
   @SkipThrottle()
   @UseGuards(RolesGuard)
-  @Roles('admin', 'owner')
+  @Roles('admin', 'gestor')
   update(@Request() req, @Param('id') id: string, @Body() body: UpdateExpenseDto) {
     const numId = parseInt(id, 10);
     if (isNaN(numId)) throw new BadRequestException('ID de gasto inválido');
@@ -63,7 +63,7 @@ export class ExpensesController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'owner')
+  @Roles('admin', 'gestor')
   remove(@Request() req, @Param('id') id: string) {
     const numId = parseInt(id, 10);
     if (isNaN(numId)) throw new BadRequestException('ID de gasto inválido');

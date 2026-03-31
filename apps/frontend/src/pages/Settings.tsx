@@ -395,12 +395,13 @@ export default function Settings() {
               </div>
               <div className="col-span-2">
                 <label className={labelCls}>Entorno</label>
-                <select value={currentValue('sesEndpoint')} onChange={f('sesEndpoint')}
+                <select value={currentValue('sesEntorno')} onChange={f('sesEntorno')}
                   className={inputCls}>
                   <option value="">— Seleccionar —</option>
-                  <option value="https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion">🟢 SES Hospedajes — Producción</option>
-                  <option value="https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/v1/comunicacion">🧪 SES Hospedajes — Pruebas</option>
+                  <option value="produccion">🟢 Producción — hospedajes.ses.mir.es</option>
+                  <option value="pruebas">🧪 Pruebas — hospedajes.pre-ses.mir.es</option>
                 </select>
+                <p className="text-xs text-slate-500 mt-1">Usa «Pruebas» hasta obtener el alta definitiva en el Ministerio</p>
               </div>
             </div>
             <div className="border-t border-slate-700 pt-4">
@@ -409,7 +410,7 @@ export default function Settings() {
               </label>
               <button
                 onClick={handleTestSes}
-                disabled={!currentValue('sesEndpoint') || !currentValue('sesUsuarioWs') || sesTesting}
+                disabled={!currentValue('sesEntorno') || !currentValue('sesUsuarioWs') || sesTesting}
                 className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-lg text-sm font-semibold transition-colors">
                 {sesTesting ? '⏳' : '🔌'} {language === 'es' ? 'Probar conexión SES' : 'Test SES connection'}
               </button>

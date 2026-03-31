@@ -51,6 +51,8 @@ export default function BookingDetail() {
   const [sendingWelcome, setSendingWelcome] = useState(false);
   const [sesSending, setSesSending] = useState(false);
   const [sesResult, setSesResult] = useState<{ok: boolean; message: string} | null>(null);
+  const [sesLoteResult, setSesLoteResult] = useState<any>(null);
+  const [sesLoteLoading, setSesLoteLoading] = useState(false);
   const [ratingScore, setRatingScore] = useState(5);
   const [ratingNotes, setRatingNotes] = useState('');
   const [checkinLang, setCheckinLang] = useState('es');
@@ -278,6 +280,7 @@ export default function BookingDetail() {
       setSesResult({ ok: res.data.ok, message: res.data.ok
         ? `✅ Parte enviado correctamente. Lote: ${res.data.lote}`
         : `⚠️ Enviado con advertencias. Código: ${res.data.codigo}` });
+      qc.invalidateQueries({ queryKey: ['booking', id] });
     } catch (err: any) {
       setSesResult({ ok: false, message: `❌ ${err?.response?.data?.message || 'Error al enviar'}` });
     } finally {
@@ -285,14 +288,23 @@ export default function BookingDetail() {
     }
   };
 
+  const consultarLote = async () => {
+    setSesLoteLoading(true);
+    setSesLoteResult(null);
+    try {
+      const res = await api.get(`/bookings/${id}/ses/lote`);
+      setSesLoteResult(res.data);
+    } catch (err: any) {
+      setSesLoteResult({ ok: false, mensaje: err?.response?.data?.message || 'Error al consultar' });
+    } finally {
+      setSesLoteLoading(false);
+    }
+  };
+
   const viewContract = async (contractId: string) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`http://${window.location.hostname}:3001/api/contracts/view/${contractId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const html = await res.text();
-    const blob = new Blob([html], { type: 'text/html' });
-    window.open(URL.createObjectURL(blob), '_blank');
+    const { data } = await api.get(`/contracts/${contractId}`);
+    const apiUrl = import.meta.env.VITE_API_URL ?? '';
+    window.open(`${apiUrl}/api/contracts/view/${data.token}`, '_blank');
   };
 
   if (isLoading) return <div className="p-6 text-slate-400">{t('common.loading')}</div>;
@@ -664,8 +676,14 @@ export default function BookingDetail() {
                 </a>
                 <button onClick={sendSes} disabled={sesSending}
                   className="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 rounded-lg transition-colors font-semibold">
-                  {sesSending ? '⏳ Enviando...' : '📤 Enviar al SES'}
+                  {sesSending ? '⏳ Enviando...' : booking.sesStatus === 'error' ? '🔄 Reenviar al SES' : '📤 Enviar al SES'}
                 </button>
+                {booking.sesLote && (
+                  <button onClick={consultarLote} disabled={sesLoteLoading}
+                    className="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 rounded-lg transition-colors">
+                    {sesLoteLoading ? '⏳' : '🔍'} Consultar lote
+                  </button>
+                )}
               </div>
             </div>
 
@@ -676,9 +694,25 @@ export default function BookingDetail() {
               </p>
             )}
 
+            {booking.sesStatus === 'error' && (booking as any).sesError && (
+              <div className="mb-2 p-3 rounded-lg text-xs bg-red-500/10 text-red-400 border border-red-500/20">
+                <p className="font-semibold mb-1">Error del Ministerio:</p>
+                <p className="font-mono">{(booking as any).sesError}</p>
+              </div>
+            )}
+
             {sesResult && (
               <div className={`mt-2 p-3 rounded-lg text-sm ${sesResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
                 {sesResult.message}
+              </div>
+            )}
+
+            {sesLoteResult && (
+              <div className={`mt-2 p-3 rounded-lg text-sm ${sesLoteResult.ok !== false ? 'bg-slate-800 text-slate-300' : 'bg-red-500/10 text-red-400'}`}>
+                <p className="font-semibold mb-1">Estado del lote {sesLoteResult.lote}:</p>
+                {sesLoteResult.estado  && <p>Estado: <span className="font-mono">{sesLoteResult.estado}</span></p>}
+                {sesLoteResult.codigo  && <p>Código: <span className="font-mono">{sesLoteResult.codigo}</span></p>}
+                {sesLoteResult.mensaje && <p>Mensaje: {sesLoteResult.mensaje}</p>}
               </div>
             )}
 

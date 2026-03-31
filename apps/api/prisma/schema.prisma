@@ -26,6 +26,7 @@ model Organization {
   sesCodigoArrendador String?  @map("ses_codigo_arrendador") @db.VarChar(20)
   sesCodigoEstablecimiento String? @map("ses_codigo_establecimiento") @db.VarChar(20)
   sesEndpoint         String?  @map("ses_endpoint") @db.VarChar(255)
+  sesEntorno          String?  @map("ses_entorno") @db.VarChar(20)
   publicUrl           String?  @map("public_url") @db.VarChar(255)
   publicBaseUrl       String?  @map("public_base_url") @db.VarChar(255)
   paperlessUrl        String?  @map("paperless_url") @db.VarChar(255)
@@ -210,6 +211,7 @@ model Booking {
   guestsSes    BookingGuestSes[]
   sesLote       String?   @map("ses_lote") @db.VarChar(50)
   sesStatus     String?   @map("ses_status") @db.VarChar(20)
+  sesError      String?   @map("ses_error") @db.Text
   sesSentAt     DateTime? @map("ses_sent_at")
   checkinToken  String?   @unique @map("checkin_token") @db.VarChar(64)
   checkinStatus String?   @map("checkin_status") @db.VarChar(20)

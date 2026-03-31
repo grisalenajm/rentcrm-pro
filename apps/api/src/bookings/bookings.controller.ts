@@ -160,4 +160,10 @@ export class BookingsController {
     res.setHeader('Content-Disposition', `attachment; filename="parte-ses-${id.slice(0,8)}.pdf"`);
     res.send(pdf);
   }
+
+  @Get(':id/ses/lote')
+  @Roles('admin', 'gestor')
+  async sesConsultarLote(@Param('id') id: string, @Request() req) {
+    return this.sesService.consultarLote(id, req.user.organizationId);
+  }
 }

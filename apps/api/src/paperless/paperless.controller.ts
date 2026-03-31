@@ -1,6 +1,6 @@
 import { Controller, Post, Get, HttpCode, Logger, Req, Res, Param, Query, UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { randomUUID } from 'crypto';
+import { randomUUID, timingSafeEqual } from 'crypto';
 import { PrismaService } from '../prisma.service';
 import { PaperlessService } from './paperless.service';
 import { RedisService } from './redis.service';
@@ -32,7 +32,14 @@ export class PaperlessController {
       const org = await this.prisma.organization.findFirst();
       if (!org) return { ok: false };
 
-      if (org.paperlessSecret && secret !== org.paperlessSecret) {
+      if (!org.paperlessSecret) {
+        return { ok: false, error: 'Webhook secret not configured' };
+      }
+      const secretValid = timingSafeEqual(
+        Buffer.from(secret || ''),
+        Buffer.from(org.paperlessSecret),
+      );
+      if (!secretValid) {
         return { ok: false, error: 'Unauthorized' };
       }
 
@@ -47,7 +54,7 @@ export class PaperlessController {
       const correspondentName: string | undefined = body.correspondent_name;
       if (!correspondentName) {
         this.logger.warn('Paperless webhook: no correspondent_name in payload');
-        await this.logsService.add('warn', 'Paperless', 'Webhook recibido sin correspondent_name', { body });
+        await this.logsService.add('warn', 'Paperless', 'Webhook recibido sin correspondent_name', { document_type_name: body.document_type_name, doc_url: body.doc_url });
         return { ok: true };
       }
 

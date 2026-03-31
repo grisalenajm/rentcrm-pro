@@ -1,8 +1,29 @@
 # RentalSuite — Tareas pendientes
-> Actualizado 27/03/2026
+> Actualizado 30/03/2026 (sesión tarde)
 
 ## En progreso
 (ninguna)
+
+## 🔴 Seguridad — Corrección inmediata (auditoría 29/03/2026)
+> Ver informe completo en SECURITY_AUDIT.md
+
+### ALTA
+- [x] **[SEC-01] Webhook Paperless: hacer obligatorio `paperlessSecret`** — si no está configurado, cualquiera puede crear gastos falsos. `paperless.controller.ts:35` (30/03/2026)
+- [x] **[SEC-02] `resetPassword`: reemplazar `Math.random()` por `crypto.randomBytes()`** — PRNG no criptográfico para contraseñas temporales. `users.service.ts:88` (30/03/2026)
+- [x] **[SEC-03] `dangerouslySetInnerHTML` en ContentEditor: sanitizar con DOMPurify** — XSS almacenado desde contenido de plantilla. `ContentEditor.tsx:129` (30/03/2026)
+- [ ] **[SEC-04] `npm audit fix --force`** — path-to-regexp ReDoS en @nestjs/core explotable sin auth. Requiere breaking change en @nestjs/schematics — evaluar upgrade NestJS.
+
+### MEDIA
+- [x] **[SEC-05] BookingDetail.tsx: corregir `localStorage.getItem('token')` + URL hardcodeada puerto 3001** — `BookingDetail.tsx:289-290` (30/03/2026)
+- [x] **[SEC-06] Webhook Paperless: `crypto.timingSafeEqual()` para comparar secret** — timing attack. `paperless.controller.ts:35` (30/03/2026)
+- [x] **[SEC-07] `signatureImage` en `SignContractDto`: añadir `@MaxLength` y validar formato base64** — `sign-contract.dto.ts` (30/03/2026)
+- [x] **[SEC-08] Rol `owner` en expenses/recurring-expenses: nunca alcanzable** — cambiado a `gestor`. `expenses.controller.ts`, `recurring-expenses.controller.ts` (30/03/2026)
+
+### BAJA
+- [x] **[SEC-09] `npm audit fix`** — nodemailer, flatted y otros fixes sin breaking change aplicados. (30/03/2026)
+- [x] **[SEC-10] Eliminar o devolver 404 en `GET /api/`** — endpoint lanza NotFoundException. (30/03/2026)
+- [x] **[SEC-11] Añadir `.env` a `apps/frontend/.gitignore`** — cobertura explícita del .env local. (30/03/2026)
+- [x] **[SEC-12] Limpiar body completo del log en webhook Paperless** — solo se loguea `{ document_type_name, doc_url }`. (30/03/2026)
 
 ### Sesión 27/03/2026
 - [x] Idle timeout reducido de 30 a 15 minutos (AuthContext.tsx `IDLE_TIMEOUT_MS`) (27/03/2026)
@@ -20,9 +41,20 @@
 
 ## Pendiente (priorizado)
 
-### SES Hospedajes — Frontend
-- [ ] `Police.tsx`: historial de envíos SES con filtros y opción de reenvío (actualmente es placeholder ComingSoon)
-- [ ] Email de notificación cuando SES devuelve error
+### SES Hospedajes — Integración completa (30/03/2026)
+- [x] sesEntorno ('pruebas'/'produccion') en Organization — reemplaza sesEndpoint manual
+- [x] sesError en Booking — guarda el mensaje de error del Ministerio
+- [x] ses.service.ts: eliminado rejectUnauthorized:false, importación correcta del CA cert (apps/api/certs/mir-ca.pem)
+- [x] buildPartViajeros: XML con pago mapeado desde BookingPayment.concept
+- [x] consultarLote: GET /api/bookings/:id/ses/lote — consulta estado del lote al Ministerio
+- [x] Auto-envío SES al completar checkin online (si credenciales configuradas)
+- [x] POST /api/ses/test — endpoint dedicado de test de conexión
+- [x] BookingDetail: muestra sesError, botón Reenviar en error, botón Consultar lote
+- [x] Bookings: icono 🚔/⚠️ de estado SES en listado
+- [x] Settings: entorno como select (pruebas/produccion) en lugar de URL manual
+- [x] docs/SES_INTEGRACION.md — guía de registro, credenciales, CA cert y uso
+- [ ] `Police.tsx`: historial de envíos SES con filtros y opción de reenvío
+- [ ] Email automático al admin cuando SES devuelve error en envío automático
 
 
 ### Gestión documental — Integración Paperless-ngx
