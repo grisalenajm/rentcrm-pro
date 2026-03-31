@@ -13,7 +13,7 @@ RUN npm install --ignore-scripts=false
 COPY apps/api/ ./apps/api/
 
 # Generate Prisma client
-RUN cd apps/api && npx prisma generate
+RUN ./node_modules/.bin/prisma generate --schema=apps/api/prisma/schema.prisma
 
 # Compile TypeScript via NestJS CLI
 RUN npm run build --workspace=apps/api
