@@ -36,4 +36,4 @@ EXPOSE 3001
 
 # Run migrations before starting the server.
 # DATABASE_URL must be provided at runtime via docker-compose environment.
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && exec node dist/main"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && exec node dist/src/main"]
