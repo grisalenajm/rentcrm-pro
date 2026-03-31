@@ -6,8 +6,8 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 
 const SES_ENDPOINTS: Record<string, string> = {
-  produccion: 'https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion',
-  pruebas:    'https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/v1/comunicacion',
+  produccion: 'https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion',
+  pruebas:    'https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/comunicacion',
 };
 
 @Controller('ses')

@@ -41,8 +41,8 @@ export class OrganizationController {
   async testSes(@Request() req) {
     const org = await this.organizationService.findOne(req.user.organizationId);
     const SES_ENDPOINTS: Record<string, string> = {
-      produccion: 'https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion',
-      pruebas:    'https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/v1/comunicacion',
+      produccion: 'https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion',
+      pruebas:    'https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/comunicacion',
     };
     const endpoint = (org as any).sesEntorno
       ? SES_ENDPOINTS[(org as any).sesEntorno] || (org as any).sesEndpoint

@@ -9,8 +9,8 @@ import AdmZip = require('adm-zip');
 import PDFDocument = require('pdfkit');
 
 const SES_ENDPOINTS: Record<string, string> = {
-  produccion: 'https://hospedajes.ses.mir.es/hospedajes-web/ws/v1/comunicacion',
-  pruebas:    'https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/v1/comunicacion',
+  produccion: 'https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion',
+  pruebas:    'https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/comunicacion',
 };
 
 const DOC_TYPE_MAP: Record<string, string> = {
