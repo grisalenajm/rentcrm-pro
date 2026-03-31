@@ -1,37 +1,31 @@
 # ---- Stage 1: Builder ----
 FROM node:22-alpine AS builder
-WORKDIR /app
+WORKDIR /app/apps/api
 
-# Copy workspace manifests first for better layer caching
-COPY package.json package-lock.json ./
-COPY apps/api/package.json ./apps/api/
-COPY apps/frontend/package.json ./apps/frontend/
+# Copy only API package manifests (no frontend deps)
+COPY apps/api/package.json ./
+COPY package-lock.json ./
 
-# Install all dependencies (devDeps required for nest build and prisma generate)
-RUN npm ci
+# Install only API dependencies
+RUN npm install
 RUN ls node_modules/.bin/ | grep prisma || echo "prisma not found"
 
 # Copy API source
-COPY apps/api/ ./apps/api/
+COPY apps/api/ ./
 
 # Generate Prisma client
-RUN ./node_modules/.bin/prisma generate --schema=apps/api/prisma/schema.prisma
+RUN ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma
 
 # Compile TypeScript via NestJS CLI
-RUN npm run build --workspace=apps/api
+RUN npm run build
 
 
 # ---- Stage 2: Runner ----
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Copy node_modules from builder:
-#   - hoisted monorepo deps (includes prisma CLI and generated @prisma/client)
-#   - workspace-level non-hoisted deps
-COPY --from=builder /app/node_modules ./node_modules/
-COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules/
-
-# Copy compiled output (dist/main.js is the entrypoint)
+# Copy node_modules and compiled output from builder
+COPY --from=builder /app/apps/api/node_modules ./node_modules/
 COPY --from=builder /app/apps/api/dist ./dist/
 
 # Copy Prisma schema and migrations (needed by prisma migrate deploy at startup)
