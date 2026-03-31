@@ -41,6 +41,10 @@
 
 ## Pendiente (priorizado)
 
+### SES Hospedajes — Pendiente
+- [ ] SES Hospedajes: completar integración certificado CA FNMT (beta)
+- [ ] Escribir docs/SES_INTEGRACION.md con instrucciones certificado
+
 ### SES Hospedajes — Integración completa (30/03/2026)
 - [x] sesEntorno ('pruebas'/'produccion') en Organization — reemplaza sesEndpoint manual
 - [x] sesError en Booking — guarda el mensaje de error del Ministerio

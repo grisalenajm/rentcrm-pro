@@ -94,34 +94,29 @@ Frontend: http://localhost:5173 — API: http://localhost:3001
 
 ### Full Installation (production)
 
-#### Option A — Automated (recommended)
+#### Requirements
+
+- A Linux server with Docker ≥ 24 and the Compose plugin (`docker compose version`)
+- Ports 80/443 open (for Nginx + Let's Encrypt)
+- No Node.js required on the server — images are pre-built via GitHub Actions
+
+#### Step 1 — Download the compose file and environment template
 
 ```bash
-git clone https://github.com/your-org/rentalsuite.git
-cd rentalsuite
-chmod +x setup.sh
-sudo ./setup.sh
+mkdir rentalsuite && cd rentalsuite
+
+# Download only the files needed to run
+curl -O https://raw.githubusercontent.com/grisalenajm/rentcrm-pro/main/docker-compose.prod.yml
+curl -O https://raw.githubusercontent.com/grisalenajm/rentcrm-pro/main/.env.example
 ```
 
-The script checks requirements, collects configuration interactively, generates
-`.env`, builds Docker images, runs database migrations, and configures Nginx + SSL.
-
-#### Option B — Manual step-by-step
-
-**1. Clone the repository**
-
-```bash
-git clone https://github.com/your-org/rentalsuite.git
-cd rentalsuite
-```
-
-**2. Configure environment variables**
+#### Step 2 — Configure environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and replace every `CHANGE_ME` / `YOUR_DOMAIN` placeholder:
+Edit `.env` and fill in the required secrets:
 
 ```bash
 # Minimum required (DATABASE_URL and REDIS_URL are auto-built by docker-compose):
@@ -130,57 +125,41 @@ REDIS_PASSWORD=another-strong-password  # openssl rand -hex 32
 JWT_SECRET=$(openssl rand -hex 64)
 JWT_REFRESH_SECRET=$(openssl rand -hex 64)
 FRONTEND_URL=https://your-domain.com
-VITE_API_URL=https://your-domain.com
 ```
 
-**2b. Create the frontend environment file**
-
-```bash
-cp apps/frontend/.env.example apps/frontend/.env
-# Edit apps/frontend/.env and set VITE_API_URL=https://your-domain.com
-```
-
-This file is required by the frontend Docker build (`COPY apps/frontend/.env ./.env`).
-
-**3. Install Node dependencies**
-
-```bash
-npm install
-```
-
-**4. Build Docker images**
-
-```bash
-docker compose -f docker-compose.prod.yml build
-```
-
-**5. Start services**
+#### Step 3 — Start services
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-**6. Run database migrations**
+This pulls the pre-built images from GHCR and starts PostgreSQL, Redis, API and frontend.
+Database migrations run automatically on API startup.
 
-```bash
-cd apps/api
+#### Step 4 — Configure Nginx + SSL
 
-# On a fresh install, sync the schema first (handles any migration/schema drift):
-DATABASE_URL="postgresql://rentcrm:strong-password@localhost:5432/rentcrm" \
-  npx prisma db push
+See the Nginx + SSL section below.
 
-# Then apply pending migrations:
-DATABASE_URL="postgresql://rentcrm:strong-password@localhost:5432/rentcrm" \
-  npx prisma migrate deploy
+### Post-installation Configuration
 
-# Seed initial data (first install only):
-DATABASE_URL="postgresql://rentcrm:strong-password@localhost:5432/rentcrm" \
-  npx prisma db seed
+Once the app is running, complete the setup from **Settings** in the web UI:
 
-cd ../..
-```
+**SMTP (email features)**
+- Go to Settings → Organization → SMTP
+- Fill in host, port, user, password and sender address
+- Required for: contract emails, check-in links, recurring expense notifications
 
-**7. Configure Nginx + SSL** — see section below.
+**SES Hospedajes** *(beta — Spain's Ministry of Interior traveller registration)*
+- Go to Settings → Integrations → SES Hospedajes
+- Enter your SES credentials (`sesUsuarioWs`, `sesPasswordWs`) and property codes (`sesCodigoEstablecimiento` per property)
+- Select environment: `pruebas` (testing) or `produccion`
+- **Note:** SES requires a valid CA certificate from FNMT (Spain's national CA). See [`docs/SES_INTEGRACION.md`](docs/SES_INTEGRACION.md) for full setup instructions including certificate installation.
+
+**Paperless-ngx** *(optional — document management)*
+- Go to Settings → Integrations → Paperless-ngx
+- Enter your Paperless URL, API token and webhook secret
+- Configure a Paperless Workflow to POST to `https://your-domain.com/api/paperless/webhook`
+- See [`PAPERLESS_INTEGRATION.md`](PAPERLESS_INTEGRATION.md) for full setup guide
 
 ### Nginx + SSL Configuration
 
