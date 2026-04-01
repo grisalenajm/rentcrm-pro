@@ -29,6 +29,8 @@ services:
   api:
     image: ghcr.io/grisalenajm/rentcrm-pro/api:latest
     container_name: rentcrm-api
+    volumes:
+      - ./certs:/app/certs:ro
     restart: unless-stopped
     ports:
       - "3001:3001"

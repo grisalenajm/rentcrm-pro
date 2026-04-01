@@ -80,6 +80,11 @@
 - ❌ `deducible` en el modelo (sin t)
 - ✅ `deductible` (con t) — nombre en inglés consistente con el resto del schema
 
+## SES Hospedajes namespace SOAP incorrecto
+- ❌ `xmlns:com="http://hospedajes.ses.mir.es/"` → HTTP 404 del Ministerio
+- ✅ `xmlns:com="http://www.soap.servicios.hospedajes.mir.es/comunicacion"` (namespace oficial v3.1.3)
+- Lección: el namespace incorrecto causa 404, no un error SOAP — difícil de diagnosticar
+
 ## Parser de importe Paperless: formato europeo
 - ❌ `.replace(/[^0-9.,]/g, '').replace(',', '.')` → `EUR1.476,20` produce `1.476` (incorrecto)
 - ✅ Si el string contiene coma: quitar todos los puntos primero (miles), luego coma→punto

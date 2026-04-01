@@ -245,10 +245,41 @@ Colores: created=amber, registered=blue, processed=emerald, error=red, cancelled
   - `deploy` → `runs-on: self-hosted`, `needs: [build]`: `docker compose -f docker-compose.prod.yml pull && up -d` directamente en el servidor; sin SSH externo
 
 ### SES Hospedajes
-Endpoint: https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion (SIN /v1/)
-SSL: rejectUnauthorized: false
+Endpoint producción: `https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion` (SIN /v1/)
+Endpoint pruebas:   `https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/comunicacion` (SIN /v1/)
+Namespace SOAP correcto: `xmlns:com="http://www.soap.servicios.hospedajes.mir.es/comunicacion"` (API v3.1.3)
+  ❌ NUNCA usar `xmlns:com="http://hospedajes.ses.mir.es/"` → causa HTTP 404
+SSL: certificado CA del Ministerio (FNMT) cargado desde `certs/mir-ca.pem` — NUNCA rejectUnauthorized: false
 sesCodigoEstablecimiento: en Property, NO en Organization
 Pendiente: alta en hospedajes.ses.mir.es
+
+Curl de prueba funcional:
+```bash
+# Requiere credenciales reales y cadena CA del Ministerio en certs/mir-ca.pem
+curl -s -u 'USUARIO_WS:PASSWORD_WS' \
+  --cacert certs/mir-ca.pem \
+  -H 'Content-Type: text/xml; charset=UTF-8' \
+  -H 'SOAPAction: comunicacion' \
+  -d '<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:com="http://www.soap.servicios.hospedajes.mir.es/comunicacion">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <com:comunicacion>
+      <peticion>
+        <cabecera>
+          <arrendador>CODIGO_ARRENDADOR</arrendador>
+          <aplicacion>RentalSuite</aplicacion>
+          <tipoOperacion>C</tipoOperacion>
+          <tipoComunicacion>PV</tipoComunicacion>
+        </cabecera>
+        <solicitud></solicitud>
+      </peticion>
+    </com:comunicacion>
+  </soapenv:Body>
+</soapenv:Envelope>' \
+  https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion
+# Respuesta esperada: <codigo>0</codigo> = conexión OK
+```
 
 ## Deploy desde cero (CRÍTICO)
 
