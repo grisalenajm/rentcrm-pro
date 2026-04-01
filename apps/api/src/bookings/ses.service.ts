@@ -324,7 +324,7 @@ export class SesService {
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:com="http://www.soap.servicios.hospedajes.mir.es/comunicacion">
   <soapenv:Header/>
   <soapenv:Body>
-    <com:comunicacion>
+    <com:comunicacionRequest>
       <peticion>
         <cabecera>
           <arrendador>${this.escapeXml(sesArrendador)}</arrendador>
@@ -334,7 +334,7 @@ export class SesService {
         </cabecera>
         <solicitud>${base64}</solicitud>
       </peticion>
-    </com:comunicacion>
+    </com:comunicacionRequest>
   </soapenv:Body>
 </soapenv:Envelope>`;
 
@@ -405,7 +405,7 @@ export class SesService {
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:com="http://www.soap.servicios.hospedajes.mir.es/comunicacion">
   <soapenv:Header/>
   <soapenv:Body>
-    <com:comunicacion>
+    <com:comunicacionRequest>
       <peticion>
         <cabecera>
           <arrendador>${this.escapeXml(sesArrendador)}</arrendador>
@@ -416,7 +416,7 @@ export class SesService {
         </cabecera>
         <solicitud></solicitud>
       </peticion>
-    </com:comunicacion>
+    </com:comunicacionRequest>
   </soapenv:Body>
 </soapenv:Envelope>`;
 
@@ -462,7 +462,7 @@ export class SesService {
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:com="http://www.soap.servicios.hospedajes.mir.es/comunicacion">
   <soapenv:Header/>
   <soapenv:Body>
-    <com:comunicacion>
+    <com:comunicacionRequest>
       <peticion>
         <cabecera>
           <arrendador>${this.escapeXml(sesCodigoArrendador)}</arrendador>
@@ -472,7 +472,7 @@ export class SesService {
         </cabecera>
         <solicitud></solicitud>
       </peticion>
-    </com:comunicacion>
+    </com:comunicacionRequest>
   </soapenv:Body>
 </soapenv:Envelope>`;
 
@@ -492,6 +492,7 @@ export class SesService {
         return { ok: false, message: `Credenciales rechazadas (HTTP ${response.status}) — verifica usuario y contraseña` };
       }
       if (response.status === 404) {
+        this.logger.warn(`SES 404 body: ${String(response.data).slice(0, 500)}`);
         return { ok: false, message: 'Endpoint no encontrado (HTTP 404) — verifica que has seleccionado el entorno correcto' };
       }
       // Any SOAP response (200/400/500) means the server is reachable and credentials may be valid

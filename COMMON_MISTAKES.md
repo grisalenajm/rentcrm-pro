@@ -85,6 +85,10 @@
 - ✅ `xmlns:com="http://www.soap.servicios.hospedajes.mir.es/comunicacion"` (namespace oficial v3.1.3)
 - Lección: el namespace incorrecto causa 404, no un error SOAP — difícil de diagnosticar
 
+## SES elemento SOAP incorrecto
+- ❌ `<com:comunicacion>` como elemento raíz dentro del Body → el Ministerio rechaza la petición
+- ✅ `<com:comunicacionRequest>` (API v3.1.3) — afecta a sendToSes, consultarLote y testConnection
+
 ## Parser de importe Paperless: formato europeo
 - ❌ `.replace(/[^0-9.,]/g, '').replace(',', '.')` → `EUR1.476,20` produce `1.476` (incorrecto)
 - ✅ Si el string contiene coma: quitar todos los puntos primero (miles), luego coma→punto
