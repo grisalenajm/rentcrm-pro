@@ -36,6 +36,7 @@ export class SesController {
       return { ok: false, message: 'Credenciales SES incompletas — configura usuario y código arrendador en Ajustes → SES Hospedajes' };
     }
 
+    console.log('SES TEST - endpoint:', endpoint, 'usuario:', (org as any).sesUsuarioWs, 'password length:', (org as any).sesPasswordWs?.length);
     return this.sesService.testConnection(
       endpoint,
       (org as any).sesUsuarioWs,
