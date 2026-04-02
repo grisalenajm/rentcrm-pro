@@ -54,23 +54,21 @@ Spain's Ministry of Interior traveller registration system).
 ### Requirements
 
 - **Docker** ≥ 24 with the Compose plugin (`docker compose version`)
-- **Node.js** ≥ 20 + npm (for Prisma CLI and building images)
 - A Linux server with ports 80/443 open (for Nginx + Let's Encrypt)
+- No Node.js required on the server — images are pre-built via GitHub Actions
 - An **SMTP account** (optional, needed for email features)
-
-> **Node.js 20 on Ubuntu 24.04** — Ubuntu 24.04 ships Node 18 by default.
-> Install Node 20 via NodeSource before running any `npm` commands:
-> ```bash
-> curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-> sudo apt-get install -y nodejs
-> node --version   # should print v20.x.x
-> ```
 
 ### Quick Start (local development, 5 min)
 
+> Node.js 20+ required locally. On Ubuntu 24.04 install via NodeSource:
+> ```bash
+> curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+> sudo apt-get install -y nodejs
+> ```
+
 ```bash
-git clone https://github.com/your-org/rentalsuite.git
-cd rentalsuite
+git clone https://github.com/grisalenajm/rentcrm-pro.git
+cd rentcrm-pro
 
 # Infrastructure
 docker compose up -d postgres redis
@@ -79,9 +77,9 @@ docker compose up -d postgres redis
 npm install
 
 # Database
-cd apps/api
-DATABASE_URL="postgresql://rentcrm:CHANGE_ME@localhost:5432/rentcrm" npx prisma migrate dev
-cd ../..
+PGPASS=your_local_password
+DATABASE_URL="postgresql://rentcrm:${PGPASS}@127.0.0.1:5432/rentcrm" \
+  npx prisma migrate dev --schema=apps/api/prisma/schema.prisma
 
 # Run API (terminal 1)
 npm run dev --workspace=apps/api
@@ -98,14 +96,13 @@ Frontend: http://localhost:5173 — API: http://localhost:3001
 
 - A Linux server with Docker ≥ 24 and the Compose plugin (`docker compose version`)
 - Ports 80/443 open (for Nginx + Let's Encrypt)
-- No Node.js required on the server — images are pre-built via GitHub Actions
+- No Node.js required on the server
 
-#### Step 1 — Download the compose file and environment template
+#### Step 1 — Download compose file and environment template
 
 ```bash
 mkdir rentalsuite && cd rentalsuite
 
-# Download only the files needed to run
 curl -O https://raw.githubusercontent.com/grisalenajm/rentcrm-pro/main/docker-compose.prod.yml
 curl -O https://raw.githubusercontent.com/grisalenajm/rentcrm-pro/main/.env.example
 ```
@@ -114,29 +111,68 @@ curl -O https://raw.githubusercontent.com/grisalenajm/rentcrm-pro/main/.env.exam
 
 ```bash
 cp .env.example .env
+nano .env
 ```
 
-Edit `.env` and fill in the required secrets:
+Minimum required values (`DATABASE_URL` and `REDIS_URL` are auto-built by docker-compose):
 
 ```bash
-# Minimum required (DATABASE_URL and REDIS_URL are auto-built by docker-compose):
-POSTGRES_PASSWORD=strong-password       # openssl rand -hex 32
-REDIS_PASSWORD=another-strong-password  # openssl rand -hex 32
-JWT_SECRET=$(openssl rand -hex 64)
-JWT_REFRESH_SECRET=$(openssl rand -hex 64)
+POSTGRES_USER=rentcrm
+POSTGRES_DB=rentcrm
+POSTGRES_PASSWORD=           # openssl rand -hex 32
+REDIS_PASSWORD=              # openssl rand -hex 32
+JWT_SECRET=                  # openssl rand -hex 64
+JWT_REFRESH_SECRET=          # openssl rand -hex 64
 FRONTEND_URL=https://your-domain.com
 ```
 
 #### Step 3 — Start services
 
+If you have containers from a previous installation with conflicting names, remove them first:
+
 ```bash
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml down
+# or individually: docker rm -f rentcrm-api rentcrm-frontend rentcrm-postgres rentcrm-redis
 ```
 
-This pulls the pre-built images from GHCR and starts PostgreSQL, Redis, API and frontend.
-Database migrations run automatically on API startup.
+Start all services (pulls pre-built images from GHCR):
 
-#### Step 4 — Configure Nginx + SSL
+```bash
+docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml ps   # all should be Up
+docker logs rentcrm-api --tail=30              # wait until API is ready
+```
+
+#### Step 4 — Run database migrations
+
+Migrations do **not** run automatically. Run them once after the first `up -d`:
+
+```bash
+docker exec -it rentcrm-api sh -c "node_modules/.bin/prisma migrate deploy"
+docker compose -f docker-compose.prod.yml restart api
+```
+
+Expected output: `All migrations have been successfully applied.`
+
+#### Step 5 — Create your organization and admin user
+
+No Node.js needed on the server — the seed runs inside the container:
+
+```bash
+docker exec -it rentcrm-api sh -c "
+  SEED_ORG_NAME='Your Company Name' \
+  SEED_ADMIN_EMAIL='you@example.com' \
+  SEED_ADMIN_PASSWORD='your-secure-password' \
+  node dist/prisma/seed.js
+"
+```
+
+Optional variables: `SEED_ORG_NIF`, `SEED_ORG_ADDRESS`, `SEED_ADMIN_NAME`.
+The seed uses upsert — safe to re-run (no duplicate data).
+
+**After first login:** change your password from Settings > Profile.
+
+#### Step 6 — Configure Nginx + SSL
 
 See the Nginx + SSL section below.
 
@@ -232,36 +268,43 @@ sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d your-domain.com --email you@example.com --agree-tos
 ```
 
+### Updating to a new version
+
+```bash
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+
+# Apply any new migrations
+docker exec -it rentcrm-api sh -c "node_modules/.bin/prisma migrate deploy"
+docker compose -f docker-compose.prod.yml restart api
+```
+
 ### Useful Commands
 
 ```bash
+# Load env vars into the shell (required for DB commands below)
+source .env
+
 # View real-time logs
 docker compose -f docker-compose.prod.yml logs -f
+docker logs rentcrm-api --tail=50
 
-# Restart a single service
+# Restart a service
 docker compose -f docker-compose.prod.yml restart api
 
-# Deploy API update
-npm run build --workspace=apps/api
-docker compose -f docker-compose.prod.yml build api
-docker compose -f docker-compose.prod.yml up -d api
-
-# Deploy frontend update
-docker compose -f docker-compose.prod.yml build frontend
-docker compose -f docker-compose.prod.yml up -d frontend
-
-# PostgreSQL backup
-docker exec rentcrm-postgres pg_dump -U rentcrm rentcrm | gzip > backup-$(date +%F).sql.gz
-
-# Restore backup
-gunzip -c backup-YYYY-MM-DD.sql.gz | docker exec -i rentcrm-postgres psql -U rentcrm rentcrm
-
-# Run Prisma migrations after update
-cd apps/api
-DATABASE_URL="postgresql://rentcrm:PASSWORD@localhost:5432/rentcrm" npx prisma migrate deploy
+# Run migrations manually
+docker exec -it rentcrm-api sh -c "node_modules/.bin/prisma migrate deploy"
 
 # Open a psql session
-docker exec -it rentcrm-postgres psql -U rentcrm rentcrm
+docker exec -it rentcrm-postgres psql -U $POSTGRES_USER $POSTGRES_DB
+
+# Database backup
+docker exec rentcrm-postgres pg_dump -U $POSTGRES_USER $POSTGRES_DB \
+  | gzip > backup-$(date +%F).sql.gz
+
+# Restore a backup
+gunzip -c backup-YYYY-MM-DD.sql.gz \
+  | docker exec -i rentcrm-postgres psql -U $POSTGRES_USER $POSTGRES_DB
 ```
 
 ### Contributing
