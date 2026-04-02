@@ -25,8 +25,9 @@ export class BookingsController {
     @Request() req,
     @Query('propertyId') propertyId?: string,
     @Query('clientId') clientId?: string,
+    @Query('includeBlocks') includeBlocks?: string,
   ) {
-    return this.bookingsService.findAll(req.user.organizationId, propertyId, clientId);
+    return this.bookingsService.findAll(req.user.organizationId, propertyId, clientId, includeBlocks === 'true');
   }
 
   @Public()

@@ -143,6 +143,7 @@ export default function Bookings() {
   const [filterStatus, setFilterStatus]       = useState('');
   const [filterDateFrom, setFilterDateFrom]   = useState('');
   const [filterDateTo, setFilterDateTo]       = useState('');
+  const [showBlocks, setShowBlocks]           = useState(false);
   const [sortKey, setSortKey]                 = useState('checkin');
   const [sortDir, setSortDir]                 = useState<'asc' | 'desc'>('desc');
 
@@ -210,8 +211,8 @@ export default function Bookings() {
   }, [clientSearch]);
 
   const { data: bookingsRaw, isLoading } = useQuery({
-    queryKey: ['bookings'],
-    queryFn: () => api.get('/bookings').then(r => r.data),
+    queryKey: ['bookings', showBlocks],
+    queryFn: () => api.get(showBlocks ? '/bookings?includeBlocks=true' : '/bookings').then(r => r.data),
   });
   const bookings = bookingsRaw?.data || bookingsRaw || [];
 
@@ -480,7 +481,9 @@ export default function Bookings() {
     {
       header: t('bookings.source'), sortKey: 'source',
       tdClassName: 'px-4 py-3 text-slate-400',
-      render: (b) => t(`bookings.sources.${b.source}`) || b.source,
+      render: (b) => b.source === 'manual_block'
+        ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-500/20 text-slate-400 border border-slate-600/50">Bloqueo</span>
+        : t(`bookings.sources.${b.source}`) || b.source,
     },
     {
       header: t('common.status'), sortKey: 'status',
@@ -557,6 +560,15 @@ export default function Bookings() {
           title="Check-in hasta"
           className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 md:w-40"
         />
+        <label className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer whitespace-nowrap select-none">
+          <input
+            type="checkbox"
+            checked={showBlocks}
+            onChange={e => setShowBlocks(e.target.checked)}
+            className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+          />
+          <span className="text-sm text-slate-300">Mostrar bloques</span>
+        </label>
         {hasFilters && (
           <button onClick={() => { setFilterSearch(''); setFilterProperty(''); setFilterStatus(''); setFilterDateFrom(''); setFilterDateTo(''); }}
             className="px-3 py-2 text-xs text-slate-400 hover:text-white border border-slate-700 rounded-lg transition-colors whitespace-nowrap">
@@ -574,15 +586,15 @@ export default function Bookings() {
           columns={bookingColumns}
           rows={filteredSorted}
           getRowKey={(b) => b.id}
-          onRowClick={(b, i) => navigate(`/bookings/${b.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
+          onRowClick={(b, i) => { if (b.source !== 'manual_block') navigate(`/bookings/${b.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } }); }}
           sortKey={sortKey}
           sortDir={sortDir}
           onSort={handleSort}
           emptyMessage="No se encontraron resultados"
           renderCard={(b, i) => (
             <div key={b.id}
-              onClick={() => navigate(`/bookings/${b.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } })}
-              className="bg-slate-900 border border-slate-800 rounded-xl p-4 cursor-pointer active:bg-slate-800/70">
+              onClick={() => { if (b.source !== 'manual_block') navigate(`/bookings/${b.id}`, { state: { ids: filteredSorted.map((x: any) => x.id), index: i } }); }}
+              className={`bg-slate-900 border border-slate-800 rounded-xl p-4 ${b.source !== 'manual_block' ? 'cursor-pointer active:bg-slate-800/70' : 'cursor-default opacity-75'}`}>
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <input type="checkbox" checked={selectedIds.has(b.id)} onChange={() => toggleOne(b.id)}

@@ -24,11 +24,11 @@ export class BookingsService {
     private sesService: SesService,
   ) {}
 
-  async findAll(organizationId: string, propertyId?: string, clientId?: string) {
+  async findAll(organizationId: string, propertyId?: string, clientId?: string, includeBlocks?: boolean) {
     return this.prisma.booking.findMany({
       where: {
         organizationId,
-        source: { not: 'manual_block' },
+        ...(!includeBlocks ? { source: { not: 'manual_block' } } : {}),
         ...(propertyId ? { propertyId } : {}),
         ...(clientId ? { clientId } : {}),
       },

@@ -191,14 +191,18 @@ export class FinancialsService {
       },
     });
 
-    // Occupancy days clipped to the year
-    let occupancyDays = 0;
+    // Occupancy days clipped to the year — use a Set to avoid double-counting overlapping bookings
+    const occupiedDatesSet = new Set<string>();
     for (const b of bookings) {
       const start = b.checkInDate > from ? b.checkInDate : from;
       const end   = b.checkOutDate < to  ? b.checkOutDate : to;
-      const days  = Math.ceil((end.getTime() - start.getTime()) / 86400000);
-      if (days > 0) occupancyDays += days;
+      const cur = new Date(start);
+      while (cur < end) {
+        occupiedDatesSet.add(cur.toISOString().slice(0, 10));
+        cur.setDate(cur.getDate() + 1);
+      }
     }
+    const occupancyDays = occupiedDatesSet.size;
 
     // Monthly aggregation
     const months = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, income: 0, expenses: 0, profit: 0 }));
