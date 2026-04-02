@@ -102,6 +102,11 @@
 
 ## Completado
 
+### Sesión 02/04/2026
+- [x] Fix barcode endpoint: `@Public()` en `GET /api/materials/:id/barcode` — 401 en LXC local sin token (02/04/2026)
+- [x] Ampliar unidades de medida: paquete, botella, unidad, docena, bolsa, tubo, bote (02/04/2026)
+- [x] Acceso local requiere puerto :3000 — no hay proxy Nginx en el LXC local (en PRD el Nginx externo hace proxy en el 80, en local acceder con http://192.168.1.123:3000) (02/04/2026)
+
 ### Sesión 18/03/2026
 - [x] Fix login: 401 en credenciales incorrectas no dispara logout
 - [x] Notas inline editables en detalle de Propiedad, Reserva y Cliente

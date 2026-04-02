@@ -12,7 +12,7 @@ export class CreateMaterialDto {
   @IsIn(['limpieza', 'baño', 'regalos', 'otros'])
   type: string;
 
-  @IsIn(['ud', 'kg', 'g', 'l', 'ml', 'm', 'm2', 'pack', 'caja', 'rollo'])
+  @IsIn(['ud', 'kg', 'g', 'l', 'ml', 'm', 'm2', 'pack', 'caja', 'rollo', 'paquete', 'botella', 'unidad', 'docena', 'bolsa', 'tubo', 'bote'])
   unit: string;
 
   @IsNumber()

@@ -5,7 +5,8 @@ const es = {
   nav: {
     dashboard: "Dashboard", properties: "Propiedades", clients: "Clientes",
     bookings: "Reservas", financials: "Financiero", contracts: "Contratos",
-    templates: "Templates", calendar: "Calendario", police: "Partes SES", transmision: "Transmisión de datos", logs: "Logs", users: "Usuarios", settings: "Configuración"
+    templates: "Templates", calendar: "Calendario", police: "Partes SES", transmision: "Transmisión de datos", logs: "Logs", users: "Usuarios", settings: "Configuración",
+    inventory: "Inventario"
   },
   common: {
     save: "Guardar cambios", saving: "Guardando...", saved: "✅ Guardado",
@@ -161,6 +162,26 @@ const es = {
     idleCountdown: "Cierre de sesión automático en {{seconds}} segundos.",
     continueSession: "Continuar",
     logoutNow: "Cerrar sesión",
+  },
+  inventory: {
+    materials: "Materiales",
+    material: "Material",
+    addMaterial: "Nuevo material",
+    editMaterial: "Editar material",
+    deleteMaterial: "Desactivar material",
+    type: "Tipo",
+    unit: "Unidad",
+    standardPrice: "Precio estándar",
+    minStock: "Stock mínimo",
+    barcode: "Código de barras",
+    printBarcode: "Imprimir código de barras",
+    active: "Activo",
+    inactive: "Inactivo",
+    searchMaterial: "Buscar por nombre o código...",
+    confirmDelete: "¿Desactivar este material? Dejará de aparecer en el inventario.",
+    noMaterials: "No hay materiales registrados",
+    types: { limpieza: "Limpieza", baño: "Baño", regalos: "Regalos", otros: "Otros" },
+    units: { ud: "ud", kg: "kg", g: "g", l: "l", ml: "ml", m: "m", m2: "m²", pack: "pack", caja: "caja", rollo: "rollo", paquete: "paquete", botella: "botella", unidad: "unidad", docena: "docena", bolsa: "bolsa", tubo: "tubo", bote: "bote" },
   }
 };
 
@@ -168,7 +189,8 @@ const en = {
   nav: {
     dashboard: "Dashboard", properties: "Properties", clients: "Clients",
     bookings: "Bookings", financials: "Financials", contracts: "Contracts",
-    templates: "Templates", calendar: "Calendar", police: "Guest Reports", transmision: "Data Transmission", logs: "Logs", users: "Users", settings: "Settings"
+    templates: "Templates", calendar: "Calendar", police: "Guest Reports", transmision: "Data Transmission", logs: "Logs", users: "Users", settings: "Settings",
+    inventory: "Inventory"
   },
   common: {
     save: "Save changes", saving: "Saving...", saved: "✅ Saved",
@@ -324,6 +346,26 @@ const en = {
     idleCountdown: "Automatic logout in {{seconds}} seconds.",
     continueSession: "Continue",
     logoutNow: "Log out",
+  },
+  inventory: {
+    materials: "Materials",
+    material: "Material",
+    addMaterial: "New material",
+    editMaterial: "Edit material",
+    deleteMaterial: "Deactivate material",
+    type: "Type",
+    unit: "Unit",
+    standardPrice: "Standard price",
+    minStock: "Min stock",
+    barcode: "Barcode",
+    printBarcode: "Print barcode",
+    active: "Active",
+    inactive: "Inactive",
+    searchMaterial: "Search by name or code...",
+    confirmDelete: "Deactivate this material? It will no longer appear in inventory.",
+    noMaterials: "No materials registered",
+    types: { limpieza: "Cleaning", baño: "Bathroom", regalos: "Gifts", otros: "Other" },
+    units: { ud: "pcs", kg: "kg", g: "g", l: "l", ml: "ml", m: "m", m2: "m²", pack: "pack", caja: "box", rollo: "roll", paquete: "package", botella: "bottle", unidad: "unit", docena: "dozen", bolsa: "bag", tubo: "tube", bote: "jar" },
   }
 };
 

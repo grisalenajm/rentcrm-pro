@@ -10,6 +10,7 @@ import { CreateMaterialDto } from './dto/create-material.dto.js';
 import { UpdateMaterialDto } from './dto/update-material.dto.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
+import { Public } from '../auth/public.decorator.js';
 
 @Controller('materials')
 export class MaterialsController {
@@ -25,6 +26,7 @@ export class MaterialsController {
   }
 
   @Get(':id/barcode')
+  @Public()
   @SkipThrottle()
   async barcode(@Param('id') id: string, @Res() res: Response) {
     const material = await this.materialsService.findOne(id);
