@@ -92,11 +92,22 @@ export default function OccupancyCalendar() {
     (async () => {
       setLoading(true);
       try {
-        const [pR, bR] = await Promise.all([api.get('/properties'), api.get('/bookings?limit=500')]);
-        const props = pR.data?.data || pR.data;
-        const bkgs  = bR.data?.data || bR.data;
+        const [pR, bR, bBlocks] = await Promise.all([
+          api.get('/properties'),
+          api.get('/bookings?limit=500'),
+          api.get('/bookings?includeBlocks=true&limit=500'),
+        ]);
+        const props  = pR.data?.data || pR.data;
+        const bkgs   = bR.data?.data || bR.data;
+        const allBkgs = bBlocks.data?.data || bBlocks.data;
+        const blocks = Array.isArray(allBkgs) ? allBkgs.filter((b: Booking) => b.source === 'manual_block') : [];
+        const existingIds = new Set(Array.isArray(bkgs) ? bkgs.map((b: Booking) => b.id) : []);
+        const merged = [
+          ...(Array.isArray(bkgs) ? bkgs : []),
+          ...blocks.filter((b: Booking) => !existingIds.has(b.id)),
+        ];
         setProperties(Array.isArray(props) ? props : []);
-        setBookings(Array.isArray(bkgs) ? bkgs : []);
+        setBookings(merged);
         if (Array.isArray(props) && props.length > 0) setSelProp(props[0].id);
       } finally { setLoading(false); }
     })();
