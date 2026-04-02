@@ -80,6 +80,7 @@ model User {
   evaluations       ClientEvaluation[]
   policeReportsSent PoliceReport[]     @relation("PoliceReportSentBy")
   auditLogs         AuditLog[]
+  stockMovements    StockMovement[]
 
   @@index([organizationId])
   @@map("users")
@@ -122,6 +123,7 @@ model Property {
   propertyDocuments  PropertyDocument[]
   propertyRules      PropertyRules?
   recurringExpenses  RecurringExpense[]
+  stockMovements     StockMovement[]
 
   @@index([organizationId])
   @@map("properties")
@@ -567,4 +569,42 @@ model RecurringExpense {
 
   @@index([organizationId, active, nextRunDate])
   @@map("recurring_expenses")
+}
+
+model Material {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String   @db.VarChar(255)
+  description   String?  @db.Text
+  type          String   @db.VarChar(20)
+  unit          String   @db.VarChar(20)
+  barcode       String   @unique @db.VarChar(20)
+  standardPrice Float    @map("standard_price")
+  minStock      Float    @default(0) @map("min_stock")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  movements StockMovement[]
+
+  @@map("materials")
+}
+
+model StockMovement {
+  id         String   @id @default(uuid()) @db.Uuid
+  propertyId String   @map("property_id") @db.Uuid
+  materialId String   @map("material_id") @db.Uuid
+  type       String   @db.VarChar(20)
+  quantity   Float
+  unitPrice  Float    @map("unit_price")
+  notes      String?  @db.Text
+  userId     String   @map("user_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  property Property  @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  material Material  @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([propertyId, materialId])
+  @@index([materialId])
+  @@map("stock_movements")
 }

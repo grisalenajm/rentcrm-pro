@@ -25,6 +25,7 @@ import { PaperlessModule } from './paperless/paperless.module';
 import { BookingPaymentsModule } from './booking-payments/booking-payments.module';
 import { LogsModule } from './logs/logs.module';
 import { SesModule } from './ses/ses.module';
+import { MaterialsModule } from './materials/materials.module.js';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { SesModule } from './ses/ses.module';
     BookingPaymentsModule,
     LogsModule,
     SesModule,
+    MaterialsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
