@@ -19,6 +19,14 @@ RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" ./node_modules/
 # Compile TypeScript via NestJS CLI
 RUN npm run build
 
+# Compile seed separately (not included in NestJS build)
+# Output: dist/prisma/seed.js
+RUN ./node_modules/.bin/tsc prisma/seed.ts \
+    --module nodenext --moduleResolution nodenext \
+    --target ES2023 --outDir dist \
+    --esModuleInterop --skipLibCheck \
+    --resolvePackageJsonExports --allowSyntheticDefaultImports
+
 
 # ---- Stage 2: Runner ----
 FROM node:20-alpine AS runner

@@ -61,7 +61,36 @@ The script:
 
 ## 4. Create your organization and admin user
 
-The seed is not automatic - run it once with your own values:
+The seed is not automatic - run it once with your own values.
+
+### Production (Docker — recommended)
+
+The seed is compiled into the API image at `dist/prisma/seed.js`. Run it directly inside the running container:
+
+```bash
+docker exec -it rentcrm-api sh -c "
+  SEED_ORG_NAME='Your Company Name' \
+  SEED_ADMIN_EMAIL='you@example.com' \
+  SEED_ADMIN_PASSWORD='your-secure-password' \
+  node dist/prisma/seed.js
+"
+```
+
+Optional variables:
+
+```bash
+docker exec -it rentcrm-api sh -c "
+  SEED_ORG_NAME='Your Company Name' \
+  SEED_ORG_NIF='B12345678' \
+  SEED_ORG_ADDRESS='123 Main St' \
+  SEED_ADMIN_EMAIL='you@example.com' \
+  SEED_ADMIN_PASSWORD='your-secure-password' \
+  SEED_ADMIN_NAME='Admin' \
+  node dist/prisma/seed.js
+"
+```
+
+### Development / host (alternative)
 
 ```bash
 cd ~/rentcrm-pro
