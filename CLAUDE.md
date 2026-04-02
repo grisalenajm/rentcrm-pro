@@ -62,9 +62,15 @@ docker logs rentcrm-frontend --tail=5
 
 ### Git
 ```bash
+# SIEMPRE trabajar en develop — NUNCA commitear directamente a main
 cd ~/rentcrm-pro && git add -A && git commit -m "message in English" && git push origin develop
-# Merge a main solo cuando está verificado
+
+# Merge a main solo cuando el usuario lo pide explícitamente y está verificado:
+git checkout main && git merge develop && git push origin main && git checkout develop
 ```
+
+> **Regla**: todo cambio va a `develop`. `main` = producción estable.
+> Claude NO debe hacer commits ni push a `main` salvo instrucción explícita del usuario.
 
 ## Modelos Prisma principales
 ```prisma
