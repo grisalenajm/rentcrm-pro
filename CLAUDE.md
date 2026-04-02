@@ -307,9 +307,32 @@ prioridad — no hay conflicto, pero es redundante y fuente de errores.
 DATABASE_URL='...' npx prisma db push --schema=apps/api/prisma/schema.prisma
 # 2. Aplicar migraciones
 DATABASE_URL='...' npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
-# 3. Seed inicial (solo primera vez)
-DATABASE_URL='...' npx prisma db seed --schema=apps/api/prisma/schema.prisma
+# 3. Seed inicial (solo primera vez) — ver sección "Primer acceso" más abajo
 ```
+
+### Primer acceso — crear organización y usuario admin
+El seed NO usa datos hardcodeados ni variables del .env permanentes.
+Se ejecuta una sola vez pasando los valores inline:
+
+```bash
+cd ~/rentcrm-pro
+PGPASS=$(grep POSTGRES_PASSWORD .env | cut -d= -f2)
+
+DATABASE_URL="postgresql://rentcrm:${PGPASS}@127.0.0.1:5432/rentcrm" \
+SEED_ORG_NAME="Nombre de tu empresa" \
+SEED_ADMIN_EMAIL="tu@email.com" \
+SEED_ADMIN_PASSWORD="tu-password-segura" \
+npx prisma db seed --schema=apps/api/prisma/schema.prisma
+```
+
+Variables opcionales del seed:
+- SEED_ORG_NIF — NIF/CIF de la organización
+- SEED_ORG_ADDRESS — dirección
+- SEED_ADMIN_NAME — nombre del usuario (por defecto: "Admin")
+
+El seed crea con upsert: es seguro repetirlo (no duplica datos).
+Tras el primer login cambia la password desde Ajustes > Perfil.
+El resto de la configuracion (SMTP, Paperless, etc.) se gestiona desde la app.
 
 ### Node.js 20 en Ubuntu 24.04
 Ubuntu 24.04 instala Node 18 por defecto. Usar nodesource:

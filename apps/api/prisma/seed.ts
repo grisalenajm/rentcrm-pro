@@ -8,37 +8,54 @@ const adapter = new PrismaPg({
 
 const prisma = new PrismaClient({ adapter });
 
+function require_env(name: string): string {
+  const value = process.env[name];
+  if (!value || value === 'CHANGE_ME') {
+    console.error(`Error: ${name} is not set in .env`);
+    process.exit(1);
+  }
+  return value;
+}
+
 async function main() {
+  const orgName    = require_env('SEED_ORG_NAME');
+  const orgNif     = process.env.SEED_ORG_NIF     ?? '';
+  const orgAddress = process.env.SEED_ORG_ADDRESS  ?? '';
+  const adminEmail = require_env('SEED_ADMIN_EMAIL');
+  const adminPass  = require_env('SEED_ADMIN_PASSWORD');
+  const adminName  = process.env.SEED_ADMIN_NAME   ?? 'Admin';
+
   const org = await prisma.organization.upsert({
     where: { id: 'a80a9d68-5dd0-43eb-b0eb-2ac389dab5a2' },
     update: {},
     create: {
-      name: 'RentCRM Demo',
-      nif: 'B12345678',
-      address: 'Calle Mayor 1, Madrid',
+      id: 'a80a9d68-5dd0-43eb-b0eb-2ac389dab5a2',
+      name: orgName,
+      nif: orgNif,
+      address: orgAddress,
     },
   });
-  console.log('✓ Organización:', org.name);
+  console.log('Organization:', org.name);
 
-  const hash = await bcrypt.hash('admin123', 10);
+  const hash = await bcrypt.hash(adminPass, 10);
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@rentcrm.com' },
+    where: { email: adminEmail },
     update: {},
     create: {
       organizationId: org.id,
-      name: 'Admin',
-      email: 'admin@rentcrm.com',
+      name: adminName,
+      email: adminEmail,
       passwordHash: hash,
       role: 'admin',
     },
   });
-  console.log('✓ Usuario admin:', admin.email);
+  console.log('Admin user:', admin.email);
 
   const categories = [
     { type: 'income',  name: 'Alquiler' },
     { type: 'income',  name: 'Servicios extra' },
     { type: 'expense', name: 'Limpieza' },
-    { type: 'expense', name: 'Reparación' },
+    { type: 'expense', name: 'Reparacion' },
     { type: 'expense', name: 'Suministros' },
     { type: 'expense', name: 'Seguro' },
     { type: 'expense', name: 'Impuestos' },
@@ -52,31 +69,10 @@ async function main() {
       create: { organizationId: org.id, type: cat.type, name: cat.name },
     });
   }
-  console.log('✓ Categorías financieras creadas');
+  console.log('Financial categories created');
 
-  const property = await prisma.property.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000001' },
-    update: {},
-    create: {
-      id: '00000000-0000-0000-0000-000000000001',
-      organizationId: org.id,
-      name: 'Casa Playa Norte',
-      address: 'Calle del Mar 12',
-      city: 'Marbella',
-      province: 'Málaga',
-      postalCode: '29600',
-      rooms: 3,
-      bathrooms: 2,
-      maxGuests: 6,
-      pricePerNight: 220,
-      createdBy: admin.id,
-    },
-  });
-  console.log('✓ Propiedad demo:', property.name);
-
-  console.log('\n✅ Seed completado');
-  console.log('   Email: admin@rentcrm.com');
-  console.log('   Pass:  admin123');
+  console.log('\nSeed completed');
+  console.log('  Email:', adminEmail);
 }
 
 main()
