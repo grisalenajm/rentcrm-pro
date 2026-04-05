@@ -11,14 +11,14 @@
 - [ ] Email de notificación cuando SES devuelve error
 
 ### Media
-- [ ] Mass update precios de reservas desde Excel (por ID reserva o por propiedad + fecha entrada)
+- [ ] Etiquetas de códigos de barras — página de impresión con grid (imagen barcode + nombre material, CSS print)
+- [ ] iCal: URL de export usando dominio externo `crm.greywoodhome.es` (via `API_PUBLIC_URL`)
+- [ ] iCal: tamaño de feeds Airbnb/Booking.com en la UI
+- [ ] Mass update precios de reservas desde Excel
 - [ ] Cambio contraseña desde perfil para usuarios no admin
-- [ ] Inventarios: página de impresión de etiquetas de códigos de barras (cuadrícula imprimible con print CSS)
 
 ### Baja
 - [ ] Integrar SVG logo RentalSuite en la app
-- [ ] iCal: cambiar URL de exportación de IP interna a `API_PUBLIC_URL`
-- [ ] iCal: aumentar tamaño de visualización de feeds en la UI para leerlos completos
 - [ ] Mover configuración Paperless a Settings → pestaña Integraciones
 - [ ] HTTPS local con mkcert (CA Proxmox ya copiada)
 - [ ] Notificaciones push (check-in próximo, contratos sin firmar, pagos pendientes)
@@ -26,4 +26,8 @@
 - [ ] Properties: crear nueva propiedad en página completa /properties/new (sin modal)
 
 ### Deploy producción
-- [ ] Documentar instrucciones certificado CA FNMT en `docs/SES_INTEGRACION.md`
+- [ ] `docker-compose.prod.yml` limpio
+- [ ] `.env.example` documentado
+- [ ] `README.md` bilingüe profesional para GitHub
+- [ ] `setup.sh` script de instalación
+- [ ] `CONTRIBUTING.md`

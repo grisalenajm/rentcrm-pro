@@ -1,54 +1,122 @@
-# Módulo Inventarios — Arquitectura
-> Añadido: 02/04/2026
+# RentalSuite — Arquitectura Módulo Inventarios
+> Actualizado 05/04/2026
 
-## Descripción
-Gestión de stock de consumibles por propiedad. Permite controlar entradas, salidas y recuentos de materiales, con valoración económica al último precio de entrada.
+## Visión general
+Módulo de gestión de stock por propiedad. Incluye maestro de materiales, movimientos de entrada/salida/recuento y valoración al último precio de entrada.
 
-## Modelos Prisma
+## Modelos de datos
 
 ### Material
-Maestro global de materiales (no ligado a propiedad).
-id String uuid pk, name String, description String opcional, type String (limpieza|baño|regalos|otros), unit String (ud|kg|g|l|ml|m|m2|pack|caja|rollo), barcode String unique (auto-generado Code128 formato MAT-00000001), standardPrice Float, minStock Float default 0, isActive Boolean default true, createdAt DateTime now, updatedAt DateTime updatedAt.
+```prisma
+model Material {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  type          String   // limpieza|baño|regalos|otros
+  unit          String   // ud|kg|g|l|ml|m|m2|pack|caja|rollo|paquete|botella|unidad|docena|bolsa|tubo|bote
+  barcode       String   @unique // auto-generado MAT-00000001 (Code128)
+  standardPrice Float
+  minStock      Float    @default(0)
+  isActive      Boolean  @default(true)
+}
+```
 
 ### StockMovement
-Movimientos de stock por propiedad.
-id String uuid pk, propertyId FK Property, materialId FK Material, type String (entrada|salida|recuento), quantity Float (positivo entrada/recuento, negativo salida), unitPrice Float (precio en el momento), notes String opcional, userId FK User, createdAt DateTime now.
+```prisma
+model StockMovement {
+  id         String   @id @default(uuid())
+  propertyId String
+  materialId String
+  type       String   // entrada|salida|recuento
+  quantity   Float    // positivo entrada/recuento ajuste, negativo salida
+  unitPrice  Float    // último precio de entrada para salidas, introducido para entradas
+  notes      String?
+  userId     String
+  createdAt  DateTime @default(now())
+}
+```
 
 ## Lógica de negocio
-Stock actual = SUM(quantity) de todos los StockMovements de ese material en esa propiedad.
-Recuento: ajuste = cantidadObservada - stockActualCalculado, se inserta StockMovement type=recuento con quantity=ajuste.
-Valoración: unitPrice del último StockMovement type=entrada para cada material. valorTotal = SUM(stockActual * ultimoPrecioEntrada).
-Barcode: Code128, prefijo MAT- + 8 dígitos secuenciales. Endpoint GET /api/materials/:id/barcode devuelve PNG.
 
-## Rol nuevo: inventario
-Solo accede a rutas del módulo stock e inventarios. Sin acceso al resto de la app.
-Roles completos: admin | gestor | owner | viewer | inventario
+- **Stock actual**: suma de todos los `StockMovement.quantity` por `materialId + propertyId`
+- **Valoración**: último precio de entrada (`unitPrice` del último `StockMovement` de tipo `entrada`)
+- **Salidas**: `unitPrice` se calcula automáticamente desde el último precio de entrada — no editable por el usuario
+- **Stock negativo**: el backend rechaza salidas si `quantity > stockActual` con `BadRequestException`
+- **Recuento**: ajuste directo al valor real; `quantity` = diferencia (puede ser negativa)
+- **Código de barras**: formato `MAT-00000001`, generado automáticamente, renderizado en Code128. Endpoint público (`@Public()`) para imagen del barcode.
+- **Alerta stock mínimo**: se activa solo cuando `minStock > 0 && currentStock <= minStock` (minStock=0 no genera alertas)
+
+## Respuesta de GET /api/stock/:propertyId
+
+```ts
+{
+  materialId: string,
+  currentStock: number,
+  lastEntryPrice: number,   // último precio de entrada, fallback a standardPrice
+  totalValue: number,        // currentStock * lastEntryPrice
+  isAlert: boolean,          // minStock > 0 && currentStock <= minStock
+  material: {
+    name: string,
+    type: string,
+    unit: string,
+    barcode: string,
+    minStock: number,
+    standardPrice: number,
+    isActive: boolean,
+  }
+}[]
+```
+
+## Respuesta de GET /api/stock/:propertyId/valuation
+
+```ts
+{
+  byType: [{
+    type: string,
+    materials: [{ materialId, name, unit, currentStock, totalValue, isAlert }],
+    subtotal: number,
+  }],
+  grandTotal: number,
+  alertCount: number,
+}
+```
 
 ## API Endpoints
 
-### Materials
-GET /api/materials todos — listar (?type=&isActive=&search=)
-GET /api/materials/:id todos — ver material
-POST /api/materials admin gestor — crear
-PUT /api/materials/:id admin gestor — actualizar
-DELETE /api/materials/:id admin — soft delete isActive=false
-GET /api/materials/:id/barcode todos — PNG código de barras
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/materials` | any | Listar materiales (`?search=&type=&isActive=`) |
+| POST | `/materials` | admin, gestor, inventario | Crear material |
+| PUT | `/materials/:id` | admin, gestor, inventario | Actualizar material |
+| DELETE | `/materials/:id` | admin | Desactivar material (soft delete) |
+| GET | `/materials/:id/barcode` | 🔓 | Imagen PNG del código de barras |
+| GET | `/stock/:propertyId` | any | Stock actual por propiedad (todos los materiales activos) |
+| GET | `/stock/:propertyId/movements` | any | Historial movimientos (`?materialId=&type=&from=&to=`) |
+| GET | `/stock/:propertyId/valuation` | any | Valoración económica por tipo |
+| POST | `/stock/movement` | any | Registrar movimiento individual |
+| POST | `/stock/recount/:propertyId` | any | Recuento masivo — body: `{ items: [{materialId, quantity}] }` |
 
-### Stock
-GET /api/stock/:propertyId todos — stock actual por propiedad
-GET /api/stock/:propertyId/movements todos — histórico (?materialId=&type=&from=&to=)
-GET /api/stock/:propertyId/valuation todos — valoración económica total
-POST /api/stock/movement todos — registrar movimiento individual
-POST /api/stock/recount/:propertyId todos — recuento masivo [{materialId, quantity}]
+## Frontend — Página única /inventory
 
-## Frontend — Páginas
-/materials — maestro materiales: tabla con filtros, crear/editar modal, botón imprimir barcode
-/stock/:propertyId — 3 tabs: Stock Actual | Movimientos | Valoración
-/stock/:propertyId/recount — pantalla recuento masivo: lista materiales con campo cantidad observada editable
-Formulario movimiento (modal): búsqueda material por nombre o barcode, tipo, cantidad, precio (solo si entrada)
+### Tab 1 — Master Data
+- Tabla de materiales con filtros (nombre/barcode, tipo, estado)
+- Acciones: editar, imprimir barcode (`window.open('/api/materials/:id/barcode', '_blank')`), desactivar
+- Modal crear/editar material
 
-## Dependencias nuevas
-bwip-js (backend, genera PNG código de barras)
+### Tab 2 — Stock
+- Selector de propiedad en la parte superior
+- Subtab **Stock Actual**: tabla + banner alertas colapsable (`minStock > 0`) + botón "Registrar movimiento"
+- Subtab **Movimientos**: tabla con filtros (material, tipo, fechas)
+- Subtab **Valoración**: cards por tipo + total general
+- Modal de movimiento: búsqueda por nombre (≥2 chars) o barcode MAT-+Enter
 
-## i18n
-Namespace nuevo: inventory. Traducciones ES/EN para todos los textos del módulo.
+### Tab 3 — Recuento
+- Selector de propiedad en la parte superior
+- Tabla materiales activos: stock calculado + cantidad observada editable + diferencia (verde/rojo/gris)
+- Envío: `POST /api/stock/recount/:propertyId` con `{ items: [{materialId, quantity}] }` — solo ítems con diferencia ≠ 0
+
+## Rol inventario
+El rol `inventario` tiene acceso exclusivo al módulo `/inventory`. No puede acceder al resto de la aplicación. Visible en el menú lateral para `admin | gestor | inventario`.
+
+## Dependencias
+- `bwip-js` (backend): generación de PNG Code128

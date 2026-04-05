@@ -87,7 +87,34 @@ model BookingPayment {
   concept   String   // fianza|pago_reserva|pago_final|devolucion_fianza
   amount    Float    // negativo para devoluciones
 }
+
+model Material {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  type          String   // limpieza|baño|regalos|otros
+  unit          String   // ud|kg|g|l|ml|m|m2|pack|caja|rollo|paquete|botella|unidad|docena|bolsa|tubo|bote
+  barcode       String   @unique // auto-generado MAT-00000001 (Code128)
+  standardPrice Float
+  minStock      Float    @default(0)
+  isActive      Boolean  @default(true)
+}
+
+model StockMovement {
+  id         String   @id @default(uuid())
+  propertyId String
+  materialId String
+  type       String   // entrada|salida|recuento
+  quantity   Float    // positivo entrada/recuento ajuste, negativo salida
+  unitPrice  Float    // último precio de entrada para salidas, introducido para entradas
+  notes      String?
+  userId     String
+  createdAt  DateTime @default(now())
+}
 ```
+
+## Roles
+`admin` > `gestor` > `owner` > `inventario` (solo módulo inventarios) > viewer (solo lectura)
 
 ## Patrones críticos
 
@@ -134,10 +161,8 @@ Ocupación: usar Set para deduplicar rangos solapados
 - Variables Jinja: `{{ correspondent }}` (NO `{{ document.correspondent }}`)
 
 ### SES Hospedajes
-- Endpoint producción: `https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion` (SIN `/v1/`)
-- Endpoint pruebas: `https://hospedajes.pre-ses.mir.es/hospedajes-web/ws/comunicacion` (SIN `/v1/`)
-- SOAP namespace: `xmlns:com="http://www.soap.servicios.hospedajes.mir.es/comunicacion"` (NO `http://hospedajes.ses.mir.es/`)
-- SSL: CA cert FNMT en `certs/mir-ca.pem` — NUNCA `rejectUnauthorized: false`
+- Endpoint: `https://hospedajes.ses.mir.es/hospedajes-web/ws/comunicacion` (SIN `/v1/`)
+- SSL: `rejectUnauthorized: false` solo en esa llamada axios
 
 ### Logs del sistema
 - Redis key: `app:logs` (LIFO, máx 500). `LogsService.add(level, context, message, details?)`
@@ -163,8 +188,6 @@ Colores: created=amber, registered=blue, processed=emerald, error=red, cancelled
 | `http://api:3001` desde el navegador | `/api` o IP directa |
 | Traducciones en JSON separados | Todo en `apps/frontend/src/i18n/index.ts` |
 | Endpoint SES con `/v1/` | Sin `/v1/` |
-| `rejectUnauthorized: false` en SES | CA cert FNMT en `certs/mir-ca.pem` |
-| Namespace SES `http://hospedajes.ses.mir.es/` | `http://www.soap.servicios.hospedajes.mir.es/comunicacion` |
 | Bulk sin `@SkipThrottle()` | Añadir `@SkipThrottle()` en métodos bulk |
 | `{{ document.correspondent }}` en Jinja | `{{ correspondent }}` |
 | Parser importe con `.replace(',', '.')` directo | Quitar puntos de miles primero |
@@ -180,6 +203,7 @@ Colores: created=amber, registered=blue, processed=emerald, error=red, cancelled
 | SES 404 | Endpoint sin `/v1/`, pendiente alta Ministerio |
 | UPDATE en BD no persiste | Usar `WHERE campo LIKE '%valor%'` y verificar con SELECT |
 | Catch sin info útil | Loguear siempre `err.message` Y `err.response?.data` |
+| Stock negativo bloqueado | Backend rechaza salidas si quantity > stockActual con BadRequestException |
 
 ## Pendiente
 Ver `TODO.md`

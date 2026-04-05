@@ -26,6 +26,7 @@ import { BookingPaymentsModule } from './booking-payments/booking-payments.modul
 import { LogsModule } from './logs/logs.module';
 import { SesModule } from './ses/ses.module';
 import { MaterialsModule } from './materials/materials.module.js';
+import { StockModule } from './stock/stock.module.js';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { MaterialsModule } from './materials/materials.module.js';
     LogsModule,
     SesModule,
     MaterialsModule,
+    StockModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
