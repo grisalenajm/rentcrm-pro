@@ -32,6 +32,11 @@ RUN ./node_modules/.bin/tsc prisma/seed.ts \
 FROM node:20-alpine AS runner
 WORKDIR /app
 
+# Install FNMT CA certificates (needed for SES SSL verification)
+COPY apps/api/certs/fnmt-ac-componentes.crt /usr/local/share/ca-certificates/fnmt-ac-componentes.crt
+COPY apps/api/certs/fnmt-ac-raiz.crt /usr/local/share/ca-certificates/fnmt-ac-raiz.crt
+RUN apk add --no-cache ca-certificates && update-ca-certificates
+
 # Copy node_modules and compiled output from builder
 COPY --from=builder /app/apps/api/node_modules ./node_modules/
 COPY --from=builder /app/apps/api/dist ./dist/
