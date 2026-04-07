@@ -27,6 +27,7 @@ import { LogsModule } from './logs/logs.module';
 import { SesModule } from './ses/ses.module';
 import { MaterialsModule } from './materials/materials.module.js';
 import { StockModule } from './stock/stock.module.js';
+import { SeedModule } from './seed/seed.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { StockModule } from './stock/stock.module.js';
     SesModule,
     MaterialsModule,
     StockModule,
+    SeedModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
