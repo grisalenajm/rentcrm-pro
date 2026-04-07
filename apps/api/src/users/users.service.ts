@@ -91,6 +91,27 @@ export class UsersService {
     return { tempPassword };
   }
 
+  async changeOwnPassword(userId: string, currentPassword: string, newPassword: string): Promise<{ success: boolean }> {
+    if (newPassword.length < 8) {
+      throw new BadRequestException('La nueva contraseña debe tener al menos 8 caracteres');
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { passwordHash: true },
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValid) throw new UnauthorizedException('La contraseña actual es incorrecta');
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, passwordChangedAt: new Date() },
+    });
+    return { success: true };
+  }
+
   // ── OTP / 2FA ─────────────────────────────────────────────────────────────
 
   async otpSetup(userId: string) {

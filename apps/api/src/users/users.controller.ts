@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
-import { IsString, Length } from 'class-validator';
+import { IsString, Length, MinLength } from 'class-validator';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -11,6 +11,15 @@ export class OtpTokenDto {
   @IsString()
   @Length(6, 6)
   token: string;
+}
+
+export class ChangePasswordDto {
+  @IsString()
+  currentPassword: string;
+
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
 }
 
 @Controller('users')
@@ -27,6 +36,11 @@ export class UsersController {
   @Get('me')
   getMe(@Request() req) {
     return this.usersService.findOne(req.user.id, req.user.organizationId);
+  }
+
+  @Put('me/password')
+  changeMyPassword(@Body() dto: ChangePasswordDto, @Request() req) {
+    return this.usersService.changeOwnPassword(req.user.id, dto.currentPassword, dto.newPassword);
   }
 
   // OTP routes — ANTES de :id para evitar conflictos
