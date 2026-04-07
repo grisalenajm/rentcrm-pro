@@ -132,10 +132,14 @@ info "Running prisma migrate deploy..."
 DATABASE_URL="${HOST_DB_URL}" npx prisma migrate deploy --schema="${SCHEMA}"
 success "Migrations applied."
 
-info "Running prisma db seed..."
-DATABASE_URL="${HOST_DB_URL}" npx prisma db seed --schema="${SCHEMA}" || \
-    warn "Seed returned non-zero (may be safe to ignore if DB already has data)."
-success "Seed complete."
+info "Skipping automatic seed — run it manually with your own credentials:"
+echo ""
+echo "  DATABASE_URL=\"postgresql://rentcrm:\${POSTGRES_PASSWORD}@127.0.0.1:5432/rentcrm\" \\"
+echo "  SEED_ORG_NAME=\"Your Company\" \\"
+echo "  SEED_ADMIN_EMAIL=\"you@example.com\" \\"
+echo "  SEED_ADMIN_PASSWORD=\"your-secure-password\" \\"
+echo "  npx prisma db seed --schema=apps/api/prisma/schema.prisma"
+echo ""
 
 # =============================================================================
 # DONE

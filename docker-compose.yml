@@ -31,6 +31,8 @@ services:
       dockerfile: apps/api/Dockerfile
       network: host
     container_name: rentcrm-api
+    volumes:
+      - ./certs:/app/certs:ro
     restart: unless-stopped
     ports:
       - "3001:3001"
