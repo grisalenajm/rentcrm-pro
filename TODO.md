@@ -20,6 +20,8 @@
 ### Otras (07/04/2026)
 - [x] Mass update precios de reservas desde Excel (`GET /excel/template/bookings-price`, `POST /excel/import/bookings-price`)
 - [x] Cambio contraseña desde perfil para usuarios no admin (`PUT /users/me/password`)
+- [x] Endpoint seed `POST /api/seed` — crea org + admin inicial, 409 si ya existe usuario
+- [x] URLs iCal sin truncate — `break-all` + botón Copiar con fallback HTTP
 
 ## Pendiente (priorizado)
 
@@ -41,7 +43,7 @@
 - [ ] Properties: crear nueva propiedad en página completa /properties/new (sin modal)
 
 ### Deploy producción
-- [ ] `docker-compose.prod.yml` limpio
+- [x] `docker-compose.prod.yml` + GitHub Actions build/push a ghcr.io
 - [ ] `.env.example` documentado
 - [ ] `README.md` bilingüe profesional para GitHub
 - [ ] `setup.sh` script de instalación

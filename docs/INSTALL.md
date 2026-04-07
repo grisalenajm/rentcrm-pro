@@ -85,42 +85,25 @@ docker logs rentcrm-api --tail=20
 
 ## 5. Create your organization and admin user
 
-The seed runs **once** inside the container — no Node.js needed on the host.
+Call the seed endpoint once after migrations. It creates the initial organization and admin user:
 
 ```bash
-docker exec -it rentcrm-api sh -c "
-  SEED_ORG_NAME='Your Company Name' \
-  SEED_ADMIN_EMAIL='you@example.com' \
-  SEED_ADMIN_PASSWORD='your-secure-password' \
-  node dist/prisma/seed.js
-"
+curl -s -X POST http://localhost:3001/api/seed | jq
 ```
 
-Optional variables:
+Expected response:
 
-| Variable | Description |
-|---|---|
-| `SEED_ORG_NIF` | Tax ID / NIF of the organization |
-| `SEED_ORG_ADDRESS` | Organization address |
-| `SEED_ADMIN_NAME` | Admin display name (default: `Admin`) |
-
-Full example with all variables:
-
-```bash
-docker exec -it rentcrm-api sh -c "
-  SEED_ORG_NAME='Acme Rentals SL' \
-  SEED_ORG_NIF='B12345678' \
-  SEED_ORG_ADDRESS='Calle Mayor 1, Valencia' \
-  SEED_ADMIN_EMAIL='you@example.com' \
-  SEED_ADMIN_PASSWORD='your-secure-password' \
-  SEED_ADMIN_NAME='Admin' \
-  node dist/prisma/seed.js
-"
+```json
+{
+  "message": "Usuario admin creado",
+  "email": "admin@rentalsuite.com",
+  "password": "Admin1234!"
+}
 ```
 
-The seed uses upsert — safe to re-run if needed (no duplicate data).
+If users already exist it returns `409 Conflict` — safe to call again without side effects.
 
-**After first login:** change your password from Settings > Profile.
+**After first login:** go to Settings > Profile and change the default password.
 All other configuration (SMTP, Paperless, SES, etc.) is managed from within the app.
 
 
