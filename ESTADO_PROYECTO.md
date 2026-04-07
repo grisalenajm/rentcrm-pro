@@ -1,7 +1,7 @@
 # 🏘️ RentCRM Pro — Estado del Proyecto
 
-**Última actualización:** 22/03/2026
-**Versión:** 1.4.0
+**Última actualización:** 07/04/2026
+**Versión:** 1.5.0
 **Entorno:** LXC Docker · 192.168.1.123 · Frontend :3000 · API :3001
 
 ---
@@ -21,6 +21,7 @@
 - **iCal** — importar feeds Airbnb/Booking.com, sincronización manual y auto (cron cada 6h), exportar .ics por propiedad
 - **SES Hospedajes** — envío de partes al webservice MIR, descarga XML/PDF, campos lote y estado en Booking
 - **Paperless-ngx** — subida automática al firmar contrato + **webhook** para crear gastos automáticos desde facturas; correspondent por propiedad; enlace "Ver factura" en Financials
+- **Inventory** — maestro de materiales (CRUD, código de barras Code128 auto-generado), stock por propiedad, movimientos entrada/salida/recuento, valoración al último precio de entrada, alertas de stock mínimo, recuento masivo, rol `inventario` con acceso exclusivo al módulo, validación stock negativo
 
 ### Frontend (React + Vite + TypeScript + Tailwind)
 - **Login** — autenticación JWT + **flujo 2FA** (paso 2 con código OTP si activado)
@@ -38,10 +39,13 @@
 - **OccupancyCalendar** — vista multi-propiedad (timeline horizontal) y mensual, tema claro/oscuro
 - **Settings** — 6 pestañas: Usuario, General, Fiscal, Email SMTP (con test), SES Hospedajes, Preferencias
 - **UserManagement** — CRUD usuarios (admin only): crear, editar, activar/desactivar, resetear contraseña temporal
+- **Inventory** — página `/inventory` con 3 pestañas: Master Data (lista materiales + códigos de barras), Stock (movimientos por propiedad, valoración), Recuento (recuento masivo). Accesible también para el rol `inventario`.
+- **Profile** — sección "Cambiar contraseña" disponible para todos los roles
+- **Bookings** — actualización masiva de precios vía Excel (modal con plantilla + import)
 
 ### Internacionalización (i18n)
 - ✅ Traducciones ES/EN completas en TODAS las páginas
-- Namespaces activos: `nav`, `common`, `dashboard`, `properties` (incluye `properties.ical`), `clients`, `bookings`, `financials`, `contracts`, `templates`, `evaluations`, `settings`, `calendar`, `users`
+- Namespaces activos: `nav`, `common`, `dashboard`, `properties` (incluye `properties.ical`), `clients`, `bookings`, `financials`, `contracts`, `templates`, `evaluations`, `settings`, `calendar`, `users`, `inventory`, `profile`, `police`
 - Idioma persistido en localStorage, cambio instantáneo desde Settings → Usuario
 
 ---
@@ -50,12 +54,14 @@
 
 | Prioridad | Tarea |
 |-----------|-------|
-| 🔴 Alta | Consulta de estado de lote SES (verificación asíncrona del Ministerio) |
-| 🟡 Media | Página "Partes SES" — historial de envíos con estado y filtros |
-| 🟡 Media | Notificación por email cuando SES confirma/rechaza un parte |
-| ✅ Hecho | Dashboard mejorado — 4 pestañas con recharts (14/03/2026) |
-| 🟢 Baja | Tests de envío con entorno de pruebas SES |
+| 🔴 Alta | `Police.tsx` — historial de envíos SES con filtros y reenvío |
+| 🔴 Alta | Email de notificación cuando SES devuelve error |
+| 🟡 Media | Etiquetas de códigos de barras — página de impresión (CSS print) |
+| 🟡 Media | iCal: URL export usando dominio externo `crm.greywoodhome.es` |
+| 🟡 Media | iCal: mostrar tamaño de feeds en la UI |
+| 🟢 Baja | SVG logo RentalSuite integrado en la app |
 | 🟢 Baja | Notificaciones push (check-in próximo, contratos sin firmar, pagos pendientes) |
+| 🟢 Baja | Alta en hospedajes.ses.mir.es (activar envío real de partes SES) |
 
 ---
 
@@ -113,7 +119,9 @@ rentcrm-pro/
 | Modelo | Campos destacados |
 |--------|------------------|
 | Organization | name, nif, logo, smtpHost/Port/User/Pass/From, currency, dateFormat, sesUsuarioWs, sesPasswordWs, sesCodigoArrendador, sesCodigoEstablecimiento, sesEndpoint |
-| User | name, email, passwordHash, role (admin/gestor/viewer), isActive, **otpSecret, otpEnabled, otpVerifiedAt** |
+| User | name, email, passwordHash, role (admin/gestor/owner/inventario/viewer), isActive, **otpSecret, otpEnabled, otpVerifiedAt** |
+| Material | name, description, type, unit, barcode (Code128 auto), standardPrice, minStock, isActive |
+| StockMovement | propertyId, materialId, type (entrada/salida/recuento), quantity, unitPrice, userId |
 | Property | name, address, city, province, rooms, status, sesCodigoEstablecimiento |
 | Client | firstName, lastName, docType, docNumber, docCountry, nationality, birthDate, email, phone |
 | Booking | checkInDate, checkOutDate, totalAmount, source, status, sesLote, sesStatus, sesSentAt |
@@ -138,7 +146,25 @@ POSTGRES_PASSWORD=...
 
 ---
 
+## 🔑 Roles de Usuario
+
+| Rol | Acceso |
+|-----|--------|
+| admin | Acceso total a toda la aplicación incluyendo gestión de usuarios |
+| gestor | Acceso total excepto gestión de usuarios |
+| owner | Acceso de lectura + gestión de reservas propias |
+| viewer | Solo lectura en todos los módulos |
+| inventario | Solo módulo `/inventory`: ver materiales, registrar movimientos, hacer recuentos. Sin acceso al resto de la app. NO puede crear ni editar materiales. |
+
+---
+
 ## 📋 Historial de Sesiones
+
+### Sesión 07/04/2026 — v1.5.0
+- ✅ **Módulo Inventario completo** — maestro de materiales (CRUD + código de barras Code128 auto `MAT-00000001`), stock por propiedad, movimientos entrada/salida/recuento, valoración al último precio de entrada, alertas de stock mínimo, recuento masivo, rol `inventario` (acceso exclusivo al módulo), validación stock negativo (BadRequestException si quantity > stockActual), `unitPrice` en salidas calculado automáticamente
+- ✅ **Actualización masiva de precios desde Excel** — `GET /api/excel/template/bookings-price` + `POST /api/excel/import/bookings-price` + modal en Bookings.tsx
+- ✅ **Cambio de contraseña desde perfil** — `PUT /api/users/me/password` accesible a cualquier rol autenticado; validación de contraseña actual + mínimo 8 caracteres
+- ✅ **Documentación actualizada** — INVENTORY_ARCHITECTURE.md, CLAUDE.md, TODO.md, ESTADO_PROYECTO.md
 
 ### Sesión 22/03/2026 — v1.4.0
 - ✅ **Webhook Paperless-ngx → Expense automático** — `POST /api/paperless/webhook` (@Public)
