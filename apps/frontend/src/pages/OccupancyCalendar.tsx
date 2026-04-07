@@ -107,7 +107,7 @@ export default function OccupancyCalendar() {
           ...blocks.filter((b: Booking) => !existingIds.has(b.id)),
         ];
         setProperties(Array.isArray(props) ? props : []);
-        setBookings(merged);
+        setBookings(merged.filter((b: Booking) => b.source !== 'manual_block'));
         if (Array.isArray(props) && props.length > 0) setSelProp(props[0].id);
       } finally { setLoading(false); }
     })();
