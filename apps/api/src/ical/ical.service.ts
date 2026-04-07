@@ -105,8 +105,15 @@ export class ICalService {
     const comp = new ICAL.Component(parsed);
     const vevents = comp.getAllSubcomponents('vevent');
 
+    // Collect all UIDs present in this feed snapshot (for cleanup later)
+    const feedUids = new Set<string>();
+    for (const vevent of vevents) {
+      const uid = new ICAL.Event(vevent).uid;
+      if (uid) feedUids.add(uid);
+    }
+
     let imported = 0;
-    let skipped = 0;
+    let skipped  = 0;
 
     for (const vevent of vevents) {
       const event = new ICAL.Event(vevent);
@@ -187,17 +194,39 @@ export class ICalService {
       imported++;
     }
 
+    // Cleanup: remove AvailabilityBlocks (and their manual_block Bookings) that no
+    // longer appear in the current feed snapshot for this syncId.
+    const staleBlocks = await this.prisma.availabilityBlock.findMany({
+      where: {
+        syncId: feed.id,
+        ...(feedUids.size > 0 ? { externalUid: { notIn: Array.from(feedUids) } } : {}),
+      },
+    });
+    let removed = 0;
+    for (const block of staleBlocks) {
+      await this.prisma.booking.deleteMany({
+        where: { externalId: block.externalUid, source: 'manual_block' },
+      });
+      await this.prisma.availabilityBlock.delete({ where: { id: block.id } });
+      removed++;
+    }
+    if (removed > 0) {
+      this.logger.log(`iCal cleanup: removed ${removed} stale blocks for feed ${id}`);
+      await this.logsService.add('info', 'iCal', `Limpieza ${feed.platform} — ${feed.property?.name}: ${removed} bloqueos obsoletos eliminados`, {
+        feedId: id, removed,
+      });
+    }
+
     await this.prisma.availabilitySync.update({
       where: { id },
       data: { lastSyncAt: new Date(), lastSyncStatus: 'success', lastSyncError: null },
     });
 
-    const level = imported > 0 ? 'info' : 'info';
-    await this.logsService.add(level, 'iCal', `Sync ${feed.platform} — ${feed.property?.name}: ${imported} importadas, ${skipped} omitidas`, {
-      feedId: id, platform: feed.platform, property: feed.property?.name, imported, skipped, total: vevents.length,
+    await this.logsService.add('info', 'iCal', `Sync ${feed.platform} — ${feed.property?.name}: ${imported} importadas, ${skipped} omitidas`, {
+      feedId: id, platform: feed.platform, property: feed.property?.name, imported, skipped, removed, total: vevents.length,
     });
 
-    return { imported, skipped, total: vevents.length };
+    return { imported, skipped, removed, total: vevents.length };
   }
 
   async getExportUrl(propertyId: string, organizationId: string): Promise<string> {

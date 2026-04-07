@@ -42,9 +42,29 @@ function bookingColor(b: Booking, dark: boolean) {
   return                               { solid: '#d97706', bg: dark ? '#d97706ee' : '#d97706cc', text: dark ? '#fcd34d' : '#92400e' };
 }
 
-const DAY_W  = 46;
-const ROW_H  = 52;
-const PROP_W = 176;
+const DAY_W       = 46;
+const ROW_H       = 52;
+const PROP_W      = 176;
+const BAR_H_MULTI = 28;
+const BAR_GAP     = 4;
+const ROW_PAD     = 8;   // top and bottom padding inside each row
+
+/** Greedy lane assignment: returns a lane index per bar so overlapping bars
+ *  are placed in different lanes. Non-overlapping bars share a lane. */
+function assignLanes(bars: {startIdx: number; endIdx: number}[], visible: number) {
+  const laneEnds: number[] = [];   // rightmost colEnd occupying each lane
+  const lanes: number[]    = [];
+  for (let i = 0; i < bars.length; i++) {
+    const vs = Math.max(0, bars[i].startIdx);
+    const ve = bars[i].endIdx < 0 ? visible : bars[i].endIdx;
+    let lane = 0;
+    while (lane < laneEnds.length && laneEnds[lane] > vs) lane++;
+    lanes[i] = lane;
+    if (lane >= laneEnds.length) laneEnds.push(ve);
+    else laneEnds[lane] = ve;
+  }
+  return { lanes, numLanes: Math.max(1, laneEnds.length) };
+}
 
 export default function OccupancyCalendar() {
   const { t }     = useTranslation();
@@ -107,7 +127,7 @@ export default function OccupancyCalendar() {
           ...blocks.filter((b: Booking) => !existingIds.has(b.id)),
         ];
         setProperties(Array.isArray(props) ? props : []);
-        setBookings(merged.filter((b: Booking) => b.source !== 'manual_block'));
+        setBookings(merged);
         if (Array.isArray(props) && props.length > 0) setSelProp(props[0].id);
       } finally { setLoading(false); }
     })();
@@ -202,6 +222,11 @@ export default function OccupancyCalendar() {
                 const endIdx = lastVisible >= 0 ? VISIBLE - lastVisible : -1;
                 bars.push({ bk, startIdx, endIdx });
               }
+              const { lanes, numLanes } = assignLanes(bars, VISIBLE);
+              const rowHeight = Math.max(
+                ROW_H,
+                ROW_PAD + numLanes * (BAR_H_MULTI + BAR_GAP) - BAR_GAP + ROW_PAD,
+              );
               return (
                 <tr key={prop.id} style={{position:'relative'}}>
                   <td style={{
@@ -209,7 +234,7 @@ export default function OccupancyCalendar() {
                     background: pi%2===0 ? pal.cellBg : pal.cellBgAlt,
                     borderBottom:`1px solid ${pal.borderCol}`,
                     borderRight:`2px solid ${pal.borderCol}`,
-                    padding:'0 16px', height: ROW_H,
+                    padding:'0 16px', height: rowHeight,
                   }}>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
                       <div style={{width:6,height:6,borderRadius:'50%',background:'#10b981',flexShrink:0}} />
@@ -227,7 +252,7 @@ export default function OccupancyCalendar() {
                         background: bg,
                         borderBottom:`1px solid ${pal.borderCol}`,
                         borderRight:`1px solid ${pal.borderCol}`,
-                        padding:0, height: ROW_H, position:'relative',
+                        padding:0, height: rowHeight, position:'relative',
                       }}>
                         {isT && (
                           <div style={{
@@ -244,11 +269,11 @@ export default function OccupancyCalendar() {
                   <td style={{
                     position:'absolute', top:0, left:0,
                     width: PROP_W + VISIBLE * DAY_W,
-                    height: ROW_H,
+                    height: rowHeight,
                     padding:0, border:'none',
                     pointerEvents:'none', zIndex:15,
                   }}>
-                    {bars.map(({bk, startIdx, endIdx}) => {
+                    {bars.map(({bk, startIdx, endIdx}, bi) => {
                       const col        = bookingColor(bk, dark);
                       const ciDay      = getCheckIn(bk);
                       const startsHere = multiDays.some(d => sameDay(d, ciDay));
@@ -265,7 +290,8 @@ export default function OccupancyCalendar() {
                           onMouseLeave={() => setTooltip(null)}
                           style={{
                             position:'absolute',
-                            top:8, bottom:8,
+                            top: ROW_PAD + lanes[bi] * (BAR_H_MULTI + BAR_GAP),
+                            height: BAR_H_MULTI,
                             left:leftPx, right:rightPx,
                             background: col.bg,
                             borderLeft:   startsHere ? `3px solid ${col.solid}` : 'none',
@@ -370,6 +396,7 @@ export default function OccupancyCalendar() {
         }}>
           {Array.from({length:weeks},(_,wi) => {
             const bars = getBarsForWeek(wi);
+            const cellHeight = Math.max(CELL_H, BAR_TOP + bars.length * (BAR_H + 4) + 8);
             const weekCells = Array.from({length:7},(_,di) => {
               const dayNum = wi*7 + di - firstDow + 1;
               return (dayNum>=1&&dayNum<=daysInM) ? new Date(year,month,dayNum) : null;
@@ -381,7 +408,7 @@ export default function OccupancyCalendar() {
                   const isWEnd = di>=5;
                   return (
                     <div key={di} className="cal-month-cell" style={{
-                      height: CELL_H,
+                      height: cellHeight,
                       background: isT
                         ? (dark ? '#052e16' : '#f0fdf4')
                         : isWEnd
