@@ -209,6 +209,7 @@ Colores: created=amber, registered=blue, processed=emerald, error=red, cancelled
 | Paperless IP bloqueada | `PAPERLESS_WEBHOOKS_ALLOW_INTERNAL_REQUESTS=true` |
 | Docker no recarga código | `npm run build` + `docker compose build` + `up -d` |
 | SES 404 | Endpoint sin `/v1/`, pendiente alta Ministerio |
+| Error SSL FNMT en PRD | CAs de FNMT no incluidos en Alpine — ver certs/ en Dockerfile API |
 | UPDATE en BD no persiste | Usar `WHERE campo LIKE '%valor%'` y verificar con SELECT |
 | Catch sin info útil | Loguear siempre `err.message` Y `err.response?.data` |
 | Stock negativo bloqueado | Backend rechaza salidas si quantity > stockActual con BadRequestException |

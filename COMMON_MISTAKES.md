@@ -89,6 +89,20 @@
 - ❌ `<com:comunicacion>` como elemento raíz dentro del Body → el Ministerio rechaza la petición
 - ✅ `<com:comunicacionRequest>` (API v3.1.3) — afecta a sendToSes, consultarLote y testConnection
 
+## SES SSL error en PRD (UNABLE_TO_VERIFY_LEAF_SIGNATURE)
+- Causa: imagen Docker (Alpine) no incluye los CAs de FNMT en su trust store
+- ✅ Solución: añadir certs al Dockerfile del API (runner stage):
+  - apps/api/certs/fnmt-ac-componentes.crt — CA intermedia (firma *.ses.mir.es)
+  - apps/api/certs/fnmt-ac-raiz.crt — CA raíz (AC RAIZ FNMT-RCM)
+  - Descargados desde AIA extension del endpoint: cert.fnmt.es
+  ```dockerfile
+  COPY apps/api/certs/fnmt-ac-componentes.crt /usr/local/share/ca-certificates/
+  COPY apps/api/certs/fnmt-ac-raiz.crt /usr/local/share/ca-certificates/
+  RUN apk add --no-cache ca-certificates && update-ca-certificates
+  ```
+- Nota: mir-ca.pem en certs/ ya estaba presente y es usado por httpsAgent en SesService
+- En DEV funciona porque rejectUnauthorized: false bypasea la validación
+
 ## Parser de importe Paperless: formato europeo
 - ❌ `.replace(/[^0-9.,]/g, '').replace(',', '.')` → `EUR1.476,20` produce `1.476` (incorrecto)
 - ✅ Si el string contiene coma: quitar todos los puntos primero (miles), luego coma→punto
