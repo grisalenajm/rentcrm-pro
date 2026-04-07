@@ -17,6 +17,9 @@
 - [x] Alertas de stock mínimo (`minStock`)
 - [x] Recuento masivo por propiedad
 
+### SES / Infraestructura (07/04/2026)
+- [x] Fix SES SSL en PRD: importar CAs FNMT (ac-componentes + ac-raiz) en imagen Docker Alpine
+
 ### Otras (07/04/2026)
 - [x] Mass update precios de reservas desde Excel (`GET /excel/template/bookings-price`, `POST /excel/import/bookings-price`)
 - [x] Cambio contraseña desde perfil para usuarios no admin (`PUT /users/me/password`)
