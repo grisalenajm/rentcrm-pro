@@ -49,21 +49,21 @@ export class MaterialsController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('admin', 'gestor', 'inventario')
+  @Roles('admin', 'gestor')
   create(@Body() dto: CreateMaterialDto) {
     return this.materialsService.create(dto);
   }
 
   @Put(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'gestor', 'inventario')
+  @Roles('admin', 'gestor')
   update(@Param('id') id: string, @Body() dto: UpdateMaterialDto) {
     return this.materialsService.update(id, dto);
   }
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'inventario')
+  @Roles('admin')
   remove(@Param('id') id: string) {
     return this.materialsService.remove(id);
   }

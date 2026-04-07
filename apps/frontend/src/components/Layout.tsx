@@ -21,20 +21,24 @@ export default function Layout() {
     return () => { document.body.style.overflow = ''; };
   }, [menuOpen]);
 
-  const nav = [
-    { to: '/',                    icon: '📊', label: t('nav.dashboard')  },
-    { to: '/properties',          icon: '🏠', label: t('nav.properties') },
-    { to: '/clients',             icon: '👥', label: t('nav.clients')    },
-    { to: '/bookings',            icon: '📅', label: t('nav.bookings')   },
-    { to: '/financials',          icon: '💶', label: t('nav.financials') },
-    { to: '/contracts',           icon: '📄', label: t('nav.contracts')  },
-    { to: '/calendar',            icon: '🗓️', label: t('nav.calendar')  },
-    { to: '/transmision-datos',   icon: '📡', label: t('nav.transmision') },
-    { to: '/logs',                icon: '🖥️', label: t('nav.logs')       },
-    ...(['admin', 'gestor', 'inventario'].includes(user?.role ?? '') ? [{ to: '/inventory', icon: '📦', label: t('nav.inventory') }] : []),
-    ...(user?.role === 'admin' ? [{ to: '/users', icon: '👤', label: t('nav.users') }] : []),
-    { to: '/settings',            icon: '⚙️', label: t('nav.settings')  },
-  ];
+  const nav = user?.role === 'inventario'
+    ? [
+        { to: '/inventory', icon: '📦', label: t('nav.inventory') },
+      ]
+    : [
+        { to: '/',                    icon: '📊', label: t('nav.dashboard')  },
+        { to: '/properties',          icon: '🏠', label: t('nav.properties') },
+        { to: '/clients',             icon: '👥', label: t('nav.clients')    },
+        { to: '/bookings',            icon: '📅', label: t('nav.bookings')   },
+        { to: '/financials',          icon: '💶', label: t('nav.financials') },
+        { to: '/contracts',           icon: '📄', label: t('nav.contracts')  },
+        { to: '/calendar',            icon: '🗓️', label: t('nav.calendar')  },
+        { to: '/transmision-datos',   icon: '📡', label: t('nav.transmision') },
+        { to: '/logs',                icon: '🖥️', label: t('nav.logs')       },
+        ...(['admin', 'gestor'].includes(user?.role ?? '') ? [{ to: '/inventory', icon: '📦', label: t('nav.inventory') }] : []),
+        ...(user?.role === 'admin' ? [{ to: '/users', icon: '👤', label: t('nav.users') }] : []),
+        { to: '/settings',            icon: '⚙️', label: t('nav.settings')  },
+      ];
 
   const handleLogout = () => { logout(); navigate('/login'); };
 

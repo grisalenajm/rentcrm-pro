@@ -14,6 +14,6 @@ export class CreateUserDto {
   })
   password: string;
 
-  @IsIn(['admin', 'gestor', 'viewer'])
+  @IsIn(['admin', 'gestor', 'owner', 'inventario', 'viewer'])
   role: string;
 }
