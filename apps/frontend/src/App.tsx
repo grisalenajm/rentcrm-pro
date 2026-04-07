@@ -35,6 +35,12 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 }
 
+function RootRedirect() {
+  const { user } = useAuth();
+  if (user?.role === 'inventario') return <Navigate to="/inventory" replace />;
+  return <Dashboard />;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
@@ -46,7 +52,7 @@ export default function App() {
             <Route path="/contracts/sign/:token" element={<SignContract />} />
             <Route path="/checkin/:token" element={<CheckinPage />} />
             <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
-              <Route index element={<Dashboard />} />
+              <Route index element={<RootRedirect />} />
               <Route path="properties"                       element={<Properties />} />
               <Route path="properties/:id"               element={<PropertyDetail />} />
               <Route path="properties/:id/edit"          element={<PropertyEdit />} />
