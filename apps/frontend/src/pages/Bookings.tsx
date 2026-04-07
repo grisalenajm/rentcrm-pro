@@ -143,7 +143,7 @@ export default function Bookings() {
   const [filterStatus, setFilterStatus]       = useState('');
   const [filterDateFrom, setFilterDateFrom]   = useState('');
   const [filterDateTo, setFilterDateTo]       = useState('');
-  const [showBlocks, setShowBlocks]           = useState(false);
+  const [showBlocks, setShowBlocks]           = useState(() => localStorage.getItem('bookings.showBlocks') === 'true');
   const [sortKey, setSortKey]                 = useState('checkin');
   const [sortDir, setSortDir]                 = useState<'asc' | 'desc'>('desc');
 
@@ -211,8 +211,8 @@ export default function Bookings() {
   }, [clientSearch]);
 
   const { data: bookingsRaw, isLoading } = useQuery({
-    queryKey: ['bookings', showBlocks],
-    queryFn: () => api.get(showBlocks ? '/bookings?includeBlocks=true' : '/bookings').then(r => r.data),
+    queryKey: ['bookings'],
+    queryFn: () => api.get('/bookings?includeBlocks=true').then(r => r.data),
   });
   const bookings = bookingsRaw?.data || bookingsRaw || [];
 
@@ -231,6 +231,7 @@ export default function Bookings() {
   // ── Filtrado + ordenación ─────────────────────────────────────────────
   const filteredSorted = useMemo(() => {
     let r = [...bookings];
+    if (!showBlocks) r = r.filter((b: any) => b.source !== 'manual_block');
     if (filterSearch) {
       const s = filterSearch.toLowerCase();
       r = r.filter((b: any) =>
@@ -269,7 +270,7 @@ export default function Bookings() {
       });
     }
     return r;
-  }, [bookings, filterSearch, filterProperty, filterStatus, filterDateFrom, filterDateTo, sortKey, sortDir]);
+  }, [bookings, showBlocks, filterSearch, filterProperty, filterStatus, filterDateFrom, filterDateTo, sortKey, sortDir]);
 
   const createClientMutation = useMutation({
     mutationFn: (data: any) => api.post('/clients', data).then(r => r.data),
@@ -564,10 +565,10 @@ export default function Bookings() {
           <input
             type="checkbox"
             checked={showBlocks}
-            onChange={e => setShowBlocks(e.target.checked)}
+            onChange={e => { setShowBlocks(e.target.checked); localStorage.setItem('bookings.showBlocks', String(e.target.checked)); }}
             className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
           />
-          <span className="text-sm text-slate-300">Mostrar bloques</span>
+          <span className="text-sm text-slate-300">Mostrar bloqueos de calendario</span>
         </label>
         {hasFilters && (
           <button onClick={() => { setFilterSearch(''); setFilterProperty(''); setFilterStatus(''); setFilterDateFrom(''); setFilterDateTo(''); }}
