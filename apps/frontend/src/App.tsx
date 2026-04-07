@@ -25,6 +25,7 @@ import UserManagement from './pages/UserManagement';
 import PropertyFinancialDetail from './pages/PropertyFinancialDetail';
 import Profile from './pages/Profile';
 import Logs from './pages/Logs';
+import Inventory from './pages/Inventory';
 import { UserPreferencesProvider } from './context/UserPreferencesContext';
 
 const qc = new QueryClient();
@@ -61,6 +62,7 @@ export default function App() {
               <Route path="transmision-datos"  element={<TransmisionDatos />} />
               <Route path="calendar"           element={<OccupancyCalendar />} />
               <Route path="logs"               element={<Logs />} />
+              <Route path="inventory"          element={<Inventory />} />
               <Route path="users"               element={<UserManagement />} />
               <Route path="settings"             element={<Settings />} />
               <Route path="profile"              element={<Profile />} />

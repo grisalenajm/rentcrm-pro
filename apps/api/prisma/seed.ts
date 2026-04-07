@@ -26,10 +26,10 @@ async function main() {
   const adminName  = process.env.SEED_ADMIN_NAME   ?? 'Admin';
 
   const org = await prisma.organization.upsert({
-    where: { id: 'a80a9d68-5dd0-43eb-b0eb-2ac389dab5a2' },
+    where: { id: '00000000-0000-0000-0000-000000000010' },
     update: {},
     create: {
-      id: 'a80a9d68-5dd0-43eb-b0eb-2ac389dab5a2',
+      id: '00000000-0000-0000-0000-000000000010',
       name: orgName,
       nif: orgNif,
       address: orgAddress,

@@ -29,3 +29,24 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
+
+// Materials
+export const getMaterials = (params?: { type?: string; isActive?: boolean; search?: string }) =>
+  api.get('/materials', { params }).then((r) => r.data);
+export const getMaterial = (id: string) => api.get(`/materials/${id}`).then((r) => r.data);
+export const createMaterial = (data: any) => api.post('/materials', data).then((r) => r.data);
+export const updateMaterial = (id: string, data: any) => api.put(`/materials/${id}`, data).then((r) => r.data);
+export const deleteMaterial = (id: string) => api.delete(`/materials/${id}`).then((r) => r.data);
+export const getMaterialBarcodeUrl = (id: string): string => `/api/materials/${id}/barcode`;
+
+// Stock
+export const getStock = (propertyId: string) =>
+  api.get(`/stock/${propertyId}`).then((r) => r.data);
+export const getStockMovements = (
+  propertyId: string,
+  params?: { materialId?: string; type?: string; from?: string; to?: string },
+) => api.get(`/stock/${propertyId}/movements`, { params }).then((r) => r.data);
+export const getStockValuation = (propertyId: string) =>
+  api.get(`/stock/${propertyId}/valuation`).then((r) => r.data);
+export const createStockMovement = (data: any) =>
+  api.post('/stock/movement', data).then((r) => r.data);

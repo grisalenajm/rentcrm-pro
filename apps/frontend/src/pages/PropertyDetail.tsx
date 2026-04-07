@@ -239,6 +239,7 @@ export default function PropertyDetail() {
           className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm rounded-lg transition-colors font-semibold">
           💰 Ver finanzas
         </button>
+
         <button onClick={() => navigate(`/properties/${property.id}/edit`)}
           className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-sm rounded-lg transition-colors">
           Editar
