@@ -160,7 +160,16 @@ export default function ICalFeeds() {
                     </span>
                     <span className="font-medium text-gray-900 dark:text-white">{feed.property.name}</span>
                   </div>
-                  <p className="text-xs text-gray-400 truncate">{feed.icalUrl}</p>
+                  <div className="flex items-start gap-2 mt-0.5">
+                    <p className="text-xs text-gray-400 break-all flex-1">{feed.icalUrl}</p>
+                    <button
+                      onClick={() => handleCopy(feed.icalUrl, `${feed.id}-url`)}
+                      className="text-xs text-blue-500 hover:text-blue-700 shrink-0 transition"
+                      title="Copiar URL"
+                    >
+                      {copied === `${feed.id}-url` ? '✅' : '📋'}
+                    </button>
+                  </div>
                   <p className="text-xs text-gray-400 mt-1">
                     {feed.lastSyncAt
                       ? `${t('ical.lastSync')}: ${new Date(feed.lastSyncAt).toLocaleString()}`
@@ -191,7 +200,7 @@ export default function ICalFeeds() {
               <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                 <p className="text-xs text-gray-400 mb-1">{t('ical.exportUrl')}:</p>
                 <div className="flex items-center gap-2">
-                  <code className="text-xs bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 px-2 py-1 rounded truncate flex-1">
+                  <code className="text-xs bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 px-2 py-1 rounded break-all flex-1">
                     {exportUrl(feed.propertyId)}
                   </code>
                   <button
