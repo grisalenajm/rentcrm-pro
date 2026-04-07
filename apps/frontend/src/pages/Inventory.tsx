@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../context/AuthContext';
 import {
   api,
   getMaterials, createMaterial, updateMaterial,
@@ -247,7 +248,10 @@ function MovementModal({ propertyId, onClose, onSuccess }: MovModalProps) {
 
 export default function Inventory() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const qc = useQueryClient();
+
+  const canEditMaterials = user?.role === 'admin' || user?.role === 'gestor';
 
   // ── Tab state ──────────────────────────────────────────────────────────────
   const [mainTab, setMainTab] = useState<MainTab>('masterData');
@@ -495,9 +499,11 @@ export default function Inventory() {
                 <option value="false">{t('inventory.inactive')}</option>
               </select>
             </div>
-            <button onClick={openMatCreate} className={BTN_PRIMARY}>
-              + {t('inventory.addMaterial')}
-            </button>
+            {canEditMaterials && (
+              <button onClick={openMatCreate} className={BTN_PRIMARY}>
+                + {t('inventory.addMaterial')}
+              </button>
+            )}
           </div>
 
           {/* Table */}
@@ -541,13 +547,15 @@ export default function Inventory() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <button onClick={() => openMatEdit(mat)} className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                              {t('common.edit')}
-                            </button>
+                            {canEditMaterials && (
+                              <button onClick={() => openMatEdit(mat)} className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                                {t('common.edit')}
+                              </button>
+                            )}
                             <button onClick={() => window.open(getMaterialBarcodeUrl(mat.id), '_blank')} className="text-xs text-amber-400 hover:text-amber-300 transition-colors" title={t('inventory.printBarcode')}>
                               🖨
                             </button>
-                            {mat.isActive && (
+                            {canEditMaterials && mat.isActive && (
                               <button onClick={() => handleMatDeactivate(mat)} className="text-xs text-red-400 hover:text-red-300 transition-colors">
                                 {t('common.delete')}
                               </button>

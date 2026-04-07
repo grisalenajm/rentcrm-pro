@@ -116,6 +116,14 @@ model StockMovement {
 ## Roles
 `admin` > `gestor` > `owner` > `inventario` (solo módulo inventarios) > viewer (solo lectura)
 
+| Rol | Acceso |
+|-----|--------|
+| admin | Acceso total a toda la aplicación |
+| gestor | Acceso total excepto gestión de usuarios |
+| owner | Acceso de lectura + reservas propias |
+| viewer | Solo lectura en todos los módulos |
+| inventario | **Solo módulo `/inventory`**. Puede ver Master Data, registrar movimientos de stock y hacer recuentos. NO puede crear ni editar materiales (solo admin y gestor). Sin acceso al resto de la aplicación. |
+
 ## Patrones críticos
 
 ### Nombres de campos

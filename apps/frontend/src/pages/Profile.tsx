@@ -1,14 +1,42 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { useTranslation } from 'react-i18next';
 
 type OtpSetupData = { secret: string; qrCode: string; otpauthUrl: string };
 
 export default function Profile() {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const [otpEnabled, setOtpEnabled] = useState<boolean | null>(null);
   const [loadingOtp, setLoadingOtp] = useState(false);
+
+  // Password change
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwError('');
+    setPwSuccess('');
+    if (pwNew.length < 8) { setPwError(t('profile.passwordTooShort')); return; }
+    if (pwNew !== pwConfirm) { setPwError(t('profile.passwordMismatch')); return; }
+    setPwLoading(true);
+    try {
+      await api.put('/users/me/password', { currentPassword: pwCurrent, newPassword: pwNew });
+      setPwSuccess(t('profile.passwordChanged'));
+      setPwCurrent(''); setPwNew(''); setPwConfirm('');
+    } catch (e: any) {
+      setPwError(e?.response?.data?.message ?? 'Error al cambiar la contraseña');
+    } finally {
+      setPwLoading(false);
+    }
+  };
 
   // Setup flow
   const [setupData, setSetupData] = useState<OtpSetupData | null>(null);
@@ -76,11 +104,11 @@ export default function Profile() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-white mb-6">Mi perfil</h1>
+      <h1 className="text-2xl font-bold text-white mb-6">{t('profile.title')}</h1>
 
       {/* Datos básicos */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-6">
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Información</h2>
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">{t('profile.info')}</h2>
         <div className="space-y-3">
           <div>
             <span className="text-xs text-slate-500">Nombre</span>
@@ -97,9 +125,65 @@ export default function Profile() {
         </div>
       </div>
 
+      {/* Cambiar contraseña */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-6">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">{t('profile.changePassword')}</h2>
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          {pwSuccess && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400 text-sm">
+              {pwSuccess}
+            </div>
+          )}
+          {pwError && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+              {pwError}
+            </div>
+          )}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">{t('profile.currentPassword')}</label>
+            <input
+              type="password"
+              value={pwCurrent}
+              onChange={e => setPwCurrent(e.target.value)}
+              required
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">{t('profile.newPassword')}</label>
+            <input
+              type="password"
+              value={pwNew}
+              onChange={e => setPwNew(e.target.value)}
+              required
+              minLength={8}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">{t('profile.confirmPassword')}</label>
+            <input
+              type="password"
+              value={pwConfirm}
+              onChange={e => setPwConfirm(e.target.value)}
+              required
+              minLength={8}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={pwLoading || !pwCurrent || !pwNew || !pwConfirm}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            {pwLoading ? t('profile.saving') : t('profile.save')}
+          </button>
+        </form>
+      </div>
+
       {/* Seguridad — 2FA */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Seguridad</h2>
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">{t('profile.security')}</h2>
 
         {otpEnabled === null ? (
           <p className="text-slate-500 text-sm">Cargando...</p>

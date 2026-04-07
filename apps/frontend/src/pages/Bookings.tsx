@@ -165,6 +165,48 @@ export default function Bookings() {
   const [dateError, setDateError] = useState('');
   const [overlapError, setOverlapError] = useState('');
 
+  // ── Actualización masiva de precios ───────────────────────────────────
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [priceFile, setPriceFile] = useState<File | null>(null);
+  const [priceUploading, setPriceUploading] = useState(false);
+  const [priceResult, setPriceResult] = useState<{ processed: number; updated: number; errors: string[] } | null>(null);
+  const priceFileRef = useRef<HTMLInputElement>(null);
+
+  const handleDownloadPriceTemplate = async () => {
+    try {
+      const response = await api.get('/excel/template/bookings-price', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'plantilla_precios_reservas.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch { alert('Error al descargar plantilla'); }
+  };
+
+  const handlePriceImport = async () => {
+    if (!priceFile) return;
+    setPriceUploading(true);
+    setPriceResult(null);
+    const formData = new FormData();
+    formData.append('file', priceFile);
+    try {
+      const res = await api.post('/excel/import/bookings-price', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setPriceResult(res.data);
+      qc.invalidateQueries({ queryKey: ['bookings'] });
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Error al importar');
+    } finally {
+      setPriceUploading(false);
+      setPriceFile(null);
+      if (priceFileRef.current) priceFileRef.current.value = '';
+    }
+  };
+
   // ── Edición masiva ─────────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkAction, setBulkAction] = useState('');
@@ -520,6 +562,12 @@ export default function Bookings() {
         </div>
         <div className="flex items-center gap-2">
           <ExcelButtons entity="bookings" onImportSuccess={() => qc.invalidateQueries({ queryKey: ['bookings'] })} />
+          <button
+            onClick={() => { setShowPriceModal(true); setPriceResult(null); setPriceFile(null); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium rounded-lg transition-colors"
+          >
+            💰 {t('bookings.priceUpdate')}
+          </button>
           <button onClick={() => { setShowForm(true); setErrorMsg(''); resetForm(); }}
             className={BTN_PRIMARY}>
             + {t('bookings.new')}
@@ -910,6 +958,89 @@ export default function Bookings() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal actualización masiva de precios ───────────────────────── */}
+      {showPriceModal && (
+        <div className={MODAL_OVERLAY}>
+          <div className={`${MODAL_PANEL} max-w-md`}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-white">{t('bookings.priceUpdateTitle')}</h2>
+              <button onClick={() => setShowPriceModal(false)} className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+            </div>
+            <p className="text-slate-400 text-sm mb-5">{t('bookings.priceUpdateDesc')}</p>
+
+            <div className="space-y-4">
+              {/* Paso 1: descargar plantilla */}
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">1. {t('bookings.downloadTemplate')}</p>
+                <button
+                  onClick={handleDownloadPriceTemplate}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm font-medium rounded-lg transition-colors w-full justify-center"
+                >
+                  📋 {t('bookings.downloadTemplate')}
+                </button>
+              </div>
+
+              {/* Paso 2: subir Excel */}
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">2. {t('bookings.uploadFile')}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => priceFileRef.current?.click()}
+                    className="flex-1 flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm font-medium rounded-lg transition-colors justify-center"
+                  >
+                    📂 {priceFile ? priceFile.name : t('bookings.uploadFile')}
+                  </button>
+                  {priceFile && (
+                    <button
+                      onClick={handlePriceImport}
+                      disabled={priceUploading}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      {priceUploading ? t('bookings.uploading') : '⬆️'}
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={priceFileRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={e => { if (e.target.files?.[0]) { setPriceFile(e.target.files[0]); setPriceResult(null); } }}
+                />
+              </div>
+
+              {/* Resultado */}
+              {priceResult && (
+                <div className="mt-2 p-4 bg-slate-800 rounded-xl space-y-2">
+                  <p className="text-sm font-semibold text-white">{t('bookings.priceUpdateResult')}</p>
+                  <div className="flex gap-4 text-sm">
+                    <span className="text-slate-400">{priceResult.processed} {t('bookings.rowsProcessed')}</span>
+                    <span className="text-emerald-400 font-medium">✅ {priceResult.updated} {t('bookings.rowsUpdated')}</span>
+                  </div>
+                  {priceResult.errors.length > 0 && (
+                    <div>
+                      <p className="text-red-400 text-xs font-medium mb-1">⚠️ {priceResult.errors.length} errores:</p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {priceResult.errors.map((err, i) => (
+                          <p key={i} className="text-xs text-slate-400 bg-slate-700 px-2 py-1 rounded">{err}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowPriceModal(false)}
+              className="mt-5 w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-xl transition-colors"
+            >
+              {t('common.close')}
+            </button>
           </div>
         </div>
       )}

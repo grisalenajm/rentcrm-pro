@@ -475,6 +475,68 @@ export class ExcelService {
     return { csv: rows.join('\n'), filename: `N2_${safeName}_${year}.csv` };
   }
 
+  async getBookingsPriceTemplate(): Promise<Buffer> {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Plantilla');
+    ws.columns = [
+      { header: 'id (ID de reserva) *', key: 'id', width: 40 },
+      { header: 'totalAmount (nuevo precio) *', key: 'totalAmount', width: 30 },
+    ];
+    this.styleHeader(ws);
+    ws.addRow(['550e8400-e29b-41d4-a716-446655440000', '750.00']);
+    return Buffer.from(await wb.xlsx.writeBuffer());
+  }
+
+  async importBookingsPrices(
+    buffer: Buffer,
+    organizationId: string,
+  ): Promise<{ processed: number; updated: number; errors: string[] }> {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buffer as any);
+    const ws = wb.getWorksheet(1);
+    if (!ws) throw new BadRequestException('Archivo Excel inválido');
+
+    const errors: string[] = [];
+    let processed = 0;
+    let updated = 0;
+
+    const rows: { rowNumber: number; id: string; totalAmount: number }[] = [];
+    ws.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const id = row.getCell(1).text?.trim();
+      const amountStr = row.getCell(2).text?.trim();
+      if (!id || !amountStr) {
+        errors.push(`Fila ${rowNumber}: id y totalAmount son obligatorios`);
+        return;
+      }
+      const totalAmount = parseFloat(amountStr);
+      if (isNaN(totalAmount) || totalAmount < 0) {
+        errors.push(`Fila ${rowNumber}: totalAmount "${amountStr}" no es un número válido`);
+        return;
+      }
+      rows.push({ rowNumber, id, totalAmount });
+    });
+
+    for (const r of rows) {
+      processed++;
+      const booking = await this.prisma.booking.findFirst({
+        where: { id: r.id, organizationId },
+        select: { id: true },
+      });
+      if (!booking) {
+        errors.push(`Fila ${r.rowNumber}: Reserva con ID "${r.id}" no encontrada`);
+        continue;
+      }
+      await this.prisma.booking.update({
+        where: { id: r.id },
+        data: { totalAmount: r.totalAmount },
+      });
+      updated++;
+    }
+
+    return { processed, updated, errors };
+  }
+
   // ─── HELPERS ────────────────────────────────────────────
 
   private styleHeader(ws: ExcelJS.Worksheet) {

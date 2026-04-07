@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Param, Query, Res, UseGuards, Request, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { ExcelService } from './excel.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -46,6 +47,13 @@ export class ExcelController {
   }
 
   // Plantillas
+  @Get('template/bookings-price')
+  async getBookingsPriceTemplate(@Res() res: Response) {
+    const buffer = await this.excelService.getBookingsPriceTemplate();
+    res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': 'attachment; filename="plantilla_precios_reservas.xlsx"' });
+    res.send(buffer);
+  }
+
   @Get('template/:type')
   async getTemplate(@Param('type') type: 'clients' | 'expenses' | 'bookings', @Res() res: Response) {
     const buffer = await this.excelService.getTemplate(type);
@@ -73,5 +81,13 @@ export class ExcelController {
   async importBookings(@UploadedFile() file: Express.Multer.File, @Request() req) {
     if (!file) throw new Error('No se recibió ningún archivo');
     return this.excelService.importBookings(file.buffer, req.user.organizationId);
+  }
+
+  @Post('import/bookings-price')
+  @SkipThrottle()
+  @UseInterceptors(FileInterceptor('file'))
+  async importBookingsPrices(@UploadedFile() file: Express.Multer.File, @Request() req) {
+    if (!file) throw new Error('No se recibió ningún archivo');
+    return this.excelService.importBookingsPrices(file.buffer, req.user.organizationId);
   }
 }

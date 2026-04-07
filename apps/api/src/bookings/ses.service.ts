@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
 import * as https from 'https';
+import * as nodemailer from 'nodemailer';
 import AdmZip = require('adm-zip');
 import PDFDocument = require('pdfkit');
 
@@ -303,6 +304,89 @@ export class SesService {
     });
   }
 
+  private async notifySesError(
+    bookingId: string,
+    organizationId: string,
+    errorMessage: string,
+    lote?: string | null,
+  ): Promise<void> {
+    try {
+      const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
+      if (!org) return;
+      const { smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom } = org as any;
+      if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) return;
+
+      const recipient: string = smtpFrom || smtpUser;
+
+      const booking = await this.prisma.booking.findFirst({
+        where: { id: bookingId, organizationId },
+        include: { client: true, property: true },
+      });
+      if (!booking) return;
+
+      const property = booking.property as any;
+      const client   = booking.client as any;
+      const checkIn  = new Date(booking.checkInDate).toLocaleDateString('es-ES');
+      const checkOut = new Date(booking.checkOutDate).toLocaleDateString('es-ES');
+      const clientName = client
+        ? `${client.firstName} ${client.lastName}`
+        : 'Cliente desconocido';
+
+      const subject = `❌ Error en parte SES — ${property?.name ?? 'Propiedad'} ${checkIn}`;
+      const html = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
+          <div style="background: #ef4444; padding: 16px 24px; border-radius: 8px 8px 0 0;">
+            <h2 style="color: white; margin: 0;">❌ Error en el envío del parte SES</h2>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-top: none;
+                      border-radius: 0 0 8px 8px; padding: 24px;">
+            <h3 style="color: #475569; margin-top: 0;">Datos de la reserva</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+              <tr>
+                <td style="padding: 8px 0; color: #64748b; width: 140px;">Cliente</td>
+                <td style="padding: 8px 0; font-weight: bold;">${clientName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b;">Propiedad</td>
+                <td style="padding: 8px 0; font-weight: bold;">${property?.name ?? '—'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b;">Check-in</td>
+                <td style="padding: 8px 0;">${checkIn}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #64748b;">Check-out</td>
+                <td style="padding: 8px 0;">${checkOut}</td>
+              </tr>
+              ${lote ? `<tr>
+                <td style="padding: 8px 0; color: #64748b;">Nº Lote SES</td>
+                <td style="padding: 8px 0; font-family: monospace;">${lote}</td>
+              </tr>` : ''}
+            </table>
+            <h3 style="color: #475569;">Error recibido del Ministerio</h3>
+            <div style="background: #fee2e2; border: 1px solid #fca5a5; border-radius: 6px;
+                        padding: 12px 16px; margin-bottom: 24px;">
+              <p style="margin: 0; color: #b91c1c; font-family: monospace; white-space: pre-wrap;">${errorMessage}</p>
+            </div>
+            <p style="color: #94a3b8; font-size: 13px; margin: 0;">
+              RentalSuite · ${new Date().toLocaleString('es-ES')}
+            </p>
+          </div>
+        </div>
+      `;
+
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: Number(smtpPort),
+        secure: Number(smtpPort) === 465,
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+      await transporter.sendMail({ from: recipient, to: recipient, subject, html });
+    } catch (err: any) {
+      this.logger.warn(`SES error notification email failed: ${err.message}`);
+    }
+  }
+
   async sendToSes(bookingId: string, organizationId: string): Promise<any> {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
     if (!org) throw new BadRequestException('Organización no encontrada');
@@ -355,12 +439,13 @@ export class SesService {
       const codigo = codigoMatch ? codigoMatch[1] : null;
 
       const ok = codigo === '0';
+      const sesErrorMsg = ok ? null : `Ministerio rechazó el parte (código ${codigo})`;
       await this.prisma.booking.update({
         where: { id: bookingId },
         data: {
           sesLote: lote,
           sesStatus: ok ? 'enviado' : 'error',
-          sesError: ok ? null : `Ministerio rechazó el parte (código ${codigo})`,
+          sesError: sesErrorMsg,
           sesSentAt: new Date(),
         },
       });
@@ -369,6 +454,11 @@ export class SesService {
       await this.logsService.add(ok ? 'info' : 'error', 'ses',
         ok ? `Parte SES enviado correctamente (lote ${lote})` : `SES rechazó el parte (código ${codigo})`,
         { bookingId, lote, codigo });
+
+      if (!ok) {
+        this.notifySesError(bookingId, organizationId, sesErrorMsg!, lote).catch(() => {});
+      }
+
       return { ok, lote, codigo };
     } catch (err: any) {
       const errorMsg = err.response?.data ? String(err.response.data).slice(0, 500) : err.message;
@@ -378,6 +468,7 @@ export class SesService {
       });
       this.logger.error(JSON.stringify({ event: 'ses_send', errMsg: err.message, bookingId, status: 'error' }));
       await this.logsService.add('error', 'ses', `Error al enviar parte SES: ${err.message}`, { bookingId, error: errorMsg });
+      this.notifySesError(bookingId, organizationId, errorMsg).catch(() => {});
       throw new BadRequestException(`Error al enviar al SES: ${err.message}`);
     }
   }

@@ -1,8 +1,25 @@
 # RentalSuite — Tareas pendientes
-> Actualizado 05/04/2026
+> Actualizado 07/04/2026
 
 ## En progreso
 (ninguna)
+
+## Completadas recientemente
+
+### Inventario (sesiones 1–5 + correcciones 07/04/2026)
+- [x] Modelo `Material` — CRUD + código de barras Code128 auto-generado (`MAT-00000001`)
+- [x] Modelo `StockMovement` — movimientos entrada/salida/recuento por propiedad
+- [x] Valoración al último precio de entrada
+- [x] Módulo `/inventory` con 3 pestañas: Master Data, Stock, Recuento
+- [x] Rol `inventario` — acceso exclusivo al módulo /inventory (sin crear/editar materiales)
+- [x] Validación stock negativo — backend rechaza salidas si quantity > stockActual
+- [x] `unitPrice` en salidas calculado automáticamente desde el último precio de entrada
+- [x] Alertas de stock mínimo (`minStock`)
+- [x] Recuento masivo por propiedad
+
+### Otras (07/04/2026)
+- [x] Mass update precios de reservas desde Excel (`GET /excel/template/bookings-price`, `POST /excel/import/bookings-price`)
+- [x] Cambio contraseña desde perfil para usuarios no admin (`PUT /users/me/password`)
 
 ## Pendiente (priorizado)
 
@@ -14,8 +31,6 @@
 - [ ] Etiquetas de códigos de barras — página de impresión con grid (imagen barcode + nombre material, CSS print)
 - [ ] iCal: URL de export usando dominio externo `crm.greywoodhome.es` (via `API_PUBLIC_URL`)
 - [ ] iCal: tamaño de feeds Airbnb/Booking.com en la UI
-- [ ] Mass update precios de reservas desde Excel
-- [ ] Cambio contraseña desde perfil para usuarios no admin
 
 ### Baja
 - [ ] Integrar SVG logo RentalSuite en la app
