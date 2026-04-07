@@ -10,24 +10,28 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const org = await prisma.organization.upsert({
-    where: { id: 'a80a9d68-5dd0-43eb-b0eb-2ac389dab5a2' },
+    where: { id: '00000000-0000-0000-0000-000000000010' },
     update: {},
     create: {
-      name: 'RentCRM Demo',
-      nif: 'B12345678',
-      address: 'Calle Mayor 1, Madrid',
+      id: '00000000-0000-0000-0000-000000000010',
+      name: 'Demo Organization',
+      nif: 'CHANGE_ME',
+      address: 'CHANGE_ME',
+      bankSwift: '',
+      bankIban: '',
+      bankBeneficiary: '',
     },
   });
   console.log('✓ Organización:', org.name);
 
-  const hash = await bcrypt.hash('admin123', 10);
+  const hash = await bcrypt.hash('CHANGE_ME_PASSWORD', 10);
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@rentcrm.com' },
+    where: { email: 'admin@example.com' },
     update: {},
     create: {
       organizationId: org.id,
       name: 'Admin',
-      email: 'admin@rentcrm.com',
+      email: 'admin@example.com',
       passwordHash: hash,
       role: 'admin',
     },
@@ -75,8 +79,8 @@ async function main() {
   console.log('✓ Propiedad demo:', property.name);
 
   console.log('\n✅ Seed completado');
-  console.log('   Email: admin@rentcrm.com');
-  console.log('   Pass:  admin123');
+  console.log('   Email: admin@example.com');
+  console.log('   Pass:  CHANGE_ME_PASSWORD');
 }
 
 main()
