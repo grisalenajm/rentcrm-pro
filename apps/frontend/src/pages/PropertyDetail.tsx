@@ -78,6 +78,25 @@ export default function PropertyDetail() {
   const [icalForm, setIcalForm] = useState({ url: '', platform: 'airbnb' });
   const [icalSaving, setIcalSaving] = useState(false);
   const [icalError, setIcalError] = useState('');
+  const [copiedIcal, setCopiedIcal] = useState<string | null>(null);
+
+  const handleCopyIcal = async (text: string, key: string) => {
+    let success = false;
+    if (navigator.clipboard && window.isSecureContext) {
+      try { await navigator.clipboard.writeText(text); success = true; } catch { /* fall through */ }
+    }
+    if (!success) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try { success = document.execCommand('copy'); } catch { /* fall through */ }
+      document.body.removeChild(ta);
+    }
+    if (success) { setCopiedIcal(key); setTimeout(() => setCopiedIcal(null), 2000); }
+    else { window.prompt('Copia la URL manualmente:', text); }
+  };
 
   const { data: property, isLoading } = useQuery<Property>({
     queryKey: ['property', id],
@@ -347,13 +366,13 @@ export default function PropertyDetail() {
             <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">iCal</p>
             <div>
               <p className="text-xs text-slate-400 mb-1">URL exportación</p>
-              <div className="flex items-center gap-2">
-                <code className="text-xs text-emerald-400 bg-slate-800 px-2 py-1 rounded flex-1 truncate">
+              <div className="flex items-start gap-2">
+                <code className="text-xs text-emerald-400 bg-slate-800 px-2 py-1 rounded break-all flex-1">
                   {exportUrl(property.id)}
                 </code>
-                <button onClick={() => navigator.clipboard.writeText(exportUrl(property.id))}
+                <button onClick={() => handleCopyIcal(exportUrl(property.id), 'card-export')}
                   className="text-xs text-slate-400 hover:text-white px-2 py-1 bg-slate-800 rounded transition-colors shrink-0">
-                  Copiar
+                  {copiedIcal === 'card-export' ? '✅' : 'Copiar'}
                 </button>
               </div>
             </div>
@@ -538,13 +557,13 @@ export default function PropertyDetail() {
               {/* Export URL */}
               <div className="bg-slate-800 rounded-xl p-4">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">URL exportación</p>
-                <div className="flex items-center gap-2">
-                  <code className="text-xs text-emerald-400 bg-slate-900 px-3 py-2 rounded-lg flex-1 truncate">
+                <div className="flex items-start gap-2">
+                  <code className="text-xs text-emerald-400 bg-slate-900 px-3 py-2 rounded-lg break-all flex-1">
                     {exportUrl(property.id)}
                   </code>
-                  <button onClick={() => navigator.clipboard.writeText(exportUrl(property.id))}
+                  <button onClick={() => handleCopyIcal(exportUrl(property.id), 'modal-export')}
                     className="text-xs text-slate-400 hover:text-white px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors shrink-0">
-                    📋 Copiar
+                    {copiedIcal === 'modal-export' ? '✅' : '📋 Copiar'}
                   </button>
                 </div>
               </div>
@@ -604,7 +623,16 @@ export default function PropertyDetail() {
                             {feed.platform.toUpperCase()}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-400 truncate">{feed.icalUrl}</p>
+                        <div className="flex items-start gap-2 mt-0.5">
+                          <p className="text-xs text-slate-400 break-all flex-1">{feed.icalUrl}</p>
+                          <button
+                            onClick={() => handleCopyIcal(feed.icalUrl, `feed-${feed.id}`)}
+                            className="text-xs text-slate-500 hover:text-white shrink-0 transition-colors"
+                            title="Copiar URL"
+                          >
+                            {copiedIcal === `feed-${feed.id}` ? '✅' : '📋'}
+                          </button>
+                        </div>
                         <p className="text-xs text-slate-500 mt-1">
                           {feed.lastSyncAt
                             ? `Última sync: ${new Date(feed.lastSyncAt).toLocaleString()}`
