@@ -32,6 +32,7 @@ interface Feed {
   platform: string;
   lastSyncAt: string | null;
   lastSyncStatus: string;
+  eventCount: number;
 }
 
 const emptyForm = { name:'', address:'', city:'', province:'', postalCode:'', country:'ES', rooms:'1', bathrooms:'', maxGuests:'', pricePerNight:'', purchasePrice:'', status: 'active', sesCodigoEstablecimiento:'' };
@@ -94,6 +95,18 @@ export default function Properties() {
 
   // iCal helpers
   const platformBadge = platformBadgeColor;
+
+  const relativeTime = (dateStr: string | null): string => {
+    if (!dateStr) return t('properties.ical.neverSynced');
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 2) return t('properties.ical.justNow');
+    if (mins < 60) return t('properties.ical.minutesAgo', { count: mins });
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return t('properties.ical.hoursAgo', { count: hours });
+    const days = Math.floor(hours / 24);
+    return t('properties.ical.daysAgo', { count: days });
+  };
 
   const copyToClipboard = (text: string) => {
     if (navigator.clipboard) {
@@ -485,17 +498,16 @@ export default function Properties() {
                   <div key={feed.id} className="bg-slate-800 rounded-xl p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${platformBadge(feed.platform)}`}>
                             {feed.platform.toUpperCase()}
                           </span>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${feed.platform === 'airbnb' ? 'bg-amber-500/15 text-amber-400' : feed.platform === 'booking' ? 'bg-blue-500/15 text-blue-400' : 'bg-slate-700 text-slate-300'}`}>
+                            {t('properties.ical.eventCount', { count: feed.eventCount ?? 0 })}
+                          </span>
                         </div>
                         <p className="text-xs text-slate-400 truncate">{feed.icalUrl}</p>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {feed.lastSyncAt
-                            ? `${t('properties.ical.lastSync')}: ${new Date(feed.lastSyncAt).toLocaleString()}`
-                            : t('properties.ical.neverSynced')}
-                        </p>
+                        <p className="text-xs text-slate-500 mt-1">{relativeTime(feed.lastSyncAt)}</p>
                         {icalSyncResult?.feedId === feed.id && (
                           <div className="mt-2 text-xs bg-emerald-500/10 text-emerald-400 rounded-lg px-3 py-2">
                             ✅ {t('properties.ical.syncResult', { imported: icalSyncResult.imported, skipped: icalSyncResult.skipped, total: icalSyncResult.total })}

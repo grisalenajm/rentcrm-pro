@@ -28,11 +28,18 @@ export class ICalService {
   }
 
   async findAll(organizationId: string) {
-    return this.prisma.availabilitySync.findMany({
+    const feeds = await this.prisma.availabilitySync.findMany({
       where: { property: { organizationId } },
-      include: { property: { select: { id: true, name: true } } },
+      include: {
+        property: { select: { id: true, name: true } },
+        _count: { select: { blocks: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
+    return feeds.map(({ _count, ...feed }) => ({
+      ...feed,
+      eventCount: _count.blocks,
+    }));
   }
 
   async create(dto: { propertyId: string; url: string; platform: string }, organizationId: string) {
