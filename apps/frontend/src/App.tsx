@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Properties from './pages/Properties';
 import PropertyDetail from './pages/PropertyDetail';
 import PropertyEdit from './pages/PropertyEdit';
+import PropertyCreate from './pages/PropertyCreate';
 import Clients from './pages/Clients';
 import ClientDetail from './pages/ClientDetail';
 import ClientEdit from './pages/ClientEdit';
@@ -55,6 +56,7 @@ export default function App() {
             <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
               <Route index element={<RootRedirect />} />
               <Route path="properties"                       element={<Properties />} />
+              <Route path="properties/new"               element={<PropertyCreate />} />
               <Route path="properties/:id"               element={<PropertyDetail />} />
               <Route path="properties/:id/ical"          element={<ICalFeeds />} />
               <Route path="properties/:id/edit"          element={<PropertyEdit />} />
