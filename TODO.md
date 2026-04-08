@@ -1,5 +1,5 @@
 # RentalSuite — Tareas pendientes
-> Actualizado 08/04/2026
+> Actualizado 08/04/2026 (tarde)
 
 ## En progreso
 (ninguna)
@@ -26,6 +26,10 @@
 - [x] Endpoint seed `POST /api/seed` — crea org + admin inicial, 409 si ya existe usuario
 - [x] URLs iCal sin truncate — `break-all` + botón Copiar con fallback HTTP
 
+### iCal (08/04/2026)
+- [x] `API_PUBLIC_URL` — `getExportUrl` usa `API_PUBLIC_URL` env var (fallback `FRONTEND_URL`) para que la URL exportada apunte al host de la API, no al dominio frontend
+- [x] Página iCal `/properties/:id/ical` — modal convertido a página completa con badge de eventos, `lastSyncAt` relativo ("Hace 2h"), estilo dark card igual que PropertyDetail; botón iCal en Properties y PropertyDetail navega a la nueva ruta
+
 ### Reconciliación repo (08/04/2026)
 - [x] `Police.tsx` historial SES — ya implementado: tabla con filtros estado/propiedad/mes, reenvío con modal, descarga XML/PDF, cards mobile
 - [x] `setup.sh` — ya existe (v2.0.0)
@@ -39,8 +43,6 @@
 
 ### Media
 - [ ] Etiquetas de códigos de barras — página de impresión con grid (imagen barcode + nombre material, CSS print)
-- [ ] iCal: URL de export usando dominio externo `crm.greywoodhome.es` (via `API_PUBLIC_URL`)
-- [ ] iCal: tamaño de feeds Airbnb/Booking.com en la UI
 
 ### Baja
 - [ ] Integrar SVG logo RentalSuite en la app
