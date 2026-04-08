@@ -44,9 +44,16 @@
 ### Media
 - [ ] Etiquetas de códigos de barras — página de impresión con grid (imagen barcode + nombre material, CSS print)
 
+### UX / Performance
+- [ ] Paginación en listados: Clients, Bookings, Expenses, Financials — mostrar máximo N registros
+      por página (opción A: paginación clásica con botones anterior/siguiente) o
+      infinite scroll (opción B: cargar más al llegar al final).
+      Actualmente se cargan todos los registros de una vez — problema de rendimiento
+      con volúmenes altos.
+
 ### Baja
 - [ ] Integrar SVG logo RentalSuite en la app
-- [ ] Mover configuración Paperless a Settings → pestaña Integraciones
+- [x] Mover configuración Paperless a Settings → pestaña Integraciones
 - [ ] HTTPS local con mkcert (CA Proxmox ya copiada)
 - [ ] Notificaciones push (check-in próximo, contratos sin firmar, pagos pendientes)
 - [ ] Alta en hospedajes.ses.mir.es (activar envío real de partes SES)
