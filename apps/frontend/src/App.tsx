@@ -26,6 +26,7 @@ import PropertyFinancialDetail from './pages/PropertyFinancialDetail';
 import Profile from './pages/Profile';
 import Logs from './pages/Logs';
 import Inventory from './pages/Inventory';
+import ICalFeeds from './pages/ICalFeeds';
 import { UserPreferencesProvider } from './context/UserPreferencesContext';
 
 const qc = new QueryClient();
@@ -55,6 +56,7 @@ export default function App() {
               <Route index element={<RootRedirect />} />
               <Route path="properties"                       element={<Properties />} />
               <Route path="properties/:id"               element={<PropertyDetail />} />
+              <Route path="properties/:id/ical"          element={<ICalFeeds />} />
               <Route path="properties/:id/edit"          element={<PropertyEdit />} />
               <Route path="properties/:id/financials"     element={<PropertyFinancialDetail />} />
               <Route path="clients"             element={<Clients />} />

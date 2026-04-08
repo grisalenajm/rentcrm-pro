@@ -3,7 +3,6 @@ import { randomBytes, randomUUID } from 'crypto';
 import { lookup } from 'dns/promises';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
-import { getPublicBaseUrl } from '../common/public-url.helper';
 import { LogsService } from '../logs/logs.service';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -28,11 +27,18 @@ export class ICalService {
   }
 
   async findAll(organizationId: string) {
-    return this.prisma.availabilitySync.findMany({
+    const feeds = await this.prisma.availabilitySync.findMany({
       where: { property: { organizationId } },
-      include: { property: { select: { id: true, name: true } } },
+      include: {
+        property: { select: { id: true, name: true } },
+        _count: { select: { blocks: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
+    return feeds.map(({ _count, ...feed }) => ({
+      ...feed,
+      eventCount: _count.blocks,
+    }));
   }
 
   async create(dto: { propertyId: string; url: string; platform: string }, organizationId: string) {
@@ -230,8 +236,7 @@ export class ICalService {
   }
 
   async getExportUrl(propertyId: string, organizationId: string): Promise<string> {
-    const org = await this.prisma.organization.findFirst({ where: { id: organizationId } });
-    const base = getPublicBaseUrl(org as any);
+    const base = (process.env.API_PUBLIC_URL || process.env.FRONTEND_URL || 'http://localhost:3001').replace(/\/$/, '');
     return `${base}/api/ical/export/${propertyId}`;
   }
 
