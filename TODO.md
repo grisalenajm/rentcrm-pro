@@ -1,5 +1,5 @@
 # RentalSuite — Tareas pendientes
-> Actualizado 07/04/2026
+> Actualizado 08/04/2026
 
 ## En progreso
 (ninguna)
@@ -26,10 +26,15 @@
 - [x] Endpoint seed `POST /api/seed` — crea org + admin inicial, 409 si ya existe usuario
 - [x] URLs iCal sin truncate — `break-all` + botón Copiar con fallback HTTP
 
+### Reconciliación repo (08/04/2026)
+- [x] `Police.tsx` historial SES — ya implementado: tabla con filtros estado/propiedad/mes, reenvío con modal, descarga XML/PDF, cards mobile
+- [x] `setup.sh` — ya existe (v2.0.0)
+- [x] `CONTRIBUTING.md` — ya existe
+- [x] `.env.example` — ya existe y documentado
+
 ## Pendiente (priorizado)
 
 ### Alta
-- [ ] `Police.tsx` — historial de envíos SES con filtros y opción de reenvío (actualmente placeholder)
 - [ ] Email de notificación cuando SES devuelve error
 
 ### Media
@@ -47,7 +52,7 @@
 
 ### Deploy producción
 - [x] `docker-compose.prod.yml` + GitHub Actions build/push a ghcr.io
-- [ ] `.env.example` documentado
-- [ ] `README.md` bilingüe profesional para GitHub
-- [ ] `setup.sh` script de instalación
-- [ ] `CONTRIBUTING.md`
+- [x] `.env.example` documentado
+- [x] `setup.sh` script de instalación
+- [x] `CONTRIBUTING.md`
+- [ ] `README.md` bilingüe profesional para GitHub (revisar si está completo o es borrador)
