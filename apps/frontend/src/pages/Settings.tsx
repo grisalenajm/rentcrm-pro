@@ -18,7 +18,7 @@ export default function Settings() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<'usuario'|'general'|'fiscal'|'email'|'ses'|'paperless'|'preferences'|'contenido'>('usuario');
+  const [activeTab, setActiveTab] = useState<'usuario'|'general'|'fiscal'|'email'|'ses'|'integraciones'|'preferences'|'contenido'>('usuario');
   const [smtpPass, setSmtpPass] = useState('');
   const [testEmail, setTestEmail] = useState('');
   const [testResult, setTestResult] = useState<{ok: boolean; message: string} | null>(null);
@@ -111,7 +111,7 @@ export default function Settings() {
     { id: 'fiscal',      label: t('settings.tabs.fiscal') },
     { id: 'email',       label: t('settings.tabs.email') },
     { id: 'ses',         label: '🚔 SES Hospedajes' },
-    { id: 'paperless',   label: '📦 Paperless' },
+    { id: 'integraciones', label: '🔗 Integraciones' },
     { id: 'contenido',   label: '📄 Contenido' },
     { id: 'preferences', label: t('settings.tabs.preferences') },
   ];
@@ -430,8 +430,8 @@ export default function Settings() {
           </>
         )}
 
-        {/* PAPERLESS */}
-        {activeTab === 'paperless' && (
+        {/* INTEGRACIONES */}
+        {activeTab === 'integraciones' && (
           <>
             <div className="bg-slate-800 rounded-xl p-4 text-sm text-slate-400 mb-2">
               <p className="font-semibold text-white mb-1">📦 Paperless-ngx — Gestión documental</p>
