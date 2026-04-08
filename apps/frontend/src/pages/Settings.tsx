@@ -18,7 +18,8 @@ export default function Settings() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<'usuario'|'general'|'fiscal'|'email'|'ses'|'integraciones'|'preferences'|'contenido'>('usuario');
+  const [activeTab, setActiveTab] = useState<'usuario'|'general'|'fiscal'|'integraciones'|'preferences'|'contenido'>('usuario');
+  const [activeIntegTab, setActiveIntegTab] = useState<'paperless'|'email'|'ses'>('paperless');
   const [smtpPass, setSmtpPass] = useState('');
   const [testEmail, setTestEmail] = useState('');
   const [testResult, setTestResult] = useState<{ok: boolean; message: string} | null>(null);
@@ -106,14 +107,12 @@ export default function Settings() {
     setForm({ ...form, [field]: e.target.value });
 
   const tabs = [
-    { id: 'usuario',     label: t('settings.tabs.user') },
-    { id: 'general',     label: t('settings.tabs.general') },
-    { id: 'fiscal',      label: t('settings.tabs.fiscal') },
-    { id: 'email',       label: t('settings.tabs.email') },
-    { id: 'ses',         label: '🚔 SES Hospedajes' },
+    { id: 'usuario',       label: t('settings.tabs.user') },
+    { id: 'general',       label: t('settings.tabs.general') },
+    { id: 'fiscal',        label: t('settings.tabs.fiscal') },
     { id: 'integraciones', label: '🔗 Integraciones' },
-    { id: 'contenido',   label: '📄 Contenido' },
-    { id: 'preferences', label: t('settings.tabs.preferences') },
+    { id: 'contenido',     label: '📄 Contenido' },
+    { id: 'preferences',   label: t('settings.tabs.preferences') },
   ];
 
   if (isLoading) return <div className="p-6 text-slate-400">{t('common.loading')}</div>;
@@ -296,250 +295,215 @@ export default function Settings() {
           </>
         )}
 
-        {/* EMAIL */}
-        {activeTab === 'email' && (
-          <>
-            <div className="bg-slate-800 rounded-xl p-4 text-sm text-slate-400 mb-2">
-              <p className="font-semibold text-white mb-1">📧 {t('settings.smtp.title')}</p>
-              <p>{language === 'es' ? 'Necesario para enviar contratos por email. Compatible con Gmail, Outlook, Mailgun, etc.' : 'Required to send contracts by email. Compatible with Gmail, Outlook, Mailgun, etc.'}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>{t('settings.smtp.host')}</label>
-                <input value={currentValue('smtpHost')} onChange={f('smtpHost')} placeholder="smtp.gmail.com"
-                  className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>{t('settings.smtp.port')}</label>
-                <input type="number" value={currentValue('smtpPort')} onChange={f('smtpPort')} placeholder="587"
-                  className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>{t('settings.smtp.user')}</label>
-                <input value={currentValue('smtpUser')} onChange={f('smtpUser')} placeholder="tu@email.com"
-                  className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>
-                  {t('settings.smtp.pass')} {org?.smtpPassSet && <span className="text-emerald-400 font-normal">{t('settings.smtp.saved')}</span>}
-                </label>
-                <input type="password" value={smtpPass} onChange={e => setSmtpPass(e.target.value)}
-                  placeholder={org?.smtpPassSet ? '••••••••' : t('settings.smtp.pass')}
-                  className={inputCls} />
-              </div>
-              <div className="col-span-2">
-                <label className={labelCls}>{t('settings.smtp.from')}</label>
-                <input value={currentValue('smtpFrom')} onChange={f('smtpFrom')} placeholder="noreply@tuempresa.com"
-                  className={inputCls} />
-              </div>
-            </div>
-
-            <div className="border-t border-slate-700 pt-4">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                {language === 'en' ? 'Test email configuration' : 'Probar configuración de email'}
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={testEmail}
-                  onChange={e => setTestEmail(e.target.value)}
-                  placeholder={language === 'en' ? 'Send test to...' : 'Enviar prueba a...'}
-                  className={`flex-1 ${inputCls}`}
-                />
-                <button
-                  onClick={handleTestSmtp}
-                  disabled={!testEmail || testing}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap">
-                  {testing ? '⏳' : '📧'} {language === 'en' ? 'Send test' : 'Enviar prueba'}
-                </button>
-              </div>
-              {testResult && (
-                <div className={`mt-3 p-3 rounded-lg text-sm ${testResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                  {testResult.ok ? '✅' : '❌'} {testResult.message}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-
-        {/* SES HOSPEDAJES */}
-        {activeTab === 'ses' && (
-          <>
-            <div className="bg-slate-800 rounded-xl p-4 text-sm text-slate-400 mb-2">
-              <p className="font-semibold text-white mb-1">🚔 SES Hospedajes — Webservice</p>
-              <p>{language === 'es'
-                ? 'Credenciales para el envío automático de partes de viajeros al Ministerio del Interior (Real Decreto 933/2021).'
-                : 'Credentials for automatic traveller report submission to the Spanish Ministry of Interior.'}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Usuario WS</label>
-                <input value={currentValue('sesUsuarioWs')} onChange={f('sesUsuarioWs')}
-                  placeholder="12345678AWS"
-                  className={inputCls} />
-                <p className="text-xs text-slate-500 mt-1">Tu NIF/CIF terminado en WS</p>
-              </div>
-              <div>
-                <label className={labelCls}>Contraseña WS</label>
-                <input type="password" value={currentValue('sesPasswordWs')} onChange={f('sesPasswordWs')}
-                  placeholder="••••••••"
-                  className={inputCls} />
-              </div>
-              <div className="col-span-2">
-                <label className={labelCls}>Código Arrendador</label>
-                <input value={currentValue('sesCodigoArrendador')} onChange={f('sesCodigoArrendador')}
-                  placeholder="0000000001"
-                  className={inputCls} />
-                <p className="text-xs text-slate-500 mt-1">Asignado al registrarte en SES</p>
-              </div>
-              <div className="col-span-2">
-                <label className={labelCls}>Entorno</label>
-                <select value={currentValue('sesEntorno')} onChange={f('sesEntorno')}
-                  className={inputCls}>
-                  <option value="">— Seleccionar —</option>
-                  <option value="produccion">🟢 Producción — hospedajes.ses.mir.es</option>
-                  <option value="pruebas">🧪 Pruebas — hospedajes.pre-ses.mir.es</option>
-                </select>
-                <p className="text-xs text-slate-500 mt-1">Usa «Pruebas» hasta obtener el alta definitiva en el Ministerio</p>
-              </div>
-            </div>
-            <div className="border-t border-slate-700 pt-4">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                {language === 'es' ? 'Probar conexión con el Ministerio' : 'Test connection to Ministry'}
-              </label>
-              <button
-                onClick={handleTestSes}
-                disabled={!currentValue('sesEntorno') || !currentValue('sesUsuarioWs') || sesTesting}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-lg text-sm font-semibold transition-colors">
-                {sesTesting ? '⏳' : '🔌'} {language === 'es' ? 'Probar conexión SES' : 'Test SES connection'}
-              </button>
-              {sesTestResult && (
-                <div className={`mt-3 p-3 rounded-lg text-sm ${sesTestResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                  {sesTestResult.ok ? '✅' : '❌'} {sesTestResult.message}
-                </div>
-              )}
-            </div>
-
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-sm text-amber-400">
-              <p className="font-semibold mb-1">⚠️ {language === 'es' ? 'Importante' : 'Important'}</p>
-              <p>{language === 'es'
-                ? 'Las credenciales se guardan cifradas. El código de establecimiento se configura por propiedad en la ficha de cada alojamiento.'
-                : 'Credentials are stored encrypted. The establishment code is configured per property in each accommodation settings.'}</p>
-            </div>
-          </>
-        )}
-
         {/* INTEGRACIONES */}
         {activeTab === 'integraciones' && (
           <>
-            <div className="bg-slate-800 rounded-xl p-4 text-sm text-slate-400 mb-2">
-              <p className="font-semibold text-white mb-1">📦 Paperless-ngx — Gestión documental</p>
-              <p>{language === 'es'
-                ? 'Los contratos firmados se subirán automáticamente a tu instancia de Paperless-ngx.'
-                : 'Signed contracts will be automatically uploaded to your Paperless-ngx instance.'}</p>
+            {/* Sub-tabs */}
+            <div className="flex gap-1 bg-slate-800 rounded-lg p-1 mb-5">
+              {([
+                { id: 'paperless', label: '📦 Paperless' },
+                { id: 'email',     label: '✉️ Email' },
+                { id: 'ses',       label: '🏛️ SES Hospedajes' },
+              ] as const).map(st => (
+                <button key={st.id} onClick={() => setActiveIntegTab(st.id)}
+                  className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${activeIntegTab === st.id ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+                  {st.label}
+                </button>
+              ))}
             </div>
-            <div>
-              <label className={labelCls}>
-                URL de Paperless-ngx
-              </label>
-              <input
-                value={currentValue('paperlessUrl')}
-                onChange={f('paperlessUrl')}
-                placeholder="http://192.168.1.50:8000"
-                className={inputCls}
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                {language === 'es' ? 'URL base de tu servidor Paperless (sin slash final)' : 'Base URL of your Paperless server (no trailing slash)'}
-              </p>
-            </div>
-            <div>
-              <label className={labelCls}>
-                API Token {org?.paperlessTokenSet && <span className="text-emerald-400 font-normal">✓ guardado</span>}
-              </label>
-              <input
-                type="password"
-                value={currentValue('paperlessToken')}
-                onChange={f('paperlessToken')}
-                placeholder={org?.paperlessTokenSet ? '••••••••' : 'Token de la API de Paperless-ngx'}
-                className={inputCls}
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                {language === 'es'
-                  ? 'Perfil → API Token en tu Paperless-ngx'
-                  : 'Profile → API Token in your Paperless-ngx'}
-              </p>
-            </div>
-            <div>
-              <label className={labelCls}>
-                Document Type ID
-              </label>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={currentValue('paperlessDocTypeId')}
-                onChange={f('paperlessDocTypeId')}
-                placeholder="ID numérico del tipo de documento en Paperless-ngx"
-                className={inputCls}
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                {language === 'es'
-                  ? 'ID del tipo de documento para clasificar contratos (opcional). Paperless-ngx → Ajustes → Tipos de documento.'
-                  : 'Document type ID to classify contracts (optional). Paperless-ngx → Settings → Document Types.'}
-              </p>
-            </div>
-            <div>
-              <label className={labelCls}>
-                Secret webhook
-              </label>
-              <input
-                type="password"
-                value={currentValue('paperlessSecret')}
-                onChange={f('paperlessSecret')}
-                placeholder="Clave secreta para validar webhooks"
-                className={inputCls}
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                {language === 'es'
-                  ? 'Clave secreta para autenticar los webhooks entrantes de Paperless-ngx'
-                  : 'Secret key to authenticate incoming webhooks from Paperless-ngx'}
-              </p>
-            </div>
-            <div>
-              <label className={labelCls}>
-                URL Webhook
-              </label>
-              <input
-                readOnly
-                value={`${window.location.origin}/api/paperless/webhook`}
-                className={inputCls + ' cursor-text select-all'}
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                {language === 'es'
-                  ? 'Configura esta URL en Paperless-ngx → Ajustes → Webhooks'
-                  : 'Configure this URL in Paperless-ngx → Settings → Webhooks'}
-              </p>
-            </div>
-            <div className="border-t border-slate-700 pt-4">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                {language === 'es' ? 'Probar conexión' : 'Test connection'}
-              </label>
-              <p className="text-xs text-slate-500 mb-3">
-                {language === 'es' ? 'Guarda los cambios antes de probar.' : 'Save changes before testing.'}
-              </p>
-              <button
-                onClick={handleTestPaperless}
-                disabled={!org?.paperlessUrl || paperlessTesting}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-lg text-sm font-semibold transition-colors">
-                {paperlessTesting ? '⏳' : '🔌'} {language === 'es' ? 'Probar conexión' : 'Test connection'}
-              </button>
-              {paperlessTestResult && (
-                <div className={`mt-3 p-3 rounded-lg text-sm ${paperlessTestResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                  {paperlessTestResult.ok ? '✅' : '❌'} {paperlessTestResult.message}
+
+            {/* Sub-tab: Paperless */}
+            {activeIntegTab === 'paperless' && (
+              <div className="space-y-5">
+                <div className="bg-slate-800 rounded-xl p-4 text-sm text-slate-400">
+                  <p className="font-semibold text-white mb-1">📦 Paperless-ngx — Gestión documental</p>
+                  <p>{language === 'es'
+                    ? 'Los contratos firmados se subirán automáticamente a tu instancia de Paperless-ngx.'
+                    : 'Signed contracts will be automatically uploaded to your Paperless-ngx instance.'}</p>
                 </div>
-              )}
-            </div>
+                <div>
+                  <label className={labelCls}>URL de Paperless-ngx</label>
+                  <input value={currentValue('paperlessUrl')} onChange={f('paperlessUrl')}
+                    placeholder="http://192.168.1.50:8000" className={inputCls} />
+                  <p className="text-xs text-slate-500 mt-1">
+                    {language === 'es' ? 'URL base de tu servidor Paperless (sin slash final)' : 'Base URL of your Paperless server (no trailing slash)'}
+                  </p>
+                </div>
+                <div>
+                  <label className={labelCls}>
+                    API Token {org?.paperlessTokenSet && <span className="text-emerald-400 font-normal">✓ guardado</span>}
+                  </label>
+                  <input type="password" value={currentValue('paperlessToken')} onChange={f('paperlessToken')}
+                    placeholder={org?.paperlessTokenSet ? '••••••••' : 'Token de la API de Paperless-ngx'}
+                    className={inputCls} />
+                  <p className="text-xs text-slate-500 mt-1">
+                    {language === 'es' ? 'Perfil → API Token en tu Paperless-ngx' : 'Profile → API Token in your Paperless-ngx'}
+                  </p>
+                </div>
+                <div>
+                  <label className={labelCls}>Document Type ID</label>
+                  <input type="number" min="1" step="1" value={currentValue('paperlessDocTypeId')} onChange={f('paperlessDocTypeId')}
+                    placeholder="ID numérico del tipo de documento en Paperless-ngx" className={inputCls} />
+                  <p className="text-xs text-slate-500 mt-1">
+                    {language === 'es'
+                      ? 'ID del tipo de documento para clasificar contratos (opcional). Paperless-ngx → Ajustes → Tipos de documento.'
+                      : 'Document type ID to classify contracts (optional). Paperless-ngx → Settings → Document Types.'}
+                  </p>
+                </div>
+                <div>
+                  <label className={labelCls}>Secret webhook</label>
+                  <input type="password" value={currentValue('paperlessSecret')} onChange={f('paperlessSecret')}
+                    placeholder="Clave secreta para validar webhooks" className={inputCls} />
+                  <p className="text-xs text-slate-500 mt-1">
+                    {language === 'es'
+                      ? 'Clave secreta para autenticar los webhooks entrantes de Paperless-ngx'
+                      : 'Secret key to authenticate incoming webhooks from Paperless-ngx'}
+                  </p>
+                </div>
+                <div>
+                  <label className={labelCls}>URL Webhook</label>
+                  <input readOnly value={`${window.location.origin}/api/paperless/webhook`}
+                    className={inputCls + ' cursor-text select-all'} />
+                  <p className="text-xs text-slate-500 mt-1">
+                    {language === 'es'
+                      ? 'Configura esta URL en Paperless-ngx → Ajustes → Webhooks'
+                      : 'Configure this URL in Paperless-ngx → Settings → Webhooks'}
+                  </p>
+                </div>
+                <div className="border-t border-slate-700 pt-4">
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    {language === 'es' ? 'Probar conexión' : 'Test connection'}
+                  </label>
+                  <p className="text-xs text-slate-500 mb-3">
+                    {language === 'es' ? 'Guarda los cambios antes de probar.' : 'Save changes before testing.'}
+                  </p>
+                  <button onClick={handleTestPaperless} disabled={!org?.paperlessUrl || paperlessTesting}
+                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-lg text-sm font-semibold transition-colors">
+                    {paperlessTesting ? '⏳' : '🔌'} {language === 'es' ? 'Probar conexión' : 'Test connection'}
+                  </button>
+                  {paperlessTestResult && (
+                    <div className={`mt-3 p-3 rounded-lg text-sm ${paperlessTestResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                      {paperlessTestResult.ok ? '✅' : '❌'} {paperlessTestResult.message}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Sub-tab: Email */}
+            {activeIntegTab === 'email' && (
+              <div className="space-y-5">
+                <div className="bg-slate-800 rounded-xl p-4 text-sm text-slate-400">
+                  <p className="font-semibold text-white mb-1">📧 {t('settings.smtp.title')}</p>
+                  <p>{language === 'es' ? 'Necesario para enviar contratos por email. Compatible con Gmail, Outlook, Mailgun, etc.' : 'Required to send contracts by email. Compatible with Gmail, Outlook, Mailgun, etc.'}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>{t('settings.smtp.host')}</label>
+                    <input value={currentValue('smtpHost')} onChange={f('smtpHost')} placeholder="smtp.gmail.com" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>{t('settings.smtp.port')}</label>
+                    <input type="number" value={currentValue('smtpPort')} onChange={f('smtpPort')} placeholder="587" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>{t('settings.smtp.user')}</label>
+                    <input value={currentValue('smtpUser')} onChange={f('smtpUser')} placeholder="tu@email.com" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>
+                      {t('settings.smtp.pass')} {org?.smtpPassSet && <span className="text-emerald-400 font-normal">{t('settings.smtp.saved')}</span>}
+                    </label>
+                    <input type="password" value={smtpPass} onChange={e => setSmtpPass(e.target.value)}
+                      placeholder={org?.smtpPassSet ? '••••••••' : t('settings.smtp.pass')} className={inputCls} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className={labelCls}>{t('settings.smtp.from')}</label>
+                    <input value={currentValue('smtpFrom')} onChange={f('smtpFrom')} placeholder="noreply@tuempresa.com" className={inputCls} />
+                  </div>
+                </div>
+                <div className="border-t border-slate-700 pt-4">
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    {language === 'en' ? 'Test email configuration' : 'Probar configuración de email'}
+                  </label>
+                  <div className="flex gap-2">
+                    <input type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)}
+                      placeholder={language === 'en' ? 'Send test to...' : 'Enviar prueba a...'}
+                      className={`flex-1 ${inputCls}`} />
+                    <button onClick={handleTestSmtp} disabled={!testEmail || testing}
+                      className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap">
+                      {testing ? '⏳' : '📧'} {language === 'en' ? 'Send test' : 'Enviar prueba'}
+                    </button>
+                  </div>
+                  {testResult && (
+                    <div className={`mt-3 p-3 rounded-lg text-sm ${testResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                      {testResult.ok ? '✅' : '❌'} {testResult.message}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Sub-tab: SES Hospedajes */}
+            {activeIntegTab === 'ses' && (
+              <div className="space-y-5">
+                <div className="bg-slate-800 rounded-xl p-4 text-sm text-slate-400">
+                  <p className="font-semibold text-white mb-1">🏛️ SES Hospedajes — Webservice</p>
+                  <p>{language === 'es'
+                    ? 'Credenciales para el envío automático de partes de viajeros al Ministerio del Interior (Real Decreto 933/2021).'
+                    : 'Credentials for automatic traveller report submission to the Spanish Ministry of Interior.'}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>Usuario WS</label>
+                    <input value={currentValue('sesUsuarioWs')} onChange={f('sesUsuarioWs')}
+                      placeholder="12345678AWS" className={inputCls} />
+                    <p className="text-xs text-slate-500 mt-1">Tu NIF/CIF terminado en WS</p>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Contraseña WS</label>
+                    <input type="password" value={currentValue('sesPasswordWs')} onChange={f('sesPasswordWs')}
+                      placeholder="••••••••" className={inputCls} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className={labelCls}>Código Arrendador</label>
+                    <input value={currentValue('sesCodigoArrendador')} onChange={f('sesCodigoArrendador')}
+                      placeholder="0000000001" className={inputCls} />
+                    <p className="text-xs text-slate-500 mt-1">Asignado al registrarte en SES</p>
+                  </div>
+                  <div className="col-span-2">
+                    <label className={labelCls}>Entorno</label>
+                    <select value={currentValue('sesEntorno')} onChange={f('sesEntorno')} className={inputCls}>
+                      <option value="">— Seleccionar —</option>
+                      <option value="produccion">🟢 Producción — hospedajes.ses.mir.es</option>
+                      <option value="pruebas">🧪 Pruebas — hospedajes.pre-ses.mir.es</option>
+                    </select>
+                    <p className="text-xs text-slate-500 mt-1">Usa «Pruebas» hasta obtener el alta definitiva en el Ministerio</p>
+                  </div>
+                </div>
+                <div className="border-t border-slate-700 pt-4">
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    {language === 'es' ? 'Probar conexión con el Ministerio' : 'Test connection to Ministry'}
+                  </label>
+                  <button onClick={handleTestSes}
+                    disabled={!currentValue('sesEntorno') || !currentValue('sesUsuarioWs') || sesTesting}
+                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-lg text-sm font-semibold transition-colors">
+                    {sesTesting ? '⏳' : '🔌'} {language === 'es' ? 'Probar conexión SES' : 'Test SES connection'}
+                  </button>
+                  {sesTestResult && (
+                    <div className={`mt-3 p-3 rounded-lg text-sm ${sesTestResult.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                      {sesTestResult.ok ? '✅' : '❌'} {sesTestResult.message}
+                    </div>
+                  )}
+                </div>
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-sm text-amber-400">
+                  <p className="font-semibold mb-1">⚠️ {language === 'es' ? 'Importante' : 'Important'}</p>
+                  <p>{language === 'es'
+                    ? 'Las credenciales se guardan cifradas. El código de establecimiento se configura por propiedad en la ficha de cada alojamiento.'
+                    : 'Credentials are stored encrypted. The establishment code is configured per property in each accommodation settings.'}</p>
+                </div>
+              </div>
+            )}
           </>
         )}
 
