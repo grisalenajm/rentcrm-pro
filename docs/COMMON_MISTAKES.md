@@ -86,3 +86,15 @@ docker exec rentcrm-postgres psql -U rentcrm -c "DROP DATABASE rentcrm_shadow;"
 
 Do NOT add `shadowDatabaseUrl: env('SHADOW_DATABASE_URL')` permanently to `prisma.config.ts`:
 it will break `prisma migrate deploy` at container startup when the variable is absent.
+
+---
+
+## SES SSL en PRD: carpeta certs/ vacía
+- Síntoma: ❌ Error SSL: UNABLE_TO_VERIFY_LEAF_SIGNATURE en PRD, funciona en DEV
+- Causa: compose.yml de PRD monta `./certs:/app/certs:ro` pero la carpeta está vacía
+- ✅ Solución: copiar mir-ca.pem desde DEV a PRD via host Proxmox:
+  pct pull 123 /home/rentcrm/rentcrm-pro/apps/api/certs/mir-ca.pem /tmp/mir-ca.pem
+  pct push 124 /tmp/mir-ca.pem /home/rentcrm/rentalsuite/certs/mir-ca.pem
+  docker restart rentcrm-api
+- Nota: los certs FNMT (.crt) están dentro de la imagen Docker pero mir-ca.pem
+  lo usa SesService directamente desde /app/certs/ — debe existir en el host de PRD
