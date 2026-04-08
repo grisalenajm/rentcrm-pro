@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
@@ -8,6 +8,8 @@ import DataTable from '../components/DataTable';
 import type { Column } from '../components/DataTable';
 import ExcelButtons from '../components/ExcelButtons';
 import { WORLD_COUNTRIES } from '../data/countries';
+import { useInfiniteList } from '../hooks/useInfiniteList';
+import PageSizeSelector, { getStoredPageSize } from '../components/PageSizeSelector';
 
 interface Client {
   id: string;
@@ -116,22 +118,25 @@ export default function Clients() {
   const languageManuallySet = useRef(false);
 
   const STALE_5MIN = 5 * 60 * 1000;
+  const [pageSize, setPageSize] = useState(() => getStoredPageSize('clients'));
 
-  const { data: clients = [], isLoading } = useQuery({
-    queryKey: ['clients'],
-    queryFn: () => api.get('/clients').then(r => {
-      const d = r.data; return d?.data || d || [];
-    }),
-    staleTime: STALE_5MIN,
-    placeholderData: keepPreviousData,
-  });
+  const infiniteFilters = useMemo(() => ({
+    search:      filterSearch,
+    nationality: filterNationality,
+    language:    filterLanguage,
+    dateFrom:    filterDateFrom,
+    dateTo:      filterDateTo,
+  }), [filterSearch, filterNationality, filterLanguage, filterDateFrom, filterDateTo]);
+
+  const { items, total, hasMore, loading: isLoading, loadingMore, sentinelRef, reload } =
+    useInfiniteList<Client>({ url: '/clients', filters: infiniteFilters, limit: pageSize });
 
   const { data: summaries = {} } = useQuery({
-    queryKey: ['clients-summaries', clients.map((c: Client) => c.id).join(',')],
+    queryKey: ['clients-summaries', items.map((c: Client) => c.id).join(',')],
     queryFn: async () => {
-      if (clients.length === 0) return {};
+      if (items.length === 0) return {};
       const results = await Promise.all(
-        clients.map((c: Client) =>
+        items.map((c: Client) =>
           api.get(`/evaluations/client/${c.id}/summary`)
             .then(r => ({ id: c.id, avgScore: r.data.avgScore, totalBookings: r.data.totalBookings }))
             .catch(() => ({ id: c.id, avgScore: null, totalBookings: 0 }))
@@ -139,9 +144,8 @@ export default function Clients() {
       );
       return Object.fromEntries(results.map(r => [r.id, r]));
     },
-    enabled: clients.length > 0,
+    enabled: items.length > 0,
     staleTime: STALE_5MIN,
-    placeholderData: keepPreviousData,
   });
 
   // ── Ordenación ────────────────────────────────────────────────────────
@@ -151,57 +155,43 @@ export default function Clients() {
   };
 
 
-  // ── Filtrado + ordenación ─────────────────────────────────────────────
+  // ── Ordenación (filtros son server-side vía useInfiniteList) ──────────
   const filteredSorted = useMemo(() => {
-    let r = [...clients];
-    if (filterSearch) {
-      const s = filterSearch.toLowerCase();
-      r = r.filter((c: Client) =>
-        `${c.firstName} ${c.lastName}`.toLowerCase().includes(s) ||
-        (c.dniPassport || '').toLowerCase().includes(s)
-      );
-    }
-    if (filterNationality) r = r.filter((c: Client) => c.nationality === filterNationality);
-    if (filterLanguage)    r = r.filter((c: Client) => c.language === filterLanguage);
-    if (filterDateFrom)    r = r.filter((c: Client) => c.createdAt && new Date(c.createdAt) >= new Date(filterDateFrom));
-    if (filterDateTo)      r = r.filter((c: Client) => c.createdAt && new Date(c.createdAt) <= new Date(filterDateTo + 'T23:59:59'));
-    if (sortKey) {
-      r.sort((a: Client, b: Client) => {
-        if (sortKey === 'bookings') {
-          const sa = (summaries as any)[a.id]?.totalBookings ?? 0;
-          const sb = (summaries as any)[b.id]?.totalBookings ?? 0;
-          return sortDir === 'asc' ? sa - sb : sb - sa;
-        }
-        if (sortKey === 'rating') {
-          const sa = (summaries as any)[a.id]?.avgScore ?? 0;
-          const sb = (summaries as any)[b.id]?.avgScore ?? 0;
-          return sortDir === 'asc' ? sa - sb : sb - sa;
-        }
-        let va = '', vb = '';
-        if      (sortKey === 'name')     { va = `${a.firstName} ${a.lastName}`; vb = `${b.firstName} ${b.lastName}`; }
-        else if (sortKey === 'dni')      { va = a.dniPassport || ''; vb = b.dniPassport || ''; }
-        else if (sortKey === 'email')    { va = a.email || ''; vb = b.email || ''; }
-        else if (sortKey === 'language') { va = a.language || ''; vb = b.language || ''; }
-        const cmp = va.localeCompare(vb, 'es');
-        return sortDir === 'asc' ? cmp : -cmp;
-      });
-    }
-    return r;
-  }, [clients, summaries, filterSearch, filterNationality, filterLanguage, sortKey, sortDir]);
+    if (!sortKey) return items;
+    return [...items].sort((a: Client, b: Client) => {
+      if (sortKey === 'bookings') {
+        const sa = (summaries as any)[a.id]?.totalBookings ?? 0;
+        const sb = (summaries as any)[b.id]?.totalBookings ?? 0;
+        return sortDir === 'asc' ? sa - sb : sb - sa;
+      }
+      if (sortKey === 'rating') {
+        const sa = (summaries as any)[a.id]?.avgScore ?? 0;
+        const sb = (summaries as any)[b.id]?.avgScore ?? 0;
+        return sortDir === 'asc' ? sa - sb : sb - sa;
+      }
+      let va = '', vb = '';
+      if      (sortKey === 'name')     { va = `${a.firstName} ${a.lastName}`; vb = `${b.firstName} ${b.lastName}`; }
+      else if (sortKey === 'dni')      { va = a.dniPassport || ''; vb = b.dniPassport || ''; }
+      else if (sortKey === 'email')    { va = a.email || ''; vb = b.email || ''; }
+      else if (sortKey === 'language') { va = a.language || ''; vb = b.language || ''; }
+      const cmp = va.localeCompare(vb, 'es');
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [items, summaries, sortKey, sortDir]);
 
   const createMutation = useMutation({
     mutationFn: (data: any) => api.post('/clients', data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['clients'] }); setShowForm(false); setForm(emptyForm); },
+    onSuccess: () => { reload(); setShowForm(false); setForm(emptyForm); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: any) => api.put(`/clients/${id}`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['clients'] }); setEditing(null); setShowForm(false); },
+    onSuccess: () => { reload(); setEditing(null); setShowForm(false); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/clients/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clients'] }),
+    onSuccess: () => reload(),
   });
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setDocWarning(''); languageManuallySet.current = false; setShowForm(true); };
@@ -267,7 +257,7 @@ export default function Clients() {
     else createMutation.mutate(data);
   };
 
-  const hasFilters = filterSearch || filterNationality || filterLanguage || filterDateFrom || filterDateTo;
+  const hasFilters = !!(filterSearch || filterNationality || filterLanguage || filterDateFrom || filterDateTo);
 
   // ── Bulk helpers ───────────────────────────────────────────────────────
   const allVisibleSelected = filteredSorted.length > 0 && filteredSorted.every((c: Client) => selectedIds.has(c.id));
@@ -291,7 +281,7 @@ export default function Clients() {
     const rejected = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
     const errors = [...new Set(rejected.map(r => r.reason?.response?.data?.message || r.reason?.message || 'Error desconocido'))];
     setBulkLoading(false); setBulkResult({ ok, fail: rejected.length, errors });
-    qc.invalidateQueries({ queryKey: ['clients'] });
+    reload();
     if (rejected.length === 0) cancelBulk();
   };
 
@@ -372,12 +362,12 @@ export default function Clients() {
         <div>
           <h1 className="text-2xl font-bold">{t('clients.title')}</h1>
           <p className="text-slate-400 text-sm mt-1">
-            {filteredSorted.length} {t('clients.registered')}
-            {hasFilters && clients.length !== filteredSorted.length ? ` (de ${clients.length})` : ''}
+            {total > 0 ? `${total} ${t('clients.registered')}` : t('clients.registered')}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ExcelButtons entity="clients" onImportSuccess={() => qc.invalidateQueries({ queryKey: ['clients'] })} />
+          <PageSizeSelector listKey="clients" value={pageSize} onChange={size => setPageSize(size)} />
+          <ExcelButtons entity="clients" onImportSuccess={() => reload()} />
           <button onClick={openCreate}
             className={BTN_PRIMARY}>
             + {t('clients.new')}
@@ -422,9 +412,10 @@ export default function Clients() {
 
       {isLoading ? (
         <div className="text-slate-400 text-center py-20">{t('common.loading')}</div>
-      ) : clients.length === 0 ? (
+      ) : items.length === 0 ? (
         <div className="text-slate-400 text-center py-20">{t('common.noData')}</div>
       ) : (
+        <>
         <DataTable
           columns={clientColumns}
           rows={filteredSorted}
@@ -470,6 +461,16 @@ export default function Clients() {
             );
           }}
         />
+
+        {/* Sentinel infinite scroll */}
+        <div ref={sentinelRef} className="h-1" />
+        {loadingMore && (
+          <div className="text-slate-400 text-center py-6 text-sm">{t('common.loading')}</div>
+        )}
+        {!hasMore && items.length > 0 && (
+          <div className="text-slate-500 text-center py-4 text-xs">No hay más registros</div>
+        )}
+        </>
       )}
 
       {/* ── Barra de edición masiva ── */}

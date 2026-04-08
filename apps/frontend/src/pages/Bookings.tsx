@@ -8,6 +8,8 @@ import FormField from '../components/FormField';
 import DataTable from '../components/DataTable';
 import type { Column } from '../components/DataTable';
 import ExcelButtons from '../components/ExcelButtons';
+import { useInfiniteList } from '../hooks/useInfiniteList';
+import PageSizeSelector, { getStoredPageSize } from '../components/PageSizeSelector';
 
 // ── Datos de países ───────────────────────────────────────────────────────
 const COUNTRIES = [
@@ -146,6 +148,7 @@ export default function Bookings() {
   const [showBlocks, setShowBlocks]           = useState(() => localStorage.getItem('bookings.showBlocks') === 'true');
   const [sortKey, setSortKey]                 = useState('checkin');
   const [sortDir, setSortDir]                 = useState<'asc' | 'desc'>('desc');
+  const [pageSize, setPageSize]               = useState(() => getStoredPageSize('bookings'));
 
   // ── Estado búsqueda cliente ───────────────────────────────────────────
   const [clientSearch, setClientSearch] = useState('');
@@ -197,7 +200,7 @@ export default function Bookings() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setPriceResult(res.data);
-      qc.invalidateQueries({ queryKey: ['bookings'] });
+      reloadBookings();
     } catch (e: any) {
       alert(e.response?.data?.message || 'Error al importar');
     } finally {
@@ -252,11 +255,16 @@ export default function Bookings() {
     return () => clearTimeout(timer);
   }, [clientSearch]);
 
-  const { data: bookingsRaw, isLoading } = useQuery({
-    queryKey: ['bookings'],
-    queryFn: () => api.get('/bookings?includeBlocks=true').then(r => r.data),
-  });
-  const bookings = bookingsRaw?.data || bookingsRaw || [];
+  const infiniteFilters = useMemo(() => ({
+    propertyId:    filterProperty,
+    status:        filterStatus,
+    dateFrom:      filterDateFrom,
+    dateTo:        filterDateTo,
+    includeBlocks: showBlocks ? 'true' : undefined,
+  }), [filterProperty, filterStatus, filterDateFrom, filterDateTo, showBlocks]);
+
+  const { items: bookings, total: bookingsTotal, hasMore, loading: isLoading, loadingMore, sentinelRef, reload: reloadBookings } =
+    useInfiniteList<any>({ url: '/bookings', filters: infiniteFilters, limit: pageSize });
 
   const { data: propertiesRaw } = useQuery({
     queryKey: ['properties'],
@@ -271,9 +279,9 @@ export default function Bookings() {
   };
 
   // ── Filtrado + ordenación ─────────────────────────────────────────────
+  // property/status/dateFrom/dateTo/showBlocks son server-side; search es client-side
   const filteredSorted = useMemo(() => {
     let r = [...bookings];
-    if (!showBlocks) r = r.filter((b: any) => b.source !== 'manual_block');
     if (filterSearch) {
       const s = filterSearch.toLowerCase();
       r = r.filter((b: any) =>
@@ -281,10 +289,6 @@ export default function Bookings() {
         (b.property?.name || '').toLowerCase().includes(s)
       );
     }
-    if (filterProperty) r = r.filter((b: any) => b.propertyId === filterProperty || b.property?.id === filterProperty);
-    if (filterStatus)   r = r.filter((b: any) => b.status === filterStatus);
-    if (filterDateFrom) r = r.filter((b: any) => new Date(b.checkInDate) >= new Date(filterDateFrom));
-    if (filterDateTo)   r = r.filter((b: any) => new Date(b.checkInDate) <= new Date(filterDateTo));
     if (sortKey) {
       r.sort((a: any, b: any) => {
         if (sortKey === 'checkin')  {
@@ -312,7 +316,7 @@ export default function Bookings() {
       });
     }
     return r;
-  }, [bookings, showBlocks, filterSearch, filterProperty, filterStatus, filterDateFrom, filterDateTo, sortKey, sortDir]);
+  }, [bookings, filterSearch, sortKey, sortDir]);
 
   const createClientMutation = useMutation({
     mutationFn: (data: any) => api.post('/clients', data).then(r => r.data),
@@ -334,7 +338,7 @@ export default function Bookings() {
           phone:      g.phoneNumber ? `${g.phoneCode}${g.phoneNumber}` : undefined,
         });
       }
-      qc.invalidateQueries({ queryKey: ['bookings'] });
+      reloadBookings();
       qc.invalidateQueries({ queryKey: ['clients'] });
       setShowForm(false);
       setErrorMsg('');
@@ -448,7 +452,7 @@ export default function Bookings() {
     !!dateError || !!overlapError ||
     createMutation.isPending || createClientMutation.isPending;
 
-  const hasFilters = filterSearch || filterProperty || filterStatus || filterDateFrom || filterDateTo;
+  const hasFilters = !!(filterSearch || filterProperty || filterStatus || filterDateFrom || filterDateTo);
 
   // ── Bulk helpers ───────────────────────────────────────────────────────
   const allVisibleSelected = filteredSorted.length > 0 && filteredSorted.every((b: any) => selectedIds.has(b.id));
@@ -480,7 +484,7 @@ export default function Bookings() {
     }
     const uniqueErrors = [...new Set(errors)];
     setBulkLoading(false); setBulkResult({ ok, fail: errors.length, errors: uniqueErrors });
-    qc.invalidateQueries({ queryKey: ['bookings'] });
+    reloadBookings();
     if (errors.length === 0) cancelBulk();
   };
 
@@ -556,12 +560,12 @@ export default function Bookings() {
         <div>
           <h1 className="text-2xl font-bold">{t('bookings.title')}</h1>
           <p className="text-slate-400 text-sm mt-1">
-            {filteredSorted.length} {t('bookings.registered')}
-            {hasFilters && bookings.length !== filteredSorted.length ? ` (de ${bookings.length})` : ''}
+            {bookingsTotal > 0 ? `${bookingsTotal} ${t('bookings.registered')}` : t('bookings.registered')}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ExcelButtons entity="bookings" onImportSuccess={() => qc.invalidateQueries({ queryKey: ['bookings'] })} />
+          <PageSizeSelector listKey="bookings" value={pageSize} onChange={size => setPageSize(size)} />
+          <ExcelButtons entity="bookings" onImportSuccess={() => reloadBookings()} />
           <button
             onClick={() => { setShowPriceModal(true); setPriceResult(null); setPriceFile(null); }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium rounded-lg transition-colors"
@@ -631,6 +635,7 @@ export default function Bookings() {
       ) : bookings.length === 0 ? (
         <div className="text-slate-400 text-center py-20">{t('common.noData')}</div>
       ) : (
+        <>
         <DataTable
           columns={bookingColumns}
           rows={filteredSorted}
@@ -667,6 +672,16 @@ export default function Bookings() {
             </div>
           )}
         />
+
+        {/* Sentinel infinite scroll */}
+        <div ref={sentinelRef} className="h-1" />
+        {loadingMore && (
+          <div className="text-slate-400 text-center py-6 text-sm">{t('common.loading')}</div>
+        )}
+        {!hasMore && bookings.length > 0 && (
+          <div className="text-slate-500 text-center py-4 text-xs">No hay más registros</div>
+        )}
+        </>
       )}
 
       {/* ── Barra de edición masiva ── */}

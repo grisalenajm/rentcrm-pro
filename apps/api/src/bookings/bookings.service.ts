@@ -24,23 +24,49 @@ export class BookingsService {
     private sesService: SesService,
   ) {}
 
-  async findAll(organizationId: string, propertyId?: string, clientId?: string, includeBlocks?: boolean) {
-    return this.prisma.booking.findMany({
-      where: {
-        organizationId,
-        ...(!includeBlocks ? { source: { not: 'manual_block' } } : {}),
-        ...(propertyId ? { propertyId } : {}),
-        ...(clientId ? { clientId } : {}),
-      },
-      include: {
-        client:     { select: { id: true, firstName: true, lastName: true, dniPassport: true } },
-        property:   { select: { id: true, name: true, city: true } },
-        guests:     { include: { client: { select: { id: true, firstName: true, lastName: true } } } },
-        guestsSes:  true,
-        evaluation: true,
-      },
-      orderBy: { checkInDate: 'desc' },
-    });
+  async findAll(
+    organizationId: string,
+    propertyId?: string,
+    clientId?: string,
+    includeBlocks?: boolean,
+    status?: string,
+    dateFrom?: string,
+    dateTo?: string,
+    page?: number,
+    limit?: number,
+  ) {
+    const where: any = {
+      organizationId,
+      ...(!includeBlocks ? { source: { not: 'manual_block' } } : {}),
+      ...(propertyId ? { propertyId } : {}),
+      ...(clientId   ? { clientId }   : {}),
+      ...(status     ? { status }     : {}),
+      ...(dateFrom || dateTo ? {
+        checkInDate: {
+          ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+          ...(dateTo   ? { lte: new Date(dateTo)   } : {}),
+        }
+      } : {}),
+    };
+    const include = {
+      client:     { select: { id: true, firstName: true, lastName: true, dniPassport: true } },
+      property:   { select: { id: true, name: true, city: true } },
+      guests:     { include: { client: { select: { id: true, firstName: true, lastName: true } } } },
+      guestsSes:  true,
+      evaluation: true,
+    };
+
+    if (!limit) {
+      return this.prisma.booking.findMany({ where, include, orderBy: { checkInDate: 'desc' } });
+    }
+
+    const p = page ?? 1;
+    const skip = (p - 1) * limit;
+    const [data, total] = await Promise.all([
+      this.prisma.booking.findMany({ where, include, orderBy: { checkInDate: 'desc' }, skip, take: limit }),
+      this.prisma.booking.count({ where }),
+    ]);
+    return { data, total, page: p, limit, hasMore: skip + data.length < total };
   }
 
   async findOne(id: string, organizationId: string) {

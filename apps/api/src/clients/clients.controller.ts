@@ -13,8 +13,22 @@ export class ClientsController {
   constructor(private clientsService: ClientsService) {}
 
   @Get()
-  findAll(@Request() req, @Query('search') search?: string) {
-    return this.clientsService.findAll(req.user.organizationId, search);
+  findAll(
+    @Request() req,
+    @Query('search')      search?: string,
+    @Query('nationality') nationality?: string,
+    @Query('language')    language?: string,
+    @Query('dateFrom')    dateFrom?: string,
+    @Query('dateTo')      dateTo?: string,
+    @Query('page')        page?: string,
+    @Query('limit')       limit?: string,
+  ) {
+    return this.clientsService.findAll(
+      req.user.organizationId,
+      search, nationality, language, dateFrom, dateTo,
+      page  ? +page  : undefined,
+      limit ? +limit : undefined,
+    );
   }
 
   @Get(':id')

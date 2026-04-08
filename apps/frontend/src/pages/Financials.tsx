@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 import ExcelButtons from '../components/ExcelButtons';
 import { useAuth } from '../context/AuthContext';
 import { inputCls, labelCls, MODAL_OVERLAY, MODAL_PANEL, BTN_PRIMARY, BTN_SECONDARY } from '../lib/ui';
+import PageSizeSelector, { getStoredPageSize } from '../components/PageSizeSelector';
 
 const EXPENSE_TYPES = [
   { value: 'tasas',    label: 'Tasas' },
@@ -66,6 +67,37 @@ export default function Financials() {
   const [editingRec,     setEditingRec]     = useState<any>(null);
   const [recForm,        setRecForm]        = useState({ ...EMPTY_REC_FORM });
   const canEditRec = user?.role === 'admin' || user?.role === 'owner';
+
+  // ── Paginación client-side para gastos ────────────────────────────────
+  const [pageSize, setPageSize]             = useState(() => getStoredPageSize('expenses'));
+  const [displayCount, setDisplayCount]     = useState(() => getStoredPageSize('expenses'));
+  const expenseSentinelRef                  = useRef<HTMLDivElement | null>(null);
+  const expenseObserverRef                  = useRef<IntersectionObserver | null>(null);
+
+  // Reset displayCount when year/property filter changes
+  useEffect(() => {
+    setDisplayCount(pageSize);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedYear, filters.propertyId, pageSize]);
+
+  const loadMoreExpenses = useCallback(() => {
+    setDisplayCount(n => n + pageSize);
+  }, [pageSize]);
+
+  const loadMoreExpensesRef = useRef(loadMoreExpenses);
+  useEffect(() => { loadMoreExpensesRef.current = loadMoreExpenses; });
+
+  const expenseSentinel = useCallback((el: HTMLDivElement | null) => {
+    expenseSentinelRef.current = el;
+    expenseObserverRef.current?.disconnect();
+    if (!el) { expenseObserverRef.current = null; return; }
+    expenseObserverRef.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) loadMoreExpensesRef.current();
+    }, { threshold: 0 });
+    expenseObserverRef.current.observe(el);
+  }, []);
+
+  useEffect(() => () => { expenseObserverRef.current?.disconnect(); }, []);
 
   // Derived query params — from/to default to selected year when not set manually
   const queryFrom = filters.from || `${selectedYear}-01-01`;
@@ -302,11 +334,11 @@ export default function Financials() {
   const propRows = Object.entries(propMap).map(([, v]) => v).sort((a, b) => b.income - a.income);
 
   // ── Bulk helpers (expenses) ────────────────────────────────────────────
-  const visibleExpenses = expenses as any[];
-  const allVisibleSelected = visibleExpenses.length > 0 && visibleExpenses.every((e: any) => selectedIds.has(e.id));
+  const displayedExpenses = (expenses as any[]).slice(0, displayCount);
+  const allVisibleSelected = displayedExpenses.length > 0 && displayedExpenses.every((e: any) => selectedIds.has(e.id));
   const toggleAll = () => {
     if (allVisibleSelected) setSelectedIds(new Set());
-    else setSelectedIds(new Set(visibleExpenses.map((e: any) => e.id)));
+    else setSelectedIds(new Set(displayedExpenses.map((e: any) => e.id)));
   };
   const toggleOne = (id: number) => setSelectedIds(prev => {
     const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
@@ -317,7 +349,7 @@ export default function Financials() {
     setBulkLoading(true); setBulkResult(null);
     const results = await Promise.allSettled(
       Array.from(selectedIds).map(id => {
-        const exp = visibleExpenses.find((e: any) => e.id === id);
+        const exp = (expenses as any[]).find((e: any) => e.id === id);
         if (!exp) return Promise.reject('Not found');
         const payload = {
           propertyId: exp.propertyId || undefined,
@@ -580,7 +612,7 @@ export default function Financials() {
       )}
 
       {/* Expenses list */}
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
           Gastos {selectedYear} ({(expenses as any[]).length})
           {filters.propertyId && (
@@ -589,6 +621,11 @@ export default function Financials() {
             </span>
           )}
         </h2>
+        <PageSizeSelector
+          listKey="expenses"
+          value={pageSize}
+          onChange={size => { setPageSize(size); setDisplayCount(size); }}
+        />
       </div>
 
       {loadingExpenses ? (
@@ -619,7 +656,7 @@ export default function Financials() {
                 </tr>
               </thead>
               <tbody>
-                {(expenses as any[]).map((exp: any) => (
+                {displayedExpenses.map((exp: any) => (
                   <tr key={exp.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
                     <td className="pl-4 py-3">
                       <input type="checkbox" checked={selectedIds.has(exp.id)} onChange={() => toggleOne(exp.id)}
@@ -675,7 +712,7 @@ export default function Financials() {
 
           {/* Mobile */}
           <div className="md:hidden space-y-3">
-            {(expenses as any[]).map((exp: any) => (
+            {displayedExpenses.map((exp: any) => (
               <div key={exp.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2">
@@ -726,6 +763,15 @@ export default function Financials() {
               </div>
             ))}
           </div>
+
+          {/* Sentinel infinite scroll (client-side) */}
+          <div ref={expenseSentinel} className="h-1" />
+          {displayCount < (expenses as any[]).length && (
+            <div className="text-slate-400 text-center py-6 text-sm">{t('common.loading')}</div>
+          )}
+          {displayCount >= (expenses as any[]).length && (expenses as any[]).length > 0 && (
+            <div className="text-slate-500 text-center py-4 text-xs">No hay más registros</div>
+          )}
         </>
       )}
 
