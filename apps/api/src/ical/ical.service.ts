@@ -3,7 +3,6 @@ import { randomBytes, randomUUID } from 'crypto';
 import { lookup } from 'dns/promises';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma.service';
-import { getPublicBaseUrl } from '../common/public-url.helper';
 import { LogsService } from '../logs/logs.service';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -237,8 +236,7 @@ export class ICalService {
   }
 
   async getExportUrl(propertyId: string, organizationId: string): Promise<string> {
-    const org = await this.prisma.organization.findFirst({ where: { id: organizationId } });
-    const base = getPublicBaseUrl(org as any);
+    const base = (process.env.API_PUBLIC_URL || process.env.FRONTEND_URL || 'http://localhost:3001').replace(/\/$/, '');
     return `${base}/api/ical/export/${propertyId}`;
   }
 

@@ -25,15 +25,6 @@ interface Property {
   notes?: string;
 }
 
-interface Feed {
-  id: string;
-  propertyId: string;
-  icalUrl: string;
-  platform: string;
-  lastSyncAt: string | null;
-  lastSyncStatus: string;
-}
-
 const fmtEur = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 
@@ -41,18 +32,6 @@ const statusLabel = (s: string) =>
   s === 'active' ? 'Activa' : s === 'maintenance' ? 'Mantenimiento' : 'Inactiva';
 const statusClass = (s: string) =>
   s === 'active' ? 'bg-emerald-500/10 text-emerald-400' : s === 'maintenance' ? 'bg-amber-500/10 text-amber-400' : 'bg-red-500/10 text-red-400';
-
-const exportUrl = (propertyId: string) =>
-  `${(import.meta as any).env.VITE_API_URL || 'http://192.168.1.123:3001'}/api/ical/export/${propertyId}`;
-
-const platformBadge = (platform: string) => {
-  const colors: Record<string, string> = {
-    airbnb: 'bg-rose-500/10 text-rose-400',
-    booking: 'bg-blue-500/10 text-blue-400',
-    other: 'bg-slate-700 text-slate-400',
-  };
-  return colors[platform] || colors.other;
-};
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -67,36 +46,6 @@ export default function PropertyDetail() {
   const [notesEditing, setNotesEditing] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
-
-  // iCal modal state
-  const [showIcal, setShowIcal] = useState(false);
-  const [icalFeeds, setIcalFeeds] = useState<Feed[]>([]);
-  const [icalLoading, setIcalLoading] = useState(false);
-  const [icalSyncing, setIcalSyncing] = useState<string | null>(null);
-  const [icalSyncResult, setIcalSyncResult] = useState<{ feedId: string; imported: number; skipped: number; total: number } | null>(null);
-  const [icalShowAdd, setIcalShowAdd] = useState(false);
-  const [icalForm, setIcalForm] = useState({ url: '', platform: 'airbnb' });
-  const [icalSaving, setIcalSaving] = useState(false);
-  const [icalError, setIcalError] = useState('');
-  const [copiedIcal, setCopiedIcal] = useState<string | null>(null);
-
-  const handleCopyIcal = async (text: string, key: string) => {
-    let success = false;
-    if (navigator.clipboard && window.isSecureContext) {
-      try { await navigator.clipboard.writeText(text); success = true; } catch { /* fall through */ }
-    }
-    if (!success) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
-      document.body.appendChild(ta);
-      ta.focus(); ta.select();
-      try { success = document.execCommand('copy'); } catch { /* fall through */ }
-      document.body.removeChild(ta);
-    }
-    if (success) { setCopiedIcal(key); setTimeout(() => setCopiedIcal(null), 2000); }
-    else { window.prompt('Copia la URL manualmente:', text); }
-  };
 
   const { data: property, isLoading } = useQuery<Property>({
     queryKey: ['property', id],
@@ -168,62 +117,6 @@ export default function PropertyDetail() {
       }
     };
     reader.readAsDataURL(file);
-  };
-
-  // iCal helpers
-  const loadFeeds = async (propertyId: string) => {
-    setIcalLoading(true);
-    try {
-      const res = await api.get('/ical/feeds');
-      setIcalFeeds((res.data as Feed[]).filter(fd => fd.propertyId === propertyId));
-    } finally {
-      setIcalLoading(false);
-    }
-  };
-
-  const openIcal = async () => {
-    if (!property) return;
-    setIcalFeeds([]);
-    setIcalShowAdd(false);
-    setIcalSyncResult(null);
-    setIcalError('');
-    setShowIcal(true);
-    await loadFeeds(property.id);
-  };
-
-  const handleAddFeed = async () => {
-    if (!icalForm.url) { setIcalError('La URL es obligatoria'); return; }
-    setIcalSaving(true);
-    setIcalError('');
-    try {
-      await api.post('/ical/feeds', { propertyId: property!.id, url: icalForm.url, platform: icalForm.platform });
-      setIcalShowAdd(false);
-      setIcalForm({ url: '', platform: 'airbnb' });
-      await loadFeeds(property!.id);
-    } catch (e: any) {
-      setIcalError(e.response?.data?.message || 'Error al guardar');
-    } finally {
-      setIcalSaving(false);
-    }
-  };
-
-  const handleDeleteFeed = async (feedId: string) => {
-    if (!confirm('¿Eliminar este feed?')) return;
-    await api.delete(`/ical/feeds/${feedId}`);
-    await loadFeeds(property!.id);
-  };
-
-  const handleSyncFeed = async (feedId: string) => {
-    setIcalSyncing(feedId);
-    setIcalSyncResult(null);
-    try {
-      const res = await api.post(`/ical/feeds/${feedId}/sync`);
-      setIcalSyncResult({ feedId, ...res.data });
-    } catch (e: any) {
-      alert(e.response?.data?.message || 'Error al sincronizar');
-    } finally {
-      setIcalSyncing(null);
-    }
   };
 
   if (isLoading) {
@@ -364,19 +257,7 @@ export default function PropertyDetail() {
           {/* Card: iCal */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
             <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">iCal</p>
-            <div>
-              <p className="text-xs text-slate-400 mb-1">URL exportación</p>
-              <div className="flex items-start gap-2">
-                <code className="text-xs text-emerald-400 bg-slate-800 px-2 py-1 rounded break-all flex-1">
-                  {exportUrl(property.id)}
-                </code>
-                <button onClick={() => handleCopyIcal(exportUrl(property.id), 'card-export')}
-                  className="text-xs text-slate-400 hover:text-white px-2 py-1 bg-slate-800 rounded transition-colors shrink-0">
-                  {copiedIcal === 'card-export' ? '✅' : 'Copiar'}
-                </button>
-              </div>
-            </div>
-            <button onClick={openIcal}
+            <button onClick={() => navigate(`/properties/${property.id}/ical`)}
               className="text-xs text-slate-400 hover:text-emerald-400 transition-colors">
               ⚙️ Gestionar feeds iCal
             </button>
@@ -534,134 +415,6 @@ export default function PropertyDetail() {
         </div>
       )}
 
-      {/* Modal iCal */}
-      {showIcal && (
-        <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center p-0 md:p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl md:rounded-2xl w-full md:max-w-2xl max-h-[95vh] md:max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
-              <div>
-                <h2 className="text-lg font-bold">Feeds iCal</h2>
-                <p className="text-sm text-slate-400">{property.name}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => { setIcalShowAdd(true); setIcalError(''); }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors">
-                  + Añadir feed
-                </button>
-                <button onClick={() => setShowIcal(false)}
-                  className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {/* Export URL */}
-              <div className="bg-slate-800 rounded-xl p-4">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">URL exportación</p>
-                <div className="flex items-start gap-2">
-                  <code className="text-xs text-emerald-400 bg-slate-900 px-3 py-2 rounded-lg break-all flex-1">
-                    {exportUrl(property.id)}
-                  </code>
-                  <button onClick={() => handleCopyIcal(exportUrl(property.id), 'modal-export')}
-                    className="text-xs text-slate-400 hover:text-white px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors shrink-0">
-                    {copiedIcal === 'modal-export' ? '✅' : '📋 Copiar'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Add feed form */}
-              {icalShowAdd && (
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-3">
-                  <h3 className="text-sm font-bold">Añadir feed</h3>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Plataforma</label>
-                    <select value={icalForm.platform}
-                      onChange={(e) => setIcalForm({ ...icalForm, platform: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
-                      <option value="airbnb">Airbnb</option>
-                      <option value="booking">Booking.com</option>
-                      <option value="other">Otro</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">URL iCal</label>
-                    <input type="url" value={icalForm.url}
-                      onChange={(e) => setIcalForm({ ...icalForm, url: e.target.value })}
-                      placeholder="https://www.airbnb.com/calendar/ical/..."
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500" />
-                  </div>
-                  {icalError && (
-                    <p className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">{icalError}</p>
-                  )}
-                  <div className="flex gap-2">
-                    <button onClick={() => { setIcalShowAdd(false); setIcalError(''); }}
-                      className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-semibold transition-colors">
-                      Cancelar
-                    </button>
-                    <button onClick={handleAddFeed} disabled={icalSaving}
-                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50">
-                      {icalSaving ? 'Guardando…' : 'Guardar'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Feed list */}
-              {icalLoading ? (
-                <div className="text-slate-400 text-center py-8">Cargando feeds…</div>
-              ) : icalFeeds.length === 0 ? (
-                <div className="text-center py-12 border-2 border-dashed border-slate-700 rounded-xl">
-                  <div className="text-3xl mb-2">📅</div>
-                  <p className="text-slate-400 text-sm">No hay feeds configurados</p>
-                </div>
-              ) : (
-                icalFeeds.map((feed) => (
-                  <div key={feed.id} className="bg-slate-800 rounded-xl p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${platformBadge(feed.platform)}`}>
-                            {feed.platform.toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex items-start gap-2 mt-0.5">
-                          <p className="text-xs text-slate-400 break-all flex-1">{feed.icalUrl}</p>
-                          <button
-                            onClick={() => handleCopyIcal(feed.icalUrl, `feed-${feed.id}`)}
-                            className="text-xs text-slate-500 hover:text-white shrink-0 transition-colors"
-                            title="Copiar URL"
-                          >
-                            {copiedIcal === `feed-${feed.id}` ? '✅' : '📋'}
-                          </button>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {feed.lastSyncAt
-                            ? `Última sync: ${new Date(feed.lastSyncAt).toLocaleString()}`
-                            : 'Nunca sincronizado'}
-                        </p>
-                        {icalSyncResult?.feedId === feed.id && (
-                          <div className="mt-2 text-xs bg-emerald-500/10 text-emerald-400 rounded-lg px-3 py-2">
-                            ✅ {icalSyncResult.imported} importadas, {icalSyncResult.skipped} omitidas de {icalSyncResult.total}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button onClick={() => handleSyncFeed(feed.id)} disabled={icalSyncing === feed.id}
-                          className="text-xs bg-slate-700 hover:bg-slate-600 text-blue-400 px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50">
-                          {icalSyncing === feed.id ? '⏳' : '🔄'} Sync
-                        </button>
-                        <button onClick={() => handleDeleteFeed(feed.id)}
-                          className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg font-medium transition-colors">
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

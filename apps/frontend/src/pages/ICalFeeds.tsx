@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
+import { BTN_PRIMARY, BTN_SECONDARY, platformBadgeColor } from '../lib/ui';
 
 interface Feed {
   id: string;
@@ -9,274 +12,264 @@ interface Feed {
   platform: string;
   lastSyncAt: string | null;
   lastSyncStatus: string;
-  property: { id: string; name: string };
-}
-
-interface Property {
-  id: string;
-  name: string;
+  eventCount: number;
 }
 
 export default function ICalFeeds() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { t } = useTranslation();
+
   const [feeds, setFeeds] = useState<Feed[]>([]);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [publicUrl, setPublicUrl] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [feedsLoading, setFeedsLoading] = useState(false);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ feedId: string; imported: number; skipped: number; total: number } | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ propertyId: '', url: '', platform: 'airbnb' });
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ url: '', platform: 'airbnb' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [exportUrl, setExportUrl] = useState('');
 
-  const load = async () => {
-    setLoading(true);
+  const { data: property, isLoading: propertyLoading } = useQuery({
+    queryKey: ['property', id],
+    queryFn: () => api.get(`/properties/${id}`).then(r => r.data),
+    enabled: !!id,
+  });
+
+  useQuery({
+    queryKey: ['ical-feeds-page', id],
+    queryFn: async () => {
+      setFeedsLoading(true);
+      try {
+        const [feedsRes, urlRes] = await Promise.all([
+          api.get('/ical/feeds'),
+          api.get(`/ical/export-url/${id}`),
+        ]);
+        setFeeds((feedsRes.data as Feed[]).filter((f: Feed) => f.propertyId === id));
+        setExportUrl(urlRes.data.url);
+      } finally {
+        setFeedsLoading(false);
+      }
+      return null;
+    },
+    enabled: !!id,
+  });
+
+  const reloadFeeds = async () => {
+    setFeedsLoading(true);
     try {
-      const [feedsRes, propsRes, orgRes] = await Promise.all([
-        api.get('/ical/feeds'),
-        api.get('/properties'),
-        api.get('/organization'),
-      ]);
-      setFeeds(feedsRes.data);
-      setProperties(propsRes.data?.data || propsRes.data);
-      setPublicUrl(orgRes.data?.publicUrl || window.location.origin);
+      const res = await api.get('/ical/feeds');
+      setFeeds((res.data as Feed[]).filter((f: Feed) => f.propertyId === id));
     } finally {
-      setLoading(false);
+      setFeedsLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  const relativeTime = (dateStr: string | null): string => {
+    if (!dateStr) return t('properties.ical.neverSynced');
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 2) return t('properties.ical.justNow');
+    if (mins < 60) return t('properties.ical.minutesAgo', { count: mins });
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return t('properties.ical.hoursAgo', { count: hours });
+    const days = Math.floor(hours / 24);
+    return t('properties.ical.daysAgo', { count: days });
+  };
 
-  const handleAdd = async () => {
-    if (!form.propertyId || !form.url) { setError(t('ical.errorRequired')); return; }
+  const copyToClipboard = (text: string) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).catch(() => {});
+    } else {
+      const el = document.createElement('textarea');
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+  };
+
+  const handleAddFeed = async () => {
+    if (!form.url) { setError(t('properties.ical.errorRequired')); return; }
     setSaving(true);
     setError('');
     try {
-      await api.post('/ical/feeds', form);
-      setShowModal(false);
-      setForm({ propertyId: '', url: '', platform: 'airbnb' });
-      load();
+      await api.post('/ical/feeds', { propertyId: id, url: form.url, platform: form.platform });
+      setShowAdd(false);
+      setForm({ url: '', platform: 'airbnb' });
+      await reloadFeeds();
     } catch (e: any) {
-      setError(e.response?.data?.message || t('ical.errorSave'));
+      setError(e.response?.data?.message || t('properties.ical.errorSave'));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm(t('ical.confirmDelete'))) return;
-    await api.delete(`/ical/feeds/${id}`);
-    load();
+  const handleDeleteFeed = async (feedId: string) => {
+    if (!confirm(t('properties.ical.confirmDelete'))) return;
+    await api.delete(`/ical/feeds/${feedId}`);
+    await reloadFeeds();
   };
 
-  const handleSync = async (id: string) => {
-    setSyncing(id);
+  const handleSyncFeed = async (feedId: string) => {
+    setSyncing(feedId);
     setSyncResult(null);
     try {
-      const res = await api.post(`/ical/feeds/${id}/sync`);
-      setSyncResult({ feedId: id, ...res.data });
+      const res = await api.post(`/ical/feeds/${feedId}/sync`);
+      setSyncResult({ feedId, ...res.data });
     } catch (e: any) {
-      alert(e.response?.data?.message || t('ical.errorSync'));
+      alert(e.response?.data?.message || t('properties.ical.errorSync'));
     } finally {
       setSyncing(null);
     }
   };
 
-  const platformBadge = (platform: string) => {
-    const colors: Record<string, string> = {
-      airbnb: 'bg-rose-100 text-rose-700',
-      booking: 'bg-blue-100 text-blue-700',
-      other: 'bg-gray-100 text-gray-600',
-    };
-    return colors[platform] || colors.other;
-  };
-
-  const exportUrl = (propertyId: string) =>
-    `${publicUrl}/api/ical/export/${propertyId}`;
-
-  const handleCopy = async (text: string, id: string) => {
-    let success = false;
-
-    if (navigator.clipboard && window.isSecureContext) {
-      try {
-        await navigator.clipboard.writeText(text);
-        success = true;
-      } catch { /* fall through */ }
-    }
-
-    if (!success) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      try { success = document.execCommand('copy'); } catch { /* fall through */ }
-      document.body.removeChild(ta);
-    }
-
-    if (success) {
-      setCopied(id);
-      setTimeout(() => setCopied(null), 2000);
-    } else {
-      window.prompt('Copia la URL manualmente:', text);
-    }
-  };
+  if (propertyLoading) {
+    return <div className="p-6 text-slate-400">{t('common.loading')}</div>;
+  }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-6 max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('ical.title')}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('ical.subtitle')}</p>
+          <button
+            onClick={() => navigate(`/properties/${id}`)}
+            className="text-sm text-slate-400 hover:text-white transition-colors mb-2 block">
+            {t('common.back')}
+          </button>
+          <h1 className="text-2xl font-bold">{t('properties.ical.sectionTitle')}</h1>
+          {property && <p className="text-slate-400 text-sm mt-1">{property.name}</p>}
         </div>
         <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-        >
-          + {t('ical.addFeed')}
+          onClick={() => { setShowAdd(true); setError(''); }}
+          className={BTN_PRIMARY}>
+          + {t('properties.ical.addFeed')}
         </button>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12 text-gray-400">{t('ical.loading')}</div>
+      {/* Export URL */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-4">
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+          {t('properties.ical.exportUrl')}
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            readOnly
+            value={exportUrl}
+            className="text-xs text-emerald-400 bg-slate-800 px-3 py-2 rounded-lg w-full min-w-0 outline-none cursor-text select-all"
+            onFocus={(e) => e.target.select()}
+          />
+          <button
+            onClick={() => {
+              copyToClipboard(exportUrl);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+            className="text-xs text-slate-400 hover:text-white px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors shrink-0 whitespace-nowrap">
+            {copied ? `✅ ${t('properties.ical.copied')}` : `📋 ${t('properties.ical.copy')}`}
+          </button>
+        </div>
+      </div>
+
+      {/* Add feed form */}
+      {showAdd && (
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-3 mb-4">
+          <h3 className="text-sm font-bold">{t('properties.ical.addFeedTitle')}</h3>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              {t('properties.ical.platform')}
+            </label>
+            <select
+              value={form.platform}
+              onChange={(e) => setForm({ ...form, platform: e.target.value })}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500">
+              <option value="airbnb">Airbnb</option>
+              <option value="booking">Booking.com</option>
+              <option value="other">{t('properties.ical.other')}</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              {t('properties.ical.icalUrl')}
+            </label>
+            <input
+              type="url"
+              value={form.url}
+              onChange={(e) => setForm({ ...form, url: e.target.value })}
+              placeholder="https://www.airbnb.com/calendar/ical/..."
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+            />
+            <p className="text-xs text-slate-500 mt-1">{t('properties.ical.icalUrlHint')}</p>
+          </div>
+          {error && (
+            <p className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">{error}</p>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowAdd(false); setError(''); }}
+              className={`flex-1 ${BTN_SECONDARY}`}>
+              {t('properties.ical.cancel')}
+            </button>
+            <button
+              onClick={handleAddFeed}
+              disabled={saving}
+              className={`flex-1 ${BTN_PRIMARY}`}>
+              {saving ? t('properties.ical.saving') : t('properties.ical.save')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Feed list */}
+      {feedsLoading ? (
+        <div className="text-slate-400 text-center py-12">{t('properties.ical.loading')}</div>
       ) : feeds.length === 0 ? (
-        <div className="text-center py-16 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
+        <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-2xl">
           <div className="text-4xl mb-3">📅</div>
-          <p className="text-gray-500 dark:text-gray-400">{t('ical.noFeeds')}</p>
-          <p className="text-sm text-gray-400 mt-1">{t('ical.noFeedsHint')}</p>
+          <p className="text-slate-400 text-sm">{t('properties.ical.noFeeds')}</p>
+          <p className="text-slate-500 text-xs mt-1">{t('properties.ical.noFeedsHint')}</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {feeds.map((feed) => (
-            <div key={feed.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+            <div key={feed.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${platformBadge(feed.platform)}`}>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${platformBadgeColor(feed.platform)}`}>
                       {feed.platform.toUpperCase()}
                     </span>
-                    <span className="font-medium text-gray-900 dark:text-white">{feed.property.name}</span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">
+                      {t('properties.ical.eventCount', { count: feed.eventCount ?? 0 })}
+                    </span>
+                    <span className="text-xs text-slate-500">{relativeTime(feed.lastSyncAt)}</span>
                   </div>
-                  <div className="flex items-start gap-2 mt-0.5">
-                    <p className="text-xs text-gray-400 break-all flex-1">{feed.icalUrl}</p>
-                    <button
-                      onClick={() => handleCopy(feed.icalUrl, `${feed.id}-url`)}
-                      className="text-xs text-blue-500 hover:text-blue-700 shrink-0 transition"
-                      title="Copiar URL"
-                    >
-                      {copied === `${feed.id}-url` ? '✅' : '📋'}
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {feed.lastSyncAt
-                      ? `${t('ical.lastSync')}: ${new Date(feed.lastSyncAt).toLocaleString()}`
-                      : t('ical.neverSynced')}
-                  </p>
+                  <p className="text-xs text-slate-400 truncate">{feed.icalUrl}</p>
                   {syncResult?.feedId === feed.id && (
-                    <div className="mt-2 text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-lg px-3 py-2">
-                      ✅ {t('ical.syncResult', { imported: syncResult.imported, skipped: syncResult.skipped, total: syncResult.total })}
+                    <div className="mt-2 text-xs bg-emerald-500/10 text-emerald-400 rounded-lg px-3 py-2">
+                      ✅ {t('properties.ical.syncResult', { imported: syncResult.imported, skipped: syncResult.skipped, total: syncResult.total })}
                     </div>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={() => handleSync(feed.id)}
+                    onClick={() => handleSyncFeed(feed.id)}
                     disabled={syncing === feed.id}
-                    className="text-xs bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-3 py-1.5 rounded-lg font-medium transition disabled:opacity-50"
-                  >
-                    {syncing === feed.id ? '⏳' : '🔄'} {t('ical.sync')}
+                    className="text-xs bg-slate-800 hover:bg-slate-700 text-blue-400 px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50">
+                    {syncing === feed.id ? '⏳' : '🔄'} {t('properties.ical.sync')}
                   </button>
                   <button
-                    onClick={() => handleDelete(feed.id)}
-                    className="text-xs bg-red-50 hover:bg-red-100 dark:bg-red-900/30 text-red-600 px-3 py-1.5 rounded-lg font-medium transition"
-                  >
+                    onClick={() => handleDeleteFeed(feed.id)}
+                    className="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg font-medium transition-colors">
                     🗑️
-                  </button>
-                </div>
-              </div>
-              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                <p className="text-xs text-gray-400 mb-1">{t('ical.exportUrl')}:</p>
-                <div className="flex items-center gap-2">
-                  <code className="text-xs bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 px-2 py-1 rounded break-all flex-1">
-                    {exportUrl(feed.propertyId)}
-                  </code>
-                  <button
-                    onClick={() => handleCopy(exportUrl(feed.propertyId), feed.propertyId)}
-                    className="text-xs text-blue-500 hover:text-blue-700 shrink-0 transition"
-                  >
-                    {copied === feed.propertyId ? '✅' : '📋'}
                   </button>
                 </div>
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">{t('ical.addFeedTitle')}</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('ical.platform')}</label>
-                <select
-                  value={form.platform}
-                  onChange={(e) => setForm({ ...form, platform: e.target.value })}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="airbnb">Airbnb</option>
-                  <option value="booking">Booking.com</option>
-                  <option value="other">{t('ical.other')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('ical.property')}</label>
-                <select
-                  value={form.propertyId}
-                  onChange={(e) => setForm({ ...form, propertyId: e.target.value })}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="">{t('ical.selectProperty')}</option>
-                  {properties.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('ical.icalUrl')}</label>
-                <input
-                  type="url"
-                  value={form.url}
-                  onChange={(e) => setForm({ ...form, url: e.target.value })}
-                  placeholder="https://www.airbnb.com/calendar/ical/..."
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
-                />
-                <p className="text-xs text-gray-400 mt-1">{t('ical.icalUrlHint')}</p>
-              </div>
-              {error && (
-                <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">{error}</p>
-              )}
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => { setShowModal(false); setError(''); }}
-                className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-              >
-                {t('ical.cancel')}
-              </button>
-              <button
-                onClick={handleAdd}
-                disabled={saving}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50"
-              >
-                {saving ? t('ical.saving') : t('ical.save')}
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>
