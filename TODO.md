@@ -1,5 +1,5 @@
 # RentalSuite — Tareas pendientes
-> Actualizado 08/04/2026 (tarde)
+> Actualizado 09/04/2026
 
 ## En progreso
 (ninguna)
@@ -35,6 +35,14 @@
 - [x] Mover configuración Paperless a Settings → pestaña Integraciones
 - [x] Settings → Integraciones: 3 sub-tabs pill: 📦 Paperless, ✉️ Email, 🏛️ SES Hospedajes
 - [x] Properties: crear nueva propiedad en página completa `/properties/new` (reemplaza modal); `PropertyCreate.tsx` con todos los campos incluyendo nrua, paperlessCorrespondentId, cadastralRef
+
+### Sesión 09/04/2026
+- [x] Fix versión: bump a v1.4.0 en Layout.tsx y todos los package.json
+- [x] Fix Police.tsx: URL descarga XML/PDF cambiada a ruta relativa /api (era http://hostname:3001)
+- [x] Verificado: Police.tsx ya estaba completamente implementado (filtros, tabla, móvil, modal reenvío)
+- [x] Verificado: Email notificación error SES ya implementado en ses.service.ts (notifySesError)
+- [x] Verificado: Mass update precios reservas desde Excel ya implementado (endpoint + modal en Bookings.tsx)
+- [x] Verificado: Cambio contraseña usuario no admin ya implementado (PUT /users/me/password + Profile.tsx)
 
 ### Reconciliación repo (08/04/2026)
 - [x] `Police.tsx` historial SES — ya implementado: tabla con filtros estado/propiedad/mes, reenvío con modal, descarga XML/PDF, cards mobile
