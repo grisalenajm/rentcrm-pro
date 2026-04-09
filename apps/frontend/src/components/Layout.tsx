@@ -49,7 +49,7 @@ export default function Layout() {
           <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-sm">🏘️</div>
           <div>
             <div className="text-sm font-bold">RentCRM Pro</div>
-            <div className="text-xs text-slate-400">v1.0</div>
+            <div className="text-xs text-slate-400">v1.4.0</div>
           </div>
         </div>
       </div>
