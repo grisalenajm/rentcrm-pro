@@ -15,11 +15,18 @@ export class FinancialsController {
   findAll(
     @Request() req,
     @Query('propertyId') propertyId?: string,
-    @Query('type') type?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
+    @Query('type')       type?: string,
+    @Query('from')       from?: string,
+    @Query('to')         to?: string,
+    @Query('page')       page?: string,
+    @Query('limit')      limit?: string,
   ) {
-    return this.financialsService.findAll(req.user.organizationId, { propertyId, type, from, to });
+    return this.financialsService.findAll(
+      req.user.organizationId,
+      { propertyId, type, from, to },
+      page  ? +page  : undefined,
+      limit ? +limit : undefined,
+    );
   }
 
   @Get('summary')

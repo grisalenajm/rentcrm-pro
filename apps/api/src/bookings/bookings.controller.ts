@@ -23,11 +23,22 @@ export class BookingsController {
   @Get()
   findAll(
     @Request() req,
-    @Query('propertyId') propertyId?: string,
-    @Query('clientId') clientId?: string,
+    @Query('propertyId')    propertyId?: string,
+    @Query('clientId')      clientId?: string,
     @Query('includeBlocks') includeBlocks?: string,
+    @Query('status')        status?: string,
+    @Query('dateFrom')      dateFrom?: string,
+    @Query('dateTo')        dateTo?: string,
+    @Query('page')          page?: string,
+    @Query('limit')         limit?: string,
   ) {
-    return this.bookingsService.findAll(req.user.organizationId, propertyId, clientId, includeBlocks === 'true');
+    return this.bookingsService.findAll(
+      req.user.organizationId,
+      propertyId, clientId, includeBlocks === 'true',
+      status, dateFrom, dateTo,
+      page  ? +page  : undefined,
+      limit ? +limit : undefined,
+    );
   }
 
   @Public()

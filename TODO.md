@@ -1,5 +1,5 @@
 # RentalSuite — Tareas pendientes
-> Actualizado 08/04/2026 (tarde)
+> Actualizado 09/04/2026
 
 ## En progreso
 (ninguna)
@@ -19,6 +19,7 @@
 
 ### SES / Infraestructura (07/04/2026)
 - [x] Fix SES SSL en PRD: importar CAs FNMT (ac-componentes + ac-raiz) en imagen Docker Alpine
+- [x] Email de notificación cuando SES devuelve error — `ses.service.ts:notifySesError` + `bookings.service.ts:sendSesErrorEmail`, llamado automáticamente al fallar envío
 
 ### Otras (07/04/2026)
 - [x] Mass update precios de reservas desde Excel (`GET /excel/template/bookings-price`, `POST /excel/import/bookings-price`)
@@ -28,7 +29,20 @@
 
 ### iCal (08/04/2026)
 - [x] `API_PUBLIC_URL` — `getExportUrl` usa `API_PUBLIC_URL` env var (fallback `FRONTEND_URL`) para que la URL exportada apunte al host de la API, no al dominio frontend
-- [x] Página iCal `/properties/:id/ical` — modal convertido a página completa con badge de eventos, `lastSyncAt` relativo ("Hace 2h"), estilo dark card igual que PropertyDetail; botón iCal en Properties y PropertyDetail navega a la nueva ruta
+- [x] Página iCal `/properties/:id/ical` — modal convertido a página completa con badge de eventos (`eventCount`), `lastSyncAt` relativo ("Hace 2h"), estilo dark card igual que PropertyDetail; botón iCal en Properties y PropertyDetail navega a la nueva ruta
+
+### Settings / UX (08/04/2026)
+- [x] Mover configuración Paperless a Settings → pestaña Integraciones
+- [x] Settings → Integraciones: 3 sub-tabs pill: 📦 Paperless, ✉️ Email, 🏛️ SES Hospedajes
+- [x] Properties: crear nueva propiedad en página completa `/properties/new` (reemplaza modal); `PropertyCreate.tsx` con todos los campos incluyendo nrua, paperlessCorrespondentId, cadastralRef
+
+### Sesión 09/04/2026
+- [x] Fix versión: bump a v1.4.0 en Layout.tsx y todos los package.json
+- [x] Fix Police.tsx: URL descarga XML/PDF cambiada a ruta relativa /api (era http://hostname:3001)
+- [x] Verificado: Police.tsx ya estaba completamente implementado (filtros, tabla, móvil, modal reenvío)
+- [x] Verificado: Email notificación error SES ya implementado en ses.service.ts (notifySesError)
+- [x] Verificado: Mass update precios reservas desde Excel ya implementado (endpoint + modal en Bookings.tsx)
+- [x] Verificado: Cambio contraseña usuario no admin ya implementado (PUT /users/me/password + Profile.tsx)
 
 ### Reconciliación repo (08/04/2026)
 - [x] `Police.tsx` historial SES — ya implementado: tabla con filtros estado/propiedad/mes, reenvío con modal, descarga XML/PDF, cards mobile
@@ -38,23 +52,29 @@
 
 ## Pendiente (priorizado)
 
-### Alta
-- [ ] Email de notificación cuando SES devuelve error
+### UX / Performance
+- [ ] Paginación en listados: Clients, Bookings, Expenses, Financials — mostrar máximo N registros
+      por página (opción A: paginación clásica con botones anterior/siguiente) o
+      infinite scroll (opción B: cargar más al llegar al final).
+      Actualmente se cargan todos los registros de una vez — problema de rendimiento
+      con volúmenes altos.
 
 ### Media
-- [ ] Etiquetas de códigos de barras — página de impresión con grid (imagen barcode + nombre material, CSS print)
+- [ ] Etiquetas de códigos de barras — página de impresión con grid (imagen barcode + nombre
+      material, CSS print). El botón por material ya abre el SVG individual via
+      `GET /api/materials/:id/barcode`; falta la vista de impresión masiva en grid.
 
 ### Baja
-- [ ] Integrar SVG logo RentalSuite en la app
-- [ ] Mover configuración Paperless a Settings → pestaña Integraciones
+- [ ] Integrar SVG logo RentalSuite en la app — Layout muestra emoji 🏘️ + texto "RentCRM Pro";
+      pendiente SVG real del logo
 - [ ] HTTPS local con mkcert (CA Proxmox ya copiada)
 - [ ] Notificaciones push (check-in próximo, contratos sin firmar, pagos pendientes)
-- [ ] Alta en hospedajes.ses.mir.es (activar envío real de partes SES)
-- [ ] Properties: crear nueva propiedad en página completa /properties/new (sin modal)
+- [ ] Alta en hospedajes.ses.mir.es (activar envío real de partes SES) — proceso externo, no código
+- [ ] `README.md` bilingüe profesional — existe (318 líneas) pero versión desactualizada (v1.3.0,
+      faltan módulos inventario, iCal página, Settings sub-tabs, etc.)
 
 ### Deploy producción
 - [x] `docker-compose.prod.yml` + GitHub Actions build/push a ghcr.io
 - [x] `.env.example` documentado
 - [x] `setup.sh` script de instalación
 - [x] `CONTRIBUTING.md`
-- [ ] `README.md` bilingüe profesional para GitHub (revisar si está completo o es borrador)

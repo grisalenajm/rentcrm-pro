@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma.service';
 export class ExpensesService {
   constructor(private prisma: PrismaService) {}
 
-  findAll(organizationId: string, propertyId?: string, year?: number) {
+  async findAll(organizationId: string, propertyId?: string, year?: number, page?: number, limit?: number) {
     const where: any = { property: { organizationId } };
     if (propertyId) where.propertyId = propertyId;
     if (year) {
@@ -14,11 +14,19 @@ export class ExpensesService {
         lte: new Date(`${year}-12-31T23:59:59`),
       };
     }
-    return this.prisma.expense.findMany({
-      where,
-      orderBy: { date: 'desc' },
-      include: { property: { select: { name: true } } },
-    });
+    const include = { property: { select: { name: true } } };
+
+    if (!limit) {
+      return this.prisma.expense.findMany({ where, orderBy: { date: 'desc' }, include });
+    }
+
+    const p = page ?? 1;
+    const skip = (p - 1) * limit;
+    const [data, total] = await Promise.all([
+      this.prisma.expense.findMany({ where, orderBy: { date: 'desc' }, include, skip, take: limit }),
+      this.prisma.expense.count({ where }),
+    ]);
+    return { data, total, page: p, limit, hasMore: skip + data.length < total };
   }
 
   async create(data: { propertyId: string; date: string; amount: number; type: string; notes?: string; deductible?: boolean }, organizationId: string) {
@@ -64,7 +72,7 @@ export class ExpensesService {
   }
 
   async summaryByYear(organizationId: string, propertyId?: string) {
-    const expenses = await this.findAll(organizationId, propertyId);
+    const expenses = (await this.findAll(organizationId, propertyId)) as any[];
     const summary: Record<number, number> = {};
     for (const e of expenses) {
       const year = new Date(e.date).getFullYear();

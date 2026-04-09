@@ -8,22 +8,48 @@ export class ClientsService {
   private readonly logger = new Logger(ClientsService.name);
   constructor(private prisma: PrismaService) {}
 
-  async findAll(organizationId: string, search?: string) {
-    return this.prisma.client.findMany({
-      where: {
-        organizationId,
-        deletedAt: null,
-        ...(search ? {
-          OR: [
-            { firstName:   { contains: search, mode: 'insensitive' } },
-            { lastName:    { contains: search, mode: 'insensitive' } },
-            { dniPassport: { contains: search, mode: 'insensitive' } },
-            { email:       { contains: search, mode: 'insensitive' } },
-          ]
-        } : {})
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(
+    organizationId: string,
+    search?: string,
+    nationality?: string,
+    language?: string,
+    dateFrom?: string,
+    dateTo?: string,
+    page?: number,
+    limit?: number,
+  ) {
+    const where: any = {
+      organizationId,
+      deletedAt: null,
+      ...(search ? {
+        OR: [
+          { firstName:   { contains: search, mode: 'insensitive' } },
+          { lastName:    { contains: search, mode: 'insensitive' } },
+          { dniPassport: { contains: search, mode: 'insensitive' } },
+          { email:       { contains: search, mode: 'insensitive' } },
+        ]
+      } : {}),
+      ...(nationality ? { nationality } : {}),
+      ...(language    ? { language }    : {}),
+      ...(dateFrom || dateTo ? {
+        createdAt: {
+          ...(dateFrom ? { gte: new Date(dateFrom) }                   : {}),
+          ...(dateTo   ? { lte: new Date(dateTo + 'T23:59:59') }       : {}),
+        }
+      } : {}),
+    };
+
+    if (!limit) {
+      return this.prisma.client.findMany({ where, orderBy: { createdAt: 'desc' } });
+    }
+
+    const p = page ?? 1;
+    const skip = (p - 1) * limit;
+    const [data, total] = await Promise.all([
+      this.prisma.client.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      this.prisma.client.count({ where }),
+    ]);
+    return { data, total, page: p, limit, hasMore: skip + data.length < total };
   }
 
   async findOne(id: string, organizationId: string) {

@@ -1,11 +1,9 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
-import { inputCls, labelCls, BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER, MODAL_OVERLAY, MODAL_PANEL } from '../lib/ui';
+import { BTN_PRIMARY, BTN_DANGER } from '../lib/ui';
 import ExcelButtons from '../components/ExcelButtons';
-import { WORLD_COUNTRIES } from '../data/countries';
 
 interface Property {
   id: string;
@@ -25,51 +23,19 @@ interface Property {
   photo?: string;
 }
 
-const emptyForm = { name:'', address:'', city:'', province:'', postalCode:'', country:'ES', rooms:'1', bathrooms:'', maxGuests:'', pricePerNight:'', purchasePrice:'', status: 'active', sesCodigoEstablecimiento:'' };
-
-
-
 export default function Properties() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<any>(emptyForm);
-
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ['properties'],
     queryFn: () => api.get('/properties').then(r => r.data),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data: any) => api.post('/properties', data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['properties'] }); setShowForm(false); setForm(emptyForm); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/properties/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['properties'] }),
   });
-
-  const openCreate = () => { setForm(emptyForm); setShowForm(true); };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const data = {
-      ...form,
-      rooms: Number(form.rooms),
-      bathrooms: form.bathrooms ? Number(form.bathrooms) : undefined,
-      maxGuests: form.maxGuests ? Number(form.maxGuests) : undefined,
-      pricePerNight: form.pricePerNight ? Number(form.pricePerNight) : undefined,
-      purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
-      postalCode: form.postalCode || undefined,
-      country: form.country || undefined,
-    };
-    createMutation.mutate(data);
-  };
-
-  const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm({ ...form, [k]: e.target.value });
 
   const statusLabel = (s: string) =>
     s === 'active' ? 'Activa' : s === 'maintenance' ? 'Mantenimiento' : 'Inactiva';
@@ -85,7 +51,7 @@ export default function Properties() {
         </div>
         <div className="flex items-center gap-2">
           <ExcelButtons entity="properties" showImport={false} />
-          <button onClick={openCreate}
+          <button onClick={() => navigate('/properties/new')}
             className={BTN_PRIMARY}>
             + {t('properties.new')}
           </button>
@@ -183,112 +149,6 @@ export default function Properties() {
             ))}
           </div>
         </>
-      )}
-
-      {/* Property create/edit modal */}
-      {showForm && (
-        <div className={MODAL_OVERLAY}>
-          <div className={`${MODAL_PANEL} md:max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto`}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
-              <h2 className="text-lg font-bold text-white">{t('properties.new')}</h2>
-              <button type="button" onClick={() => setShowForm(false)}
-                className="text-slate-400 hover:text-white text-xl leading-none">✕</button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-
-              {/* Identificación */}
-              <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-4">
-                <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">Identificación</p>
-                <div>
-                  <label className={labelCls}>{t('common.name')} *</label>
-                  <input value={form.name} onChange={f('name')} required className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>{t('common.address')}</label>
-                  <input value={form.address} onChange={f('address')} className={inputCls} />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelCls}>{t('common.city')}</label>
-                    <input value={form.city} onChange={f('city')} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>{t('properties.province')}</label>
-                    <input value={form.province} onChange={f('province')} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>País</label>
-                    <select value={form.country} onChange={f('country')} className={inputCls}>
-                      {WORLD_COUNTRIES.map(c => (
-                        <option key={c.code} value={c.code}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelCls}>Código Postal</label>
-                    <input value={form.postalCode} onChange={f('postalCode')} className={inputCls} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Capacidad */}
-              <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-4">
-                <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">Capacidad</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className={labelCls}>{t('properties.rooms')} *</label>
-                    <input type="number" min="1" value={form.rooms} onChange={f('rooms')} required className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Baños</label>
-                    <input type="number" min="0" value={form.bathrooms} onChange={f('bathrooms')} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Máx. huéspedes</label>
-                    <input type="number" min="1" value={form.maxGuests} onChange={f('maxGuests')} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Precio/noche €</label>
-                    <input type="number" min="0" step="0.01" value={form.pricePerNight} onChange={f('pricePerNight')} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Precio de compra (€)</label>
-                    <input type="number" min="0" step="1" value={form.purchasePrice} onChange={f('purchasePrice')} placeholder="Opcional — para cálculo ROI" className={inputCls} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Configuración */}
-              <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4 space-y-4">
-                <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">Configuración</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelCls}>{t('common.status')}</label>
-                    <select value={form.status} onChange={f('status')} className={inputCls}>
-                      <option value="active">Activa</option>
-                      <option value="maintenance">Mantenimiento</option>
-                      <option value="inactive">Inactiva</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelCls}>Código SES Establecimiento</label>
-                    <input value={form.sesCodigoEstablecimiento} onChange={f('sesCodigoEstablecimiento')}
-                      placeholder="0000000002" className={inputCls} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)}
-                  className={`flex-1 ${BTN_SECONDARY}`}>{t('common.cancel')}</button>
-                <button type="submit"
-                  className={`flex-1 ${BTN_PRIMARY}`}>
-                  {t('properties.new')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
 
     </div>

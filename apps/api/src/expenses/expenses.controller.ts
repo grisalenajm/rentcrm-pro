@@ -31,11 +31,19 @@ export class ExpensesController {
   constructor(private readonly expensesService: ExpensesService) {}
 
   @Get()
-  findAll(@Request() req, @Query('propertyId') propertyId?: string, @Query('year') year?: string) {
+  findAll(
+    @Request() req,
+    @Query('propertyId') propertyId?: string,
+    @Query('year')       year?: string,
+    @Query('page')       page?: string,
+    @Query('limit')      limit?: string,
+  ) {
     return this.expensesService.findAll(
       req.user.organizationId,
       propertyId,
-      year ? parseInt(year) : undefined,
+      year  ? parseInt(year)  : undefined,
+      page  ? +page  : undefined,
+      limit ? +limit : undefined,
     );
   }
 

@@ -7,26 +7,40 @@ import { UpdateFinancialDto } from './dto/update-financial.dto';
 export class FinancialsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(organizationId: string, filters?: { propertyId?: string; type?: string; from?: string; to?: string }) {
-    return this.prisma.financial.findMany({
-      where: {
-        organizationId,
-        ...(filters?.propertyId ? { propertyId: filters.propertyId } : {}),
-        ...(filters?.type ? { type: filters.type } : {}),
-        ...(filters?.from || filters?.to ? {
-          date: {
-            ...(filters.from ? { gte: new Date(filters.from) } : {}),
-            ...(filters.to   ? { lte: new Date(filters.to)   } : {}),
-          }
-        } : {}),
-      },
-      include: {
-        category: { select: { name: true, type: true } },
-        property: { select: { name: true, city: true } },
-        booking:  { select: { checkInDate: true, checkOutDate: true } },
-      },
-      orderBy: { date: 'desc' },
-    });
+  async findAll(
+    organizationId: string,
+    filters?: { propertyId?: string; type?: string; from?: string; to?: string },
+    page?: number,
+    limit?: number,
+  ) {
+    const where: any = {
+      organizationId,
+      ...(filters?.propertyId ? { propertyId: filters.propertyId } : {}),
+      ...(filters?.type ? { type: filters.type } : {}),
+      ...(filters?.from || filters?.to ? {
+        date: {
+          ...(filters?.from ? { gte: new Date(filters.from) } : {}),
+          ...(filters?.to   ? { lte: new Date(filters.to)   } : {}),
+        }
+      } : {}),
+    };
+    const include = {
+      category: { select: { name: true, type: true } },
+      property: { select: { name: true, city: true } },
+      booking:  { select: { checkInDate: true, checkOutDate: true } },
+    };
+
+    if (!limit) {
+      return this.prisma.financial.findMany({ where, include, orderBy: { date: 'desc' } });
+    }
+
+    const p = page ?? 1;
+    const skip = (p - 1) * limit;
+    const [data, total] = await Promise.all([
+      this.prisma.financial.findMany({ where, include, orderBy: { date: 'desc' }, skip, take: limit }),
+      this.prisma.financial.count({ where }),
+    ]);
+    return { data, total, page: p, limit, hasMore: skip + data.length < total };
   }
 
   async combinedSummary(organizationId: string, from?: string, to?: string) {
@@ -106,9 +120,9 @@ export class FinancialsService {
   }
 
   async summary(organizationId: string, from?: string, to?: string) {
-    const records = await this.findAll(organizationId, { from, to });
-    const income  = records.filter(r => r.type === 'income' ).reduce((s, r) => s + Number(r.amount), 0);
-    const expense = records.filter(r => r.type === 'expense').reduce((s, r) => s + Number(r.amount), 0);
+    const records = (await this.findAll(organizationId, { from, to })) as any[];
+    const income  = records.filter(r => r.type === 'income' ).reduce((s: number, r: any) => s + Number(r.amount), 0);
+    const expense = records.filter(r => r.type === 'expense').reduce((s: number, r: any) => s + Number(r.amount), 0);
     return { income, expense, profit: income - expense, records: records.length };
   }
 

@@ -87,7 +87,7 @@ export default function Police() {
   });
 
   const downloadUrl = (id: string, type: 'xml' | 'pdf') =>
-    `http://${window.location.hostname}:3001/api/bookings/${id}/ses/${type}`;
+    `/api/bookings/${id}/ses/${type}`;
 
   const canResend = (b: Booking) => b.sesStatus === 'error' || b.sesStatus == null;
 
